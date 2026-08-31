@@ -1,6 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
+
+const MapComponent = dynamic(() => import("./MapComponent"), {
+  ssr: false,
+  loading: () => <p style={{ padding: "20px", color: "var(--muted)" }}>Carregando mapa...</p>,
+});
 
 // ── Icons (inline SVGs to avoid external dependency) ─────────────────────────
 function IconDrone({ className = "" }: { className?: string }) {
@@ -830,106 +836,18 @@ export default function Home() {
             />
           </div>
 
-          {/* Map placeholder area */}
+          {/* Map Area */}
           <div
-            className="fade-in-up map-grid"
             style={{
               flex: 1,
               minHeight: "380px",
               borderRadius: "12px",
               border: "1px solid var(--card-border)",
               background: "var(--card-bg)",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              position: "relative",
               overflow: "hidden",
-              animationDelay: "0.1s",
-              opacity: 0,
             }}
           >
-            {/* Decorative corner labels */}
-            <span
-              style={{
-                position: "absolute",
-                top: "12px",
-                left: "12px",
-                fontSize: "10px",
-                fontFamily: "var(--font-geist-mono)",
-                color: "rgba(46,160,67,0.4)",
-              }}
-            >
-              -22.9°S, -47.1°O
-            </span>
-            <span
-              style={{
-                position: "absolute",
-                bottom: "12px",
-                right: "12px",
-                fontSize: "10px",
-                fontFamily: "var(--font-geist-mono)",
-                color: "rgba(46,160,67,0.4)",
-              }}
-            >
-              Zoom: 14x
-            </span>
-
-            {/* Center placeholder */}
-            <div style={{ textAlign: "center", padding: "40px" }}>
-              <div
-                style={{
-                  width: "64px",
-                  height: "64px",
-                  borderRadius: "16px",
-                  background: "rgba(46,160,67,0.1)",
-                  border: "1px solid rgba(46,160,67,0.2)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  margin: "0 auto 20px auto",
-                }}
-              >
-                <IconMap className="w-8 h-8 text-green-500" />
-              </div>
-              <h2
-                style={{
-                  fontSize: "18px",
-                  fontWeight: 600,
-                  color: "var(--foreground)",
-                  margin: "0 0 8px 0",
-                }}
-              >
-                Área do Mapa
-              </h2>
-              <p
-                style={{
-                  fontSize: "13.5px",
-                  color: "var(--muted)",
-                  margin: 0,
-                  maxWidth: "320px",
-                  lineHeight: 1.6,
-                }}
-              >
-                O mapa interativo com imagens UAV e análise NDVI será
-                integrado aqui na próxima sprint.
-              </p>
-              <div
-                style={{
-                  marginTop: "20px",
-                  padding: "8px 16px",
-                  borderRadius: "999px",
-                  background: "rgba(46,160,67,0.08)",
-                  border: "1px dashed rgba(46,160,67,0.3)",
-                  display: "inline-block",
-                  fontSize: "12px",
-                  color: "var(--accent-green)",
-                  fontWeight: 500,
-                }}
-              >
-                🛸 Aguardando integração com cv_engine
-              </div>
-            </div>
+            <MapComponent />
           </div>
 
           {/* Bottom info strip */}
