@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import dynamic from "next/dynamic";
 
 const MapComponent = dynamic(() => import("./MapComponent"), {
@@ -177,6 +177,77 @@ function IconX({ className = "" }: { className?: string }) {
       strokeLinecap="round"
     >
       <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  );
+}
+
+function IconUploadCloud({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
+      <path d="M12 12v9" />
+      <path d="m8 16 4-4 4 4" />
+    </svg>
+  );
+}
+
+function IconCheckCircle({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
+function IconAlertCircle({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="8" x2="12" y2="12" />
+      <line x1="12" y1="16" x2="12.01" y2="16" />
+    </svg>
+  );
+}
+
+function IconFileImage({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+      <circle cx="9" cy="9" r="2" />
+      <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
     </svg>
   );
 }
@@ -598,17 +669,357 @@ function StatCard({
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
+interface BackendUploadResponse {
+  status: string;
+  message: string;
+  filename: string;
+  original_filename: string;
+  content_type: string;
+  size_bytes: number;
+  saved_path: string;
+}
+
 export default function Home() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [uploadSuccessData, setUploadSuccessData] = useState<{
+    backend: BackendUploadResponse;
+    localPreview: string;
+  } | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [toast, setToast] = useState<{
+    type: "success" | "error";
+    title: string;
+    message: string;
+  } | null>(null);
 
-  const handleNewAnalysis = () => {
-    setAnalysisLoading(true);
-    setTimeout(() => setAnalysisLoading(false), 1800);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Dispara a janela nativa do Windows para seleção de arquivo
+  const handleOpenFileDialog = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""; // Limpa para permitir selecionar o mesmo arquivo novamente
+      fileInputRef.current.click();
+    }
+  };
+
+  // Captura o arquivo selecionado, monta o FormData e envia via fetch() para o backend FastAPI
+  const handleFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploadLoading(true);
+    setToast(null);
+
+    // URL local para preview imediato da imagem
+    const localPreviewUrl = URL.createObjectURL(file);
+
+    // Cria o FormData estruturado conforme esperado pelo endpoint POST /upload
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await fetch("http://localhost:8000/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        let errorDetail = `Erro HTTP ${response.status}`;
+        try {
+          const errData = await response.json();
+          if (errData.detail) errorDetail = errData.detail;
+        } catch {
+          // Mantém mensagem padrão
+        }
+        throw new Error(errorDetail);
+      }
+
+      const result: BackendUploadResponse = await response.json();
+
+      setUploadSuccessData({
+        backend: result,
+        localPreview: localPreviewUrl,
+      });
+      setIsModalOpen(true);
+
+      setToast({
+        type: "success",
+        title: "Upload concluído!",
+        message: `Imagem "${result.original_filename}" gravada no servidor (${(result.size_bytes / 1024).toFixed(1)} KB).`,
+      });
+    } catch (err: unknown) {
+      console.error("Erro durante o upload da imagem UAV:", err);
+      const errorMsg =
+        err instanceof Error
+          ? err.message
+          : "Não foi possível conectar ao servidor backend (http://localhost:8000). Certifique-se de que o FastAPI está ativo.";
+
+      setToast({
+        type: "error",
+        title: "Falha no Envio",
+        message: errorMsg,
+      });
+    } finally {
+      setUploadLoading(false);
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
   };
 
   return (
-    <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
+    <div style={{ display: "flex", height: "100vh", overflow: "hidden", position: "relative" }}>
+      {/* ── Input Oculto de Arquivo (Windows Dialog) ─────────── */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileSelected}
+        accept="image/*,.jpg,.jpeg,.png,.webp,.bmp,.tiff"
+        style={{ display: "none" }}
+        id="uav-file-input"
+      />
+
+      {/* ── Toast de Notificação Flutuante ──────────────────── */}
+      {toast && (
+        <div
+          className="fade-in-up"
+          style={{
+            position: "fixed",
+            top: "20px",
+            right: "24px",
+            zIndex: 9999,
+            background: toast.type === "success" ? "#162b1b" : "#321616",
+            border: `1px solid ${toast.type === "success" ? "rgba(46, 160, 67, 0.4)" : "rgba(248, 81, 73, 0.4)"}`,
+            borderRadius: "10px",
+            padding: "14px 18px",
+            display: "flex",
+            alignItems: "flex-start",
+            gap: "12px",
+            maxWidth: "420px",
+            boxShadow: "0 8px 30px rgba(0,0,0,0.5)",
+            backdropFilter: "blur(10px)",
+          }}
+        >
+          {toast.type === "success" ? (
+            <IconCheckCircle className="w-5 h-5 flex-shrink-0 text-[#3fb950]" />
+          ) : (
+            <IconAlertCircle className="w-5 h-5 flex-shrink-0 text-[#f85149]" />
+          )}
+          <div style={{ flex: 1 }}>
+            <div
+              style={{
+                fontSize: "13.5px",
+                fontWeight: 600,
+                color: toast.type === "success" ? "#3fb950" : "#ff7b72",
+                marginBottom: "2px",
+              }}
+            >
+              {toast.title}
+            </div>
+            <div style={{ fontSize: "12px", color: "var(--foreground)", lineHeight: "1.4" }}>
+              {toast.message}
+            </div>
+          </div>
+          <button
+            onClick={() => setToast(null)}
+            style={{
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              color: "var(--muted)",
+              padding: "2px",
+              display: "flex",
+            }}
+            aria-label="Fechar notificação"
+          >
+            <IconX className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* ── Modal de Detalhes do Upload ─────────────────────── */}
+      {isModalOpen && uploadSuccessData && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9990,
+            background: "rgba(0, 0, 0, 0.75)",
+            backdropFilter: "blur(6px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+          }}
+          onClick={() => setIsModalOpen(false)}
+        >
+          <div
+            className="fade-in-up"
+            style={{
+              background: "var(--card-bg)",
+              border: "1px solid var(--card-border)",
+              borderRadius: "14px",
+              width: "100%",
+              maxWidth: "560px",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.6)",
+              padding: "24px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "20px",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div
+                  style={{
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "8px",
+                    background: "rgba(46,160,67,0.15)",
+                    border: "1px solid rgba(46,160,67,0.3)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "var(--accent-green)",
+                  }}
+                >
+                  <IconUploadCloud className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: "16px", fontWeight: 700, margin: 0, color: "var(--foreground)" }}>
+                    Nova Análise UAV Enviada
+                  </h2>
+                  <p style={{ fontSize: "12px", color: "var(--muted)", margin: "2px 0 0 0" }}>
+                    Imagem recebida e armazenada pelo servidor backend
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "var(--muted)",
+                  padding: "6px",
+                  borderRadius: "6px",
+                }}
+              >
+                <IconX className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Image Preview */}
+            <div
+              style={{
+                borderRadius: "10px",
+                overflow: "hidden",
+                border: "1px solid var(--sidebar-border)",
+                background: "#0d1117",
+                maxHeight: "260px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={uploadSuccessData.localPreview}
+                alt={uploadSuccessData.backend.original_filename}
+                style={{
+                  maxWidth: "100%",
+                  maxHeight: "260px",
+                  objectFit: "contain",
+                  display: "block",
+                }}
+              />
+            </div>
+
+            {/* Metadados do Arquivo */}
+            <div
+              style={{
+                background: "var(--surface)",
+                borderRadius: "10px",
+                padding: "14px 16px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "10px",
+                fontSize: "12.5px",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--sidebar-border)", paddingBottom: "8px" }}>
+                <span style={{ color: "var(--muted)", display: "flex", alignItems: "center", gap: "6px" }}>
+                  <IconFileImage className="w-4 h-4 text-muted" />
+                  Arquivo original:
+                </span>
+                <span style={{ fontWeight: 600, color: "var(--foreground)" }}>{uploadSuccessData.backend.original_filename}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--sidebar-border)", paddingBottom: "8px" }}>
+                <span style={{ color: "var(--muted)" }}>Nome no Servidor:</span>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: "11.5px", color: "#58a6ff" }}>{uploadSuccessData.backend.filename}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--sidebar-border)", paddingBottom: "8px" }}>
+                <span style={{ color: "var(--muted)" }}>Tamanho:</span>
+                <span style={{ fontWeight: 600, color: "var(--foreground)" }}>{formatFileSize(uploadSuccessData.backend.size_bytes)}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--sidebar-border)", paddingBottom: "8px" }}>
+                <span style={{ color: "var(--muted)" }}>Tipo de Conteúdo:</span>
+                <span style={{ color: "var(--foreground)" }}>{uploadSuccessData.backend.content_type}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "var(--muted)" }}>Status do Backend:</span>
+                <span style={{ color: "var(--accent-green)", fontWeight: 600, display: "flex", alignItems: "center", gap: "5px" }}>
+                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--accent-green)" }} />
+                  Pronto para Inferência IA / YOLO
+                </span>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+              <button
+                onClick={handleOpenFileDialog}
+                style={{
+                  padding: "9px 16px",
+                  borderRadius: "8px",
+                  background: "transparent",
+                  border: "1px solid var(--card-border)",
+                  color: "var(--foreground)",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Enviar Outra Imagem
+              </button>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                style={{
+                  padding: "9px 20px",
+                  borderRadius: "8px",
+                  background: "var(--accent-green)",
+                  border: "none",
+                  color: "#fff",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Concluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Sidebar ─────────────────────────────────────── */}
       <Sidebar
         collapsed={sidebarCollapsed}
@@ -724,34 +1135,34 @@ export default function Home() {
             </span>
           </div>
 
-          {/* ✅ BOTÃO PRINCIPAL: Nova Análise UAV */}
+          {/* ✅ BOTÃO PRINCIPAL: Nova Análise UAV (Sprint 3) */}
           <button
             id="btn-nova-analise-uav"
-            onClick={handleNewAnalysis}
-            disabled={analysisLoading}
+            onClick={handleOpenFileDialog}
+            disabled={uploadLoading}
             style={{
               display: "flex",
               alignItems: "center",
               gap: "8px",
               padding: "9px 18px",
               borderRadius: "8px",
-              background: analysisLoading
+              background: uploadLoading
                 ? "rgba(46,160,67,0.5)"
                 : "var(--accent-green)",
               border: "none",
-              cursor: analysisLoading ? "not-allowed" : "pointer",
+              cursor: uploadLoading ? "not-allowed" : "pointer",
               color: "#fff",
               fontSize: "13.5px",
               fontWeight: 600,
               letterSpacing: "0.01em",
-              boxShadow: analysisLoading
+              boxShadow: uploadLoading
                 ? "none"
                 : "0 0 0 1px rgba(46,160,67,0.4), 0 4px 12px rgba(46,160,67,0.3)",
               transition: "all 0.2s ease",
               whiteSpace: "nowrap",
             }}
             onMouseEnter={(e) => {
-              if (!analysisLoading) {
+              if (!uploadLoading) {
                 e.currentTarget.style.background = "var(--accent-green-hover)";
                 e.currentTarget.style.boxShadow =
                   "0 0 0 1px rgba(46,160,67,0.6), 0 6px 20px rgba(46,160,67,0.4)";
@@ -759,7 +1170,7 @@ export default function Home() {
               }
             }}
             onMouseLeave={(e) => {
-              if (!analysisLoading) {
+              if (!uploadLoading) {
                 e.currentTarget.style.background = "var(--accent-green)";
                 e.currentTarget.style.boxShadow =
                   "0 0 0 1px rgba(46,160,67,0.4), 0 4px 12px rgba(46,160,67,0.3)";
@@ -768,7 +1179,7 @@ export default function Home() {
             }}
             aria-label="Nova Análise UAV"
           >
-            {analysisLoading ? (
+            {uploadLoading ? (
               <>
                 <svg
                   style={{
@@ -783,7 +1194,7 @@ export default function Home() {
                 >
                   <path d="M21 12a9 9 0 1 1-6.219-8.56" />
                 </svg>
-                Iniciando...
+                Enviando Imagem...
               </>
             ) : (
               <>
