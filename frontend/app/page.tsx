@@ -1,669 +1,189 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
+import { ToastContainer, toast } from "react-toastify";
+import {
+  Sidebar,
+  IconDrone,
+  IconMap,
+  IconAlert,
+  IconLeaf,
+  IconLayers,
+  IconX,
+  IconPlus,
+  IconMenu,
+  IconUploadCloud,
+  IconFileImage,
+} from "./components/Sidebar";
+import {
+  TALHOES_MOCK_DATA,
+  computeFieldMetrics,
+  formatNumberBR,
+} from "./utils/geoMath";
 
 const MapComponent = dynamic(() => import("./MapComponent"), {
   ssr: false,
   loading: () => <p style={{ padding: "20px", color: "var(--muted)" }}>Carregando mapa...</p>,
 });
 
-// ── Icons (inline SVGs to avoid external dependency) ─────────────────────────
-function IconDrone({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0" />
-      <path d="M3 3l4 4M17 3l-4 4M3 21l4-4M17 21l-4-4" />
-      <path d="M7 7a4 4 0 0 1 5.657 0M11.343 7A4 4 0 0 1 17 7" />
-      <path d="M7 17a4 4 0 0 0 5.657 0M11.343 17A4 4 0 0 0 17 17" />
-    </svg>
-  );
-}
-
-function IconMap({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" />
-      <line x1="9" y1="3" x2="9" y2="18" />
-      <line x1="15" y1="6" x2="15" y2="21" />
-    </svg>
-  );
-}
-
-function IconChart({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <line x1="18" y1="20" x2="18" y2="10" />
-      <line x1="12" y1="20" x2="12" y2="4" />
-      <line x1="6" y1="20" x2="6" y2="14" />
-    </svg>
-  );
-}
-
-function IconLeaf({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z" />
-      <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" />
-    </svg>
-  );
-}
-
-function IconAlert({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
-      <path d="M12 9v4" />
-      <path d="M12 17h.01" />
-    </svg>
-  );
-}
-
-function IconSettings({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
-
-function IconPlus({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M5 12h14" />
-      <path d="M12 5v14" />
-    </svg>
-  );
-}
-
-function IconLayers({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z" />
-      <path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65" />
-      <path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65" />
-    </svg>
-  );
-}
-
-function IconMenu({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-    >
-      <path d="M4 6h16M4 12h16M4 18h16" />
-    </svg>
-  );
-}
-
-function IconX({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-    >
-      <path d="M18 6 6 18M6 6l12 12" />
-    </svg>
-  );
-}
-
-function IconUploadCloud({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
-      <path d="M12 12v9" />
-      <path d="m8 16 4-4 4 4" />
-    </svg>
-  );
-}
-
-function IconCheckCircle({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <path d="m9 12 2 2 4-4" />
-    </svg>
-  );
-}
-
-function IconAlertCircle({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <line x1="12" y1="8" x2="12" y2="12" />
-      <line x1="12" y1="16" x2="12.01" y2="16" />
-    </svg>
-  );
-}
-
-function IconFileImage({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-      <circle cx="9" cy="9" r="2" />
-      <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
-    </svg>
-  );
-}
-
-// ── Nav items ─────────────────────────────────────────────────────────────────
-const navItems = [
-  { id: "mapa", label: "Mapa de Campos", icon: IconMap, active: true },
-  { id: "analises", label: "Análises UAV", icon: IconDrone },
-  { id: "relatorios", label: "Relatórios NDVI", icon: IconChart },
-  { id: "culturas", label: "Culturas", icon: IconLeaf },
-  { id: "alertas", label: "Alertas", icon: IconAlert, badge: 3 },
-  { id: "camadas", label: "Camadas de Mapa", icon: IconLayers },
-];
-
-// ── Sidebar ───────────────────────────────────────────────────────────────────
-function Sidebar({
-  collapsed,
-  onToggle,
-}: {
-  collapsed: boolean;
-  onToggle: () => void;
-}) {
-  const [activeId, setActiveId] = useState("mapa");
-
-  return (
-    <aside
-      style={{
-        background: "var(--sidebar-bg)",
-        borderRight: "1px solid var(--sidebar-border)",
-        width: collapsed ? "64px" : "240px",
-        transition: "width 0.25s ease",
-        flexShrink: 0,
-        display: "flex",
-        flexDirection: "column",
-        height: "100vh",
-        position: "sticky",
-        top: 0,
-      }}
-    >
-      {/* Logo area */}
-      <div
-        style={{
-          padding: collapsed ? "20px 0" : "20px 16px",
-          borderBottom: "1px solid var(--sidebar-border)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: collapsed ? "center" : "space-between",
-          minHeight: "64px",
-        }}
-      >
-        {!collapsed && (
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div
-              style={{
-                width: "32px",
-                height: "32px",
-                borderRadius: "8px",
-                background:
-                  "linear-gradient(135deg, var(--accent-green), #1a7a2e)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
-              <IconDrone className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <div
-                style={{
-                  fontWeight: 700,
-                  fontSize: "15px",
-                  color: "var(--foreground)",
-                  lineHeight: 1,
-                }}
-              >
-                MyAgro
-              </div>
-              <div
-                style={{
-                  fontSize: "11px",
-                  color: "var(--muted)",
-                  lineHeight: 1,
-                  marginTop: "2px",
-                }}
-              >
-                SugarVision UAV
-              </div>
-            </div>
-          </div>
-        )}
-
-        {collapsed && (
-          <div
-            style={{
-              width: "32px",
-              height: "32px",
-              borderRadius: "8px",
-              background: "linear-gradient(135deg, var(--accent-green), #1a7a2e)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <IconDrone className="w-5 h-5 text-white" />
-          </div>
-        )}
-
-        {!collapsed && (
-          <button
-            id="sidebar-toggle-btn"
-            onClick={onToggle}
-            style={{
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              color: "var(--muted)",
-              padding: "4px",
-              borderRadius: "6px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              transition: "color 0.2s",
-            }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.color = "var(--foreground)")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.color = "var(--muted)")
-            }
-            aria-label="Recolher menu lateral"
-          >
-            <IconX className="w-4 h-4" />
-          </button>
-        )}
-      </div>
-
-      {/* Navigation */}
-      <nav
-        style={{
-          flex: 1,
-          padding: "12px 0",
-          overflowY: "auto",
-        }}
-      >
-        <div
-          style={{
-            padding: collapsed ? "0" : "0 8px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "2px",
-          }}
-        >
-          {navItems.map((item) => {
-            const isActive = activeId === item.id;
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.id}
-                id={`nav-${item.id}`}
-                className="nav-item"
-                onClick={() => setActiveId(item.id)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "12px",
-                  padding: collapsed ? "10px 0" : "10px 12px",
-                  borderRadius: collapsed ? "0" : "8px",
-                  justifyContent: collapsed ? "center" : "flex-start",
-                  background: isActive
-                    ? "rgba(46, 160, 67, 0.12)"
-                    : "transparent",
-                  border: "none",
-                  cursor: "pointer",
-                  color: isActive ? "var(--accent-green)" : "var(--muted)",
-                  width: "100%",
-                  textAlign: "left",
-                  transition: "all 0.2s ease",
-                  position: "relative",
-                }}
-                onMouseEnter={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.background =
-                      "rgba(255,255,255,0.05)";
-                    e.currentTarget.style.color = "var(--foreground)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isActive) {
-                    e.currentTarget.style.background = "transparent";
-                    e.currentTarget.style.color = "var(--muted)";
-                  }
-                }}
-                aria-label={item.label}
-                title={collapsed ? item.label : undefined}
-              >
-                {/* Active left bar */}
-                {isActive && (
-                  <span
-                    style={{
-                      position: "absolute",
-                      left: collapsed ? 0 : "-8px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      width: "3px",
-                      height: "60%",
-                      background: "var(--accent-green)",
-                      borderRadius: "0 3px 3px 0",
-                    }}
-                  />
-                )}
-
-                <Icon
-                  className={`flex-shrink-0 ${collapsed ? "w-5 h-5" : "w-4 h-4"}`}
-                />
-
-                {!collapsed && (
-                  <>
-                    <span
-                      style={{
-                        fontSize: "13.5px",
-                        fontWeight: isActive ? 600 : 400,
-                        flex: 1,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {item.label}
-                    </span>
-                    {item.badge && (
-                      <span
-                        style={{
-                          background: "#da3633",
-                          color: "#fff",
-                          fontSize: "11px",
-                          fontWeight: 700,
-                          borderRadius: "999px",
-                          padding: "1px 6px",
-                          lineHeight: "1.4",
-                        }}
-                      >
-                        {item.badge}
-                      </span>
-                    )}
-                  </>
-                )}
-
-                {collapsed && item.badge && (
-                  <span
-                    style={{
-                      position: "absolute",
-                      top: "6px",
-                      right: "12px",
-                      width: "8px",
-                      height: "8px",
-                      borderRadius: "50%",
-                      background: "#da3633",
-                    }}
-                  />
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </nav>
-
-      {/* Bottom section */}
-      <div
-        style={{
-          borderTop: "1px solid var(--sidebar-border)",
-          padding: collapsed ? "12px 0" : "12px 8px",
-        }}
-      >
-        <button
-          id="nav-configuracoes"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            padding: collapsed ? "10px 0" : "10px 12px",
-            borderRadius: collapsed ? "0" : "8px",
-            justifyContent: collapsed ? "center" : "flex-start",
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            color: "var(--muted)",
-            width: "100%",
-            transition: "all 0.2s ease",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "rgba(255,255,255,0.05)";
-            e.currentTarget.style.color = "var(--foreground)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "transparent";
-            e.currentTarget.style.color = "var(--muted)";
-          }}
-          aria-label="Configurações"
-          title={collapsed ? "Configurações" : undefined}
-        >
-          <IconSettings
-            className={`flex-shrink-0 ${collapsed ? "w-5 h-5" : "w-4 h-4"}`}
-          />
-          {!collapsed && (
-            <span style={{ fontSize: "13.5px", whiteSpace: "nowrap" }}>
-              Configurações
-            </span>
-          )}
-        </button>
-
-        {/* User avatar */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            padding: collapsed ? "10px 0" : "10px 12px",
-            justifyContent: collapsed ? "center" : "flex-start",
-            marginTop: "4px",
-          }}
-        >
-          <div
-            style={{
-              width: "32px",
-              height: "32px",
-              borderRadius: "50%",
-              background: "linear-gradient(135deg, #2ea043, #0d4f1c)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "13px",
-              fontWeight: 700,
-              color: "#fff",
-              flexShrink: 0,
-            }}
-          >
-            M4
-          </div>
-          {!collapsed && (
-            <div>
-              <div
-                style={{
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  color: "var(--foreground)",
-                  lineHeight: 1,
-                }}
-              >
-                Membro 4
-              </div>
-              <div
-                style={{
-                  fontSize: "11px",
-                  color: "var(--muted)",
-                  marginTop: "2px",
-                }}
-              >
-                Frontend Dev
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </aside>
-  );
-}
-
-// ── Stat Card ─────────────────────────────────────────────────────────────────
+// ── Stat Card (Dashboard de Hectares) ──────────────────────────────────────────
 function StatCard({
   label,
   value,
   unit,
-  color,
+  subtitle,
+  badge,
+  badgeType = "neutral",
+  color = "var(--foreground)",
+  icon: Icon,
+  percentage,
 }: {
   label: string;
   value: string;
   unit: string;
-  color: string;
+  subtitle?: string;
+  badge?: string;
+  badgeType?: "success" | "danger" | "warning" | "info" | "neutral";
+  color?: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  percentage?: number;
 }) {
+  const badgeStyles = {
+    success: { bg: "rgba(46, 160, 67, 0.15)", border: "rgba(46, 160, 67, 0.3)", text: "#3fb950" },
+    danger: { bg: "rgba(248, 81, 73, 0.15)", border: "rgba(248, 81, 73, 0.3)", text: "#f85149" },
+    warning: { bg: "rgba(210, 153, 34, 0.15)", border: "rgba(210, 153, 34, 0.3)", text: "#d29922" },
+    info: { bg: "rgba(88, 166, 255, 0.15)", border: "rgba(88, 166, 255, 0.3)", text: "#58a6ff" },
+    neutral: { bg: "rgba(255, 255, 255, 0.08)", border: "rgba(255, 255, 255, 0.15)", text: "var(--muted)" },
+  }[badgeType];
+
   return (
     <div
       style={{
         background: "var(--card-bg)",
         border: "1px solid var(--card-border)",
-        borderRadius: "10px",
-        padding: "14px 16px",
-        flex: "1 1 140px",
+        borderRadius: "12px",
+        padding: "16px 18px",
+        flex: "1 1 200px",
         minWidth: "0",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        gap: "10px",
+        boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
+        position: "relative",
+        overflow: "hidden",
+        transition: "transform 0.2s ease, border-color 0.2s ease",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "translateY(-2px)";
+        e.currentTarget.style.borderColor = "rgba(46, 160, 67, 0.4)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.borderColor = "var(--card-border)";
       }}
     >
-      <div
-        style={{
-          fontSize: "11px",
-          color: "var(--muted)",
-          textTransform: "uppercase",
-          letterSpacing: "0.05em",
-          fontWeight: 600,
-          marginBottom: "6px",
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          fontSize: "22px",
-          fontWeight: 700,
-          color,
-          lineHeight: 1,
-        }}
-      >
-        {value}
+      {/* Header: Label & Icon */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span
-          style={{ fontSize: "13px", fontWeight: 400, color: "var(--muted)", marginLeft: "4px" }}
+          style={{
+            fontSize: "11.5px",
+            color: "var(--muted)",
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+            fontWeight: 700,
+          }}
         >
+          {label}
+        </span>
+        {Icon && (
+          <div
+            style={{
+              width: "28px",
+              height: "28px",
+              borderRadius: "6px",
+              background: "rgba(255,255,255,0.04)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: color || "var(--muted)",
+            }}
+          >
+            <Icon className="w-4 h-4" />
+          </div>
+        )}
+      </div>
+
+      {/* Main Big Number */}
+      <div style={{ display: "flex", alignItems: "baseline", gap: "6px", margin: "2px 0" }}>
+        <span
+          style={{
+            fontSize: "26px",
+            fontWeight: 800,
+            color,
+            lineHeight: 1,
+            letterSpacing: "-0.02em",
+          }}
+        >
+          {value}
+        </span>
+        <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--muted)" }}>
           {unit}
         </span>
+
+        {badge && (
+          <span
+            style={{
+              marginLeft: "auto",
+              fontSize: "11px",
+              fontWeight: 700,
+              padding: "2px 8px",
+              borderRadius: "999px",
+              background: badgeStyles.bg,
+              border: `1px solid ${badgeStyles.border}`,
+              color: badgeStyles.text,
+              lineHeight: "1.4",
+            }}
+          >
+            {badge}
+          </span>
+        )}
       </div>
+
+      {/* Subtitle & Percentage Progress */}
+      {subtitle && (
+        <div style={{ fontSize: "11.5px", color: "var(--muted)", display: "flex", justifyContent: "space-between" }}>
+          <span>{subtitle}</span>
+          {percentage !== undefined && (
+            <span style={{ fontWeight: 600, color }}>{percentage.toFixed(1)}%</span>
+          )}
+        </div>
+      )}
+
+      {percentage !== undefined && (
+        <div
+          style={{
+            width: "100%",
+            height: "4px",
+            borderRadius: "2px",
+            background: "rgba(255,255,255,0.06)",
+            overflow: "hidden",
+            marginTop: "2px",
+          }}
+        >
+          <div
+            style={{
+              width: `${Math.min(100, Math.max(0, percentage))}%`,
+              height: "100%",
+              background: color,
+              borderRadius: "2px",
+              transition: "width 0.4s ease",
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -679,7 +199,7 @@ interface BackendUploadResponse {
   saved_path: string;
 }
 
-export default function Home() {
+function HomeContent() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [uploadLoading, setUploadLoading] = useState(false);
   const [uploadSuccessData, setUploadSuccessData] = useState<{
@@ -687,13 +207,27 @@ export default function Home() {
     localPreview: string;
   } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [toast, setToast] = useState<{
-    type: "success" | "error";
-    title: string;
-    message: string;
-  } | null>(null);
+
+  // Estado do Talhão e Cálculo Matemático da Sprint 5
+  const [selectedTalhaoId, setSelectedTalhaoId] = useState<string>("talhao-01-rio-claro");
+  const [showFailureDetails, setShowFailureDetails] = useState<boolean>(false);
+
+  const searchParams = useSearchParams();
+  const talhaoQuery = searchParams.get("talhao");
+
+  // Sincroniza o talhão selecionado via URL se vier da tela de Histórico de Vôos ("Ver no Mapa")
+  useEffect(() => {
+    if (talhaoQuery && TALHOES_MOCK_DATA.some((t) => t.id === talhaoQuery)) {
+      setSelectedTalhaoId(talhaoQuery);
+    }
+  }, [talhaoQuery]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Obtém o talhão ativo e executa a função matemática de consolidação de área em tempo real
+  const currentTalhao =
+    TALHOES_MOCK_DATA.find((t) => t.id === selectedTalhaoId) || TALHOES_MOCK_DATA[0];
+  const metrics = computeFieldMetrics(currentTalhao);
 
   // Dispara a janela nativa do Windows para seleção de arquivo
   const handleOpenFileDialog = () => {
@@ -703,13 +237,36 @@ export default function Home() {
     }
   };
 
-  // Captura o arquivo selecionado, monta o FormData e envia via fetch() para o backend FastAPI
+  // Captura o arquivo selecionado, valida o formato e envia via fetch() para o backend FastAPI
   const handleFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // 1. Validação de formato/extensão (Sprint 6)
+    const fileName = file.name.toLowerCase();
+    const isJpgOrPng =
+      fileName.endsWith(".jpg") ||
+      fileName.endsWith(".jpeg") ||
+      fileName.endsWith(".png") ||
+      file.type === "image/jpeg" ||
+      file.type === "image/png";
+
+    if (!isJpgOrPng) {
+      // Notificação vermelha com a mensagem exigida pela Sprint 6
+      toast.error("Erro: Apenas formatos JPG e PNG são permitidos", {
+        position: "top-right",
+        autoClose: 4500,
+        theme: "dark",
+      });
+
+      // Reseta o input para permitir nova seleção sem travar o sistema
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      return;
+    }
+
     setUploadLoading(true);
-    setToast(null);
 
     // URL local para preview imediato da imagem
     const localPreviewUrl = URL.createObjectURL(file);
@@ -743,10 +300,11 @@ export default function Home() {
       });
       setIsModalOpen(true);
 
-      setToast({
-        type: "success",
-        title: "Upload concluído!",
-        message: `Imagem "${result.original_filename}" gravada no servidor (${(result.size_bytes / 1024).toFixed(1)} KB).`,
+      // Aviso verde com a mensagem exigida pela Sprint 6
+      toast.success("Análise concluída!", {
+        position: "top-right",
+        autoClose: 4000,
+        theme: "dark",
       });
     } catch (err: unknown) {
       console.error("Erro durante o upload da imagem UAV:", err);
@@ -755,13 +313,17 @@ export default function Home() {
           ? err.message
           : "Não foi possível conectar ao servidor backend (http://localhost:8000). Certifique-se de que o FastAPI está ativo.";
 
-      setToast({
-        type: "error",
-        title: "Falha no Envio",
-        message: errorMsg,
+      toast.error(`Erro: ${errorMsg}`, {
+        position: "top-right",
+        autoClose: 5000,
+        theme: "dark",
       });
     } finally {
+      // Garante que o loading é liberado e o sistema nunca trava
       setUploadLoading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
@@ -773,73 +335,29 @@ export default function Home() {
 
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden", position: "relative" }}>
+      {/* ── Container Global de Notificações Toast (Sprint 6) ─── */}
+      <ToastContainer
+        position="top-right"
+        autoClose={4000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="dark"
+      />
+
       {/* ── Input Oculto de Arquivo (Windows Dialog) ─────────── */}
       <input
         type="file"
         ref={fileInputRef}
         onChange={handleFileSelected}
-        accept="image/*,.jpg,.jpeg,.png,.webp,.bmp,.tiff"
+        accept="image/jpeg,image/png,.jpg,.jpeg,.png,application/pdf"
         style={{ display: "none" }}
         id="uav-file-input"
       />
-
-      {/* ── Toast de Notificação Flutuante ──────────────────── */}
-      {toast && (
-        <div
-          className="fade-in-up"
-          style={{
-            position: "fixed",
-            top: "20px",
-            right: "24px",
-            zIndex: 9999,
-            background: toast.type === "success" ? "#162b1b" : "#321616",
-            border: `1px solid ${toast.type === "success" ? "rgba(46, 160, 67, 0.4)" : "rgba(248, 81, 73, 0.4)"}`,
-            borderRadius: "10px",
-            padding: "14px 18px",
-            display: "flex",
-            alignItems: "flex-start",
-            gap: "12px",
-            maxWidth: "420px",
-            boxShadow: "0 8px 30px rgba(0,0,0,0.5)",
-            backdropFilter: "blur(10px)",
-          }}
-        >
-          {toast.type === "success" ? (
-            <IconCheckCircle className="w-5 h-5 flex-shrink-0 text-[#3fb950]" />
-          ) : (
-            <IconAlertCircle className="w-5 h-5 flex-shrink-0 text-[#f85149]" />
-          )}
-          <div style={{ flex: 1 }}>
-            <div
-              style={{
-                fontSize: "13.5px",
-                fontWeight: 600,
-                color: toast.type === "success" ? "#3fb950" : "#ff7b72",
-                marginBottom: "2px",
-              }}
-            >
-              {toast.title}
-            </div>
-            <div style={{ fontSize: "12px", color: "var(--foreground)", lineHeight: "1.4" }}>
-              {toast.message}
-            </div>
-          </div>
-          <button
-            onClick={() => setToast(null)}
-            style={{
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              color: "var(--muted)",
-              padding: "2px",
-              display: "flex",
-            }}
-            aria-label="Fechar notificação"
-          >
-            <IconX className="w-4 h-4" />
-          </button>
-        </div>
-      )}
 
       {/* ── Modal de Detalhes do Upload ─────────────────────── */}
       {isModalOpen && uploadSuccessData && (
@@ -1087,7 +605,7 @@ export default function Home() {
                 lineHeight: 1,
               }}
             >
-              Mapa de Campos
+              Painel de Hectares & Monitoramento UAV
             </h1>
             <p
               style={{
@@ -1097,7 +615,7 @@ export default function Home() {
                 lineHeight: 1,
               }}
             >
-              Visualização e monitoramento de áreas monitoradas via UAV
+              Cálculo geométrico geodésico de áreas de plantio e detecção de falhas
             </p>
           </div>
 
@@ -1135,7 +653,7 @@ export default function Home() {
             </span>
           </div>
 
-          {/* ✅ BOTÃO PRINCIPAL: Nova Análise UAV (Sprint 3) */}
+          {/* ✅ BOTÃO PRINCIPAL: Nova Análise UAV */}
           <button
             id="btn-nova-analise-uav"
             onClick={handleOpenFileDialog}
@@ -1216,52 +734,269 @@ export default function Home() {
             gap: "16px",
           }}
         >
-          {/* Stats row */}
+          {/* ── 🌾 Faixa de Destaque Dinâmica (Dashboard de Hectares) ──────── */}
+          <div
+            className="fade-in-up"
+            style={{
+              background: "linear-gradient(90deg, rgba(46, 160, 67, 0.14) 0%, rgba(22, 27, 34, 0.95) 100%)",
+              border: "1px solid rgba(46, 160, 67, 0.35)",
+              borderRadius: "10px",
+              padding: "12px 18px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: "12px",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "14px",
+                flexWrap: "wrap",
+                fontSize: "13px",
+              }}
+            >
+              {/* Total Analisado */}
+              <span style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--foreground)" }}>
+                <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#58a6ff" }} />
+                <span>Total Analisado:</span>
+                <strong style={{ color: "#58a6ff", fontSize: "14px" }}>
+                  {formatNumberBR(metrics.totalFieldHa, 1)} Hectares
+                </strong>
+                <span style={{ color: "var(--muted)", fontSize: "11.5px" }}>
+                  ({formatNumberBR(metrics.totalFieldM2, 0)} m²)
+                </span>
+              </span>
+
+              <span style={{ color: "rgba(255,255,255,0.15)" }}>|</span>
+
+              {/* Falhas de Plantio */}
+              <span style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--foreground)" }}>
+                <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#f85149" }} />
+                <span>Falhas de Plantio:</span>
+                <strong style={{ color: "#f85149", fontSize: "14px" }}>
+                  {formatNumberBR(metrics.failureHa, 1)} Hectares ({formatNumberBR(metrics.failurePercent, 1)}%)
+                </strong>
+                <span style={{ color: "var(--muted)", fontSize: "11.5px" }}>
+                  ({formatNumberBR(metrics.failureM2, 0)} m²)
+                </span>
+              </span>
+
+              <span style={{ color: "rgba(255,255,255,0.15)" }}>|</span>
+
+              {/* Estande Produtivo */}
+              <span style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--foreground)" }}>
+                <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "var(--accent-green)" }} />
+                <span>Estande Útil:</span>
+                <strong style={{ color: "#3fb950", fontSize: "14px" }}>
+                  {formatNumberBR(metrics.productiveHa, 1)} Hectares ({formatNumberBR(metrics.standPercent, 1)}%)
+                </strong>
+              </span>
+            </div>
+
+            {/* Seletor de Talhão */}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{ fontSize: "12px", color: "var(--muted)", fontWeight: 600 }}>
+                Talhão Ativo:
+              </span>
+              <select
+                value={selectedTalhaoId}
+                onChange={(e) => setSelectedTalhaoId(e.target.value)}
+                style={{
+                  background: "var(--surface)",
+                  border: "1px solid var(--card-border)",
+                  color: "var(--foreground)",
+                  borderRadius: "6px",
+                  padding: "6px 12px",
+                  fontSize: "12.5px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  outline: "none",
+                }}
+              >
+                {TALHOES_MOCK_DATA.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.nome} ({t.cidade})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* ── 📊 CARDS NUMÉRICOS DE HECTARES (Sprint 5) ───────────── */}
           <div
             className="fade-in-up"
             style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}
           >
             <StatCard
-              label="Área Total Monitorada"
-              value="1.248"
+              label="Total Analisado"
+              value={formatNumberBR(metrics.totalFieldHa, 1)}
               unit="ha"
-              color="var(--accent-green)"
-            />
-            <StatCard
-              label="Voos Realizados"
-              value="34"
-              unit="voos"
+              subtitle={`${formatNumberBR(metrics.totalFieldM2, 0)} m² mapeados`}
+              badge="100% Área"
+              badgeType="info"
               color="#58a6ff"
+              icon={IconMap}
+              percentage={100}
             />
             <StatCard
-              label="NDVI Médio"
-              value="0.72"
-              unit="índice"
-              color="#ffa657"
-            />
-            <StatCard
-              label="Alertas Ativos"
-              value="3"
-              unit="alertas"
+              label="Falhas de Plantio"
+              value={formatNumberBR(metrics.failureHa, 1)}
+              unit="ha"
+              subtitle={`${formatNumberBR(metrics.failureM2, 0)} m² com perda`}
+              badge={`${formatNumberBR(metrics.failurePercent, 1)}% Perda`}
+              badgeType="danger"
               color="#f85149"
+              icon={IconAlert}
+              percentage={metrics.failurePercent}
+            />
+            <StatCard
+              label="Estande Produtivo"
+              value={formatNumberBR(metrics.productiveHa, 1)}
+              unit="ha"
+              subtitle={`${formatNumberBR(metrics.totalFieldM2 - metrics.failureM2, 0)} m² úteis`}
+              badge={`${formatNumberBR(metrics.standPercent, 1)}% Efetivo`}
+              badgeType="success"
+              color="var(--accent-green)"
+              icon={IconLeaf}
+              percentage={metrics.standPercent}
+            />
+            <StatCard
+              label="Polígonos de Falha"
+              value={String(metrics.failureCount)}
+              unit="polígonos"
+              subtitle="Detectados via UAV / IA"
+              badge={metrics.failurePercent > 10 ? "Severidade Alta" : "Severidade Média"}
+              badgeType={metrics.failurePercent > 10 ? "danger" : "warning"}
+              color="#ffa657"
+              icon={IconDrone}
             />
           </div>
 
-          {/* Map Area */}
+          {/* ── Mapa Interativo e Polígonos de Falha ───────────────── */}
           <div
             style={{
               flex: 1,
-              minHeight: "380px",
+              minHeight: "400px",
               borderRadius: "12px",
               border: "1px solid var(--card-border)",
               background: "var(--card-bg)",
               overflow: "hidden",
+              position: "relative",
             }}
           >
-            <MapComponent />
+            <MapComponent talhao={currentTalhao} />
+
+            {/* Botão flutuante para detalhamento dos polígonos */}
+            <div
+              style={{
+                position: "absolute",
+                top: "14px",
+                right: "14px",
+                zIndex: 1000,
+              }}
+            >
+              <button
+                onClick={() => setShowFailureDetails(!showFailureDetails)}
+                style={{
+                  background: "rgba(22, 27, 34, 0.9)",
+                  border: "1px solid var(--card-border)",
+                  color: "var(--foreground)",
+                  borderRadius: "8px",
+                  padding: "8px 14px",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  backdropFilter: "blur(6px)",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
+                }}
+              >
+                <IconLayers className="w-4 h-4 text-[#58a6ff]" />
+                {showFailureDetails ? "Ocultar Polígonos" : "Ver Polígonos de Falha"}
+                <span
+                  style={{
+                    background: "#da3633",
+                    color: "#fff",
+                    borderRadius: "999px",
+                    padding: "1px 6px",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                  }}
+                >
+                  {metrics.failureCount}
+                </span>
+              </button>
+            </div>
+
+            {/* Painel Flutuante de Detalhamento dos Polígonos de Falha */}
+            {showFailureDetails && (
+              <div
+                className="fade-in-up"
+                style={{
+                  position: "absolute",
+                  bottom: "16px",
+                  right: "16px",
+                  zIndex: 1000,
+                  background: "rgba(22, 27, 34, 0.95)",
+                  border: "1px solid var(--card-border)",
+                  borderRadius: "10px",
+                  padding: "14px 16px",
+                  width: "340px",
+                  maxHeight: "280px",
+                  overflowY: "auto",
+                  backdropFilter: "blur(8px)",
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                  <span style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--foreground)" }}>
+                    Detalhamento dos Polígonos
+                  </span>
+                  <span style={{ fontSize: "11px", color: "var(--muted)" }}>
+                    Soma: {formatNumberBR(metrics.failureHa, 1)} ha
+                  </span>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {currentTalhao.falhas.map((f, idx) => {
+                    const fAreaM2 = f.customAreaM2 || 0;
+                    const fAreaHa = fAreaM2 / 10000;
+                    return (
+                      <div
+                        key={f.id}
+                        style={{
+                          background: "var(--surface)",
+                          borderRadius: "6px",
+                          padding: "8px 10px",
+                          border: "1px solid rgba(248, 81, 73, 0.2)",
+                          fontSize: "12px",
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600, color: "var(--foreground)" }}>
+                          <span>#{idx + 1} {f.name}</span>
+                          <span style={{ color: "#f85149" }}>{formatNumberBR(fAreaHa, 2)} ha</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", color: "var(--muted)", fontSize: "11px", marginTop: "3px" }}>
+                          <span>Área: {formatNumberBR(fAreaM2, 0)} m²</span>
+                          <span style={{ textTransform: "capitalize", color: f.severity === "alta" ? "#f85149" : "#d29922" }}>
+                            {f.severity}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Bottom info strip */}
+          {/* ── Faixa de Informações Agronômicas da Safra ───────────── */}
           <div
             className="fade-in-up"
             style={{
@@ -1275,18 +1010,23 @@ export default function Home() {
             {[
               {
                 icon: "🌱",
-                title: "Cana-de-açúcar",
-                desc: "Safra 2025/26 — 980 ha",
+                title: currentTalhao.cultura,
+                desc: `${currentTalhao.variedade} — ${formatNumberBR(metrics.totalFieldHa, 0)} ha`,
               },
               {
                 icon: "📡",
-                title: "Último voo",
-                desc: "23/08/2026 às 07:14",
+                title: "Voo de Mapeamento",
+                desc: `${currentTalhao.dataMapeamento} às 07:14`,
               },
               {
-                icon: "☀️",
-                title: "Condições",
-                desc: "Céu limpo · Vento 12 km/h",
+                icon: "📍",
+                title: "Localização",
+                desc: currentTalhao.cidade,
+              },
+              {
+                icon: "🚜",
+                title: "Recomendação Agronômica",
+                desc: `Replantio localizado em ${formatNumberBR(metrics.failureHa, 1)} ha`,
               },
             ].map((item) => (
               <div
@@ -1335,3 +1075,28 @@ export default function Home() {
     </div>
   );
 }
+
+export default function Home() {
+  return (
+    <Suspense
+      fallback={
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            height: "100vh",
+            background: "var(--background)",
+            color: "var(--muted)",
+            fontSize: "14px",
+          }}
+        >
+          Carregando Painel SugarVision...
+        </div>
+      }
+    >
+      <HomeContent />
+    </Suspense>
+  );
+}
+
