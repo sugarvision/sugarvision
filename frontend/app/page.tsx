@@ -349,6 +349,48 @@ function HomeContent() {
         theme="dark"
       />
 
+      {uploadLoading && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 99999,
+            background: "rgba(0, 0, 0, 0.75)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "16px",
+          }}
+        >
+          <svg
+            style={{
+              animation: "spin 1s linear infinite",
+              width: "48px",
+              height: "48px",
+              color: "var(--accent-green)",
+            }}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+          >
+            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+          </svg>
+          <div
+            style={{
+              color: "#ffffff",
+              fontSize: "16px",
+              fontWeight: 600,
+              letterSpacing: "0.02em",
+            }}
+          >
+            Enviando para o servidor... Aguarde.
+          </div>
+        </div>
+      )}
+
       {/* ── Input Oculto de Arquivo (Windows Dialog) ─────────── */}
       <input
         type="file"
@@ -735,95 +777,40 @@ function HomeContent() {
           }}
         >
           {/* ── 🌾 Faixa de Destaque Dinâmica (Dashboard de Hectares) ──────── */}
+          {/* ── 🌾 Seletor de Talhão Ativo ──────── */}
           <div
             className="fade-in-up"
             style={{
-              background: "linear-gradient(90deg, rgba(46, 160, 67, 0.14) 0%, rgba(22, 27, 34, 0.95) 100%)",
-              border: "1px solid rgba(46, 160, 67, 0.35)",
-              borderRadius: "10px",
-              padding: "12px 18px",
               display: "flex",
               alignItems: "center",
-              justifyContent: "space-between",
-              flexWrap: "wrap",
-              gap: "12px",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+              justifyContent: "flex-end",
+              gap: "8px",
             }}
           >
-            <div
+            <span style={{ fontSize: "12px", color: "var(--muted)", fontWeight: 600 }}>
+              Talhão Ativo:
+            </span>
+            <select
+              value={selectedTalhaoId}
+              onChange={(e) => setSelectedTalhaoId(e.target.value)}
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "14px",
-                flexWrap: "wrap",
-                fontSize: "13px",
+                background: "var(--surface)",
+                border: "1px solid var(--card-border)",
+                color: "var(--foreground)",
+                borderRadius: "6px",
+                padding: "6px 12px",
+                fontSize: "12.5px",
+                fontWeight: 600,
+                cursor: "pointer",
+                outline: "none",
               }}
             >
-              {/* Total Analisado */}
-              <span style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--foreground)" }}>
-                <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#58a6ff" }} />
-                <span>Total Analisado:</span>
-                <strong style={{ color: "#58a6ff", fontSize: "14px" }}>
-                  {formatNumberBR(metrics.totalFieldHa, 1)} Hectares
-                </strong>
-                <span style={{ color: "var(--muted)", fontSize: "11.5px" }}>
-                  ({formatNumberBR(metrics.totalFieldM2, 0)} m²)
-                </span>
-              </span>
-
-              <span style={{ color: "rgba(255,255,255,0.15)" }}>|</span>
-
-              {/* Falhas de Plantio */}
-              <span style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--foreground)" }}>
-                <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#f85149" }} />
-                <span>Falhas de Plantio:</span>
-                <strong style={{ color: "#f85149", fontSize: "14px" }}>
-                  {formatNumberBR(metrics.failureHa, 1)} Hectares ({formatNumberBR(metrics.failurePercent, 1)}%)
-                </strong>
-                <span style={{ color: "var(--muted)", fontSize: "11.5px" }}>
-                  ({formatNumberBR(metrics.failureM2, 0)} m²)
-                </span>
-              </span>
-
-              <span style={{ color: "rgba(255,255,255,0.15)" }}>|</span>
-
-              {/* Estande Produtivo */}
-              <span style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--foreground)" }}>
-                <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "var(--accent-green)" }} />
-                <span>Estande Útil:</span>
-                <strong style={{ color: "#3fb950", fontSize: "14px" }}>
-                  {formatNumberBR(metrics.productiveHa, 1)} Hectares ({formatNumberBR(metrics.standPercent, 1)}%)
-                </strong>
-              </span>
-            </div>
-
-            {/* Seletor de Talhão */}
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span style={{ fontSize: "12px", color: "var(--muted)", fontWeight: 600 }}>
-                Talhão Ativo:
-              </span>
-              <select
-                value={selectedTalhaoId}
-                onChange={(e) => setSelectedTalhaoId(e.target.value)}
-                style={{
-                  background: "var(--surface)",
-                  border: "1px solid var(--card-border)",
-                  color: "var(--foreground)",
-                  borderRadius: "6px",
-                  padding: "6px 12px",
-                  fontSize: "12.5px",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  outline: "none",
-                }}
-              >
-                {TALHOES_MOCK_DATA.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.nome} ({t.cidade})
-                  </option>
-                ))}
-              </select>
-            </div>
+              {TALHOES_MOCK_DATA.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.nome} ({t.cidade})
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* ── 📊 CARDS NUMÉRICOS DE HECTARES (Sprint 5) ───────────── */}
