@@ -12,15 +12,22 @@ Testa os seguintes cenários:
 """
 
 import io
+import asyncio
 from pathlib import Path
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
+from fastapi import UploadFile
 
 from fastapi.testclient import TestClient
 
 import main
 from main import app, TEMP_IMAGES_DIR, MODEL_PATH
 from ai_engine import carregar_modelo_yolo, processar_imagem_ia, DEFAULT_MODEL_PATH
+from database import get_all_anomalies, FALLBACK_ANOMALIES
+from app.core.dependencies import get_ai_service, get_anomaly_service, get_storage_service
+from app.services.ai_service import AIService
+from app.services.anomaly_service import AnomalyService
+from app.services.storage_service import StorageService
 
 
 class TestSugarVisionBackend(unittest.TestCase):
@@ -272,6 +279,148 @@ class TestSugarVisionBackend(unittest.TestCase):
             modelo = carregar_modelo_yolo(mock_path)
             self.assertIsNone(modelo)
         print("  [PASS] 19 - carregar_modelo_yolo trata erro de instanciação retornando None")
+
+    def test_20_get_anomalies_endpoint_success(self):
+        """Valida se a rota GET /api/anomalies responde com HTTP 200 e lista JSON."""
+        response = self.client.get("/api/anomalies")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIsInstance(data, list)
+        self.assertGreater(len(data), 0)
+        primeira_falha = data[0]
+        self.assertIn("id", primeira_falha)
+        self.assertIn("name", primeira_falha)
+        self.assertIn("coordinates", primeira_falha)
+        self.assertIn("severity", primeira_falha)
+        print(f"  [PASS] 20 - Rota GET /api/anomalies respondeu 200 OK com {len(data)} falhas")
+
+    @patch("database.get_supabase_client")
+    def test_21_get_anomalies_supabase_select(self, mock_get_client):
+        """Valida que a rota executa um SELECT * na tabela 'anomalies' do Supabase."""
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.data = [
+            {
+                "id": "falha-supabase-01",
+                "name": "Falha Talhão Norte",
+                "type": "falha_plantio",
+                "severity": "alta",
+                "coordinates": [[-22.408, -47.562], [-22.409, -47.561], [-22.410, -47.563]],
+                "customAreaM2": 15000,
+            }
+        ]
+        mock_client.table.return_value.select.return_value.execute.return_value = mock_response
+        mock_get_client.return_value = mock_client
+
+        response = self.client.get("/api/anomalies")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]["id"], "falha-supabase-01")
+
+        # Verifica se o SELECT foi chamado corretamente na tabela 'anomalies'
+        mock_client.table.assert_called_with("anomalies")
+        mock_client.table().select.assert_called_with("*")
+        print("  [PASS] 21 - SELECT * na tabela 'anomalies' do Supabase verificado com sucesso")
+
+    @patch("database.get_supabase_client")
+    def test_22_get_anomalies_database_error_resilience(self, mock_get_client):
+        """Valida que erros de conexão com o banco não quebram o endpoint e retornam dados de contingência."""
+        mock_get_client.side_effect = ConnectionError("Supabase indisponível no momento")
+
+        response = self.client.get("/api/anomalies")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIsInstance(data, list)
+        self.assertEqual(data, FALLBACK_ANOMALIES)
+        print("  [PASS] 22 - Resiliência confirmada: retorno de contingência com HTTP 200 em caso de erro no banco")
+
+    def test_23_database_get_all_anomalies_direct_call(self):
+        """Valida a execução direta da função get_all_anomalies() no módulo database."""
+        anomalies = get_all_anomalies()
+        self.assertIsInstance(anomalies, list)
+        self.assertGreater(len(anomalies), 0)
+        print(f"  [PASS] 23 - get_all_anomalies() executado diretamente retornou {len(anomalies)} itens")
+
+    def test_24_dependency_injection_override_anomaly_service(self):
+        """Valida que a injeção de dependência (Depends) de AnomalyService pode ser substituída via dependency_overrides."""
+        mock_service = MagicMock(spec=AnomalyService)
+        mock_service.get_all_anomalies_async = AsyncMock(
+            return_value=[{"id": "mock-di-anomaly", "name": "Falha Injetada via DI"}]
+        )
+        app.dependency_overrides[get_anomaly_service] = lambda: mock_service
+
+        try:
+            response = self.client.get("/api/anomalies")
+            self.assertEqual(response.status_code, 200)
+            data = response.json()
+            self.assertEqual(len(data), 1)
+            self.assertEqual(data[0]["id"], "mock-di-anomaly")
+            mock_service.get_all_anomalies_async.assert_called_once()
+            print("  [PASS] 24 - Injeção de dependência de AnomalyService substituída e validada via Depends")
+        finally:
+            app.dependency_overrides.clear()
+
+    def test_25_dependency_injection_override_storage_service(self):
+        """Valida que o StorageService injetado via Depends é chamado no endpoint /upload."""
+        mock_storage = MagicMock(spec=StorageService)
+        fake_path = TEMP_IMAGES_DIR / "mock_di_saved.png"
+        mock_storage.validate_extension.return_value = ".png"
+        mock_storage.save_image_async = AsyncMock(return_value=(fake_path, 1234))
+        app.dependency_overrides[get_storage_service] = lambda: mock_storage
+
+        try:
+            file_payload = {"file": ("teste_di.png", io.BytesIO(b"\x89PNG\r\n" + b"X" * 10), "image/png")}
+            response = self.client.post("/upload", files=file_payload)
+            self.assertEqual(response.status_code, 201)
+            data = response.json()
+            self.assertEqual(data.get("filename"), "mock_di_saved.png")
+            self.assertEqual(data.get("size_bytes"), 1234)
+            mock_storage.save_image_async.assert_called_once()
+            print("  [PASS] 25 - Injeção de dependência de StorageService substituída e validada no /upload")
+        finally:
+            app.dependency_overrides.clear()
+
+    def test_26_async_storage_service_save_and_delete(self):
+        """Valida gravação e exclusão assíncrona não-bloqueante no StorageService."""
+        storage = StorageService()
+        test_file = UploadFile(
+            file=io.BytesIO(b"conteudo_assincrono_teste"),
+            filename="teste_stream_async.jpg",
+            headers={"content-type": "image/jpeg"},
+        )
+
+        saved_path, size = asyncio.run(storage.save_image_async(test_file))
+        self.assertTrue(saved_path.exists())
+        self.assertEqual(size, len(b"conteudo_assincrono_teste"))
+
+        # Testa remoção assíncrona não-bloqueante
+        removido = asyncio.run(storage.delete_image_async(saved_path))
+        self.assertTrue(removido)
+        self.assertFalse(saved_path.exists())
+        print(f"  [PASS] 26 - StorageService: streaming assíncrono e deleção validada ({size} bytes)")
+
+    def test_27_ai_service_singleton_model_cache(self):
+        """Valida o padrão Singleton de cache em memória no AIService (evita reinstanciação a cada foto)."""
+        ai = AIService()
+        m1 = ai.get_or_load_model()
+        m2 = ai.get_or_load_model()
+        # Valida que o cache em memória foi alimentado e retorna a mesma referência
+        self.assertIs(m1, m2)
+        print("  [PASS] 27 - AIService: cache singleton de modelo em memória validado com sucesso")
+
+    def test_28_ai_service_process_image_async(self):
+        """Valida a rotina assíncrona de inferência da IA (process_image_async) de forma não-bloqueante."""
+        ai = AIService()
+        test_img = TEMP_IMAGES_DIR / "teste_ai_service_async.jpg"
+        test_img.write_bytes(b"\xff\xd8\xff\xe0" + b"X" * 16)
+        self.created_files.append(test_img)
+
+        resultado = asyncio.run(ai.process_image_async(test_img, delay_seconds=0.0))
+        self.assertEqual(resultado.get("status"), "completed")
+        self.assertEqual(resultado.get("image_name"), test_img.name)
+        print("  [PASS] 28 - AIService: process_image_async executado assincronamente com sucesso")
+
 
 
 if __name__ == "__main__":

@@ -122,6 +122,66 @@ except Exception:
     supabase = None
 
 
+# Dados de contingência com formato compatível com o mapa (PolygonGeometry)
+# Utilizados caso o banco Supabase ainda esteja com a anon key pendente
+FALLBACK_ANOMALIES: list[dict[str, Any]] = [
+    {
+        "id": "falha-01",
+        "name": "Falha de Plantio 01",
+        "type": "falha_plantio",
+        "severity": "alta",
+        "coordinates": [
+            [-22.4085, -47.5625],
+            [-22.4095, -47.5615],
+            [-22.4105, -47.5620],
+            [-22.4098, -47.5635],
+        ],
+        "customAreaM2": 12500,
+    },
+    {
+        "id": "falha-02",
+        "name": "Falha de Plantio 02",
+        "type": "falha_plantio",
+        "severity": "media",
+        "coordinates": [
+            [-22.4120, -47.5590],
+            [-22.4130, -47.5580],
+            [-22.4138, -47.5592],
+            [-22.4128, -47.5602],
+        ],
+        "customAreaM2": 8200,
+    },
+]
+
+
+def get_all_anomalies() -> list[dict[str, Any]]:
+    """Consulta e retorna todas as anomalias/falhas de plantio cadastradas no banco de dados.
+
+    Executa um SELECT na tabela 'anomalies' do Supabase. Caso o banco ainda esteja
+    em fase de configuração de credenciais ou ocorra erro de conexão, retorna uma lista
+    estruturada de contingência para garantir que o mapa e a API permaneçam funcionais.
+
+    Returns:
+        Lista de dicionários contendo os dados de cada anomalia/polígono.
+    """
+    try:
+        client = get_supabase_client()
+        response = client.table("anomalies").select("*").execute()
+        if response and hasattr(response, "data") and response.data is not None:
+            logger.info(
+                "SELECT executado com sucesso na tabela 'anomalies': %d registros retornados.",
+                len(response.data),
+            )
+            return response.data
+        return []
+    except Exception as exc:
+        logger.warning(
+            "Consulta ao Supabase indisponível (%s). Retornando anomalias de contingência.",
+            exc,
+        )
+        return FALLBACK_ANOMALIES
+
+
 if __name__ == "__main__":
     print("=" * 60)
     print("  SugarVision - Teste de Configuração de Banco de Dados")

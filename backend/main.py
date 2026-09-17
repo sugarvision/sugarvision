@@ -1,49 +1,51 @@
 """API principal do SugarVision desenvolvida em FastAPI.
 
-Fornece endpoints para status do servidor, verificação de saúde do banco de dados
-e recebimento/armazenamento temporário de imagens enviadas pelo frontend.
+Arquitetura orientada a serviços (Service-Oriented Architecture), com injeção de dependência
+(FastAPI Depends), streaming assíncrono não-bloqueante e cache singleton de IA.
 """
 
 import logging
-import os
 from pathlib import Path
-import shutil
-import uuid
-from typing import Any
+from typing import Any, List
 
-from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile, status
+from fastapi import BackgroundTasks, Depends, FastAPI, File, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from ai_engine import DEFAULT_MODEL_PATH, processar_imagem_ia
-from database import check_connection
+from app.core.config import (
+    AI_DELAY_SECONDS,
+    ALLOWED_IMAGE_EXTENSIONS,
+    BASE_DIR,
+    TEMP_IMAGES_DIR,
+)
+from app.core.dependencies import (
+    get_ai_service,
+    get_anomaly_service,
+    get_storage_service,
+)
+from app.services.ai_service import AIService
+from app.services.anomaly_service import AnomalyService
+from app.services.storage_service import StorageService
+from database import check_connection, get_all_anomalies
 
-# Configuração de logging
+# Configuração de logging estruturado
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger("sugarvision-api")
 
-# Configuração de diretórios e modelos
-BASE_DIR = Path(__file__).resolve().parent
-TEMP_IMAGES_DIR = BASE_DIR / "temp_images"
-TEMP_IMAGES_DIR.mkdir(parents=True, exist_ok=True)
+# Exportações para compatibilidade direta com scripts existentes
 MODEL_PATH = DEFAULT_MODEL_PATH
-
-# Configuração de tempo para despertar a IA após o upload (padrão: 1.0 segundo)
-AI_DELAY_SECONDS: float = float(os.getenv("AI_DELAY_SECONDS", "1.0"))
-
-# Extensões de imagens suportadas
-ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff"}
 
 # Inicialização da aplicação
 app = FastAPI(
     title="SugarVision API",
-    description="API de visão computacional e backend do projeto SugarVision",
-    version="1.0.0",
+    description="API de visão computacional e backend com arquitetura de microserviços",
+    version="2.0.0",
 )
 
-# Habilitar CORS para permitir requisições do frontend (Next.js na porta 3000)
+# Habilitar CORS para o frontend (Next.js)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -54,39 +56,47 @@ app.add_middleware(
 
 
 @app.get("/")
-def read_root() -> dict[str, str]:
+async def read_root() -> dict[str, str]:
     """Endpoint raiz para verificar disponibilidade da API."""
     return {"status": "servidor online"}
 
 
 @app.get("/health")
-def health_check() -> dict[str, Any]:
-    """Verifica o status da API e a conectividade com o banco de dados."""
-    db_status = check_connection()
+async def health_check(
+    anomaly_service: AnomalyService = Depends(get_anomaly_service),
+) -> dict[str, Any]:
+    """Verifica o status da API e a conectividade com o banco de dados Supabase."""
+    db_status = await anomaly_service.check_health_async()
     return {
         "api": "online",
         "database": db_status,
     }
 
 
+@app.get("/api/anomalies", response_model=List[dict[str, Any]])
+async def get_anomalies(
+    anomaly_service: AnomalyService = Depends(get_anomaly_service),
+) -> List[dict[str, Any]]:
+    """Retorna todas as falhas cadastradas no banco de dados para o mapa.
+
+    Executa consulta assíncrona na tabela de anomalias do banco de dados e retorna
+    uma lista no formato JSON compatível com o mapa do frontend.
+    """
+    return await anomaly_service.get_all_anomalies_async()
+
+
 @app.post("/upload", status_code=status.HTTP_201_CREATED)
 async def upload_image(
     file: UploadFile = File(...),
     background_tasks: BackgroundTasks = None,
+    storage_service: StorageService = Depends(get_storage_service),
+    ai_service: AIService = Depends(get_ai_service),
 ) -> dict[str, Any]:
-    """Recebe uma imagem enviada pelo frontend e salva na pasta temp_images/.
+    """Recebe uma imagem enviada pelo frontend e salva em disco de forma assíncrona.
 
-    Utiliza UploadFile do FastAPI para suporte eficiente a arquivos grandes através
-    de streaming direto para o disco, evitando alto consumo de memória RAM.
-    Utiliza BackgroundTasks para disparar automaticamente a avaliação da IA 1 segundo
-    após o upload sem travar a interface do usuário.
-
-    Args:
-        file: Arquivo de imagem enviado via multipart/form-data.
-        background_tasks: Instância injetada pelo FastAPI para execução em segundo plano.
-
-    Returns:
-        Dicionário com metadados do arquivo salvo e status da operação.
+    Utiliza injeção de dependência para StorageService e AIService.
+    Executa gravação em stream assíncrono em chunks para suporte eficiente a imagens
+    pesadas sem travar o Event Loop, e BackgroundTasks para acionar a IA após o upload.
     """
     if not file.filename:
         raise HTTPException(
@@ -94,36 +104,12 @@ async def upload_image(
             detail="Nenhum arquivo ou nome de arquivo fornecido.",
         )
 
-    # Sanitização e validação da extensão do arquivo
-    original_path = Path(file.filename)
-    extension = original_path.suffix.lower()
-
-    if extension not in ALLOWED_IMAGE_EXTENSIONS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                f"Formato de arquivo '{extension}' não suportado. "
-                f"Formatos aceitos: {', '.join(sorted(ALLOWED_IMAGE_EXTENSIONS))}"
-            ),
-        )
-
-    # Gera nome único seguro para evitar colisão e ataques de directory traversal
-    clean_stem = original_path.stem.replace(" ", "_")
-    safe_filename = f"{uuid.uuid4().hex[:8]}_{clean_stem}{extension}"
-    target_path = TEMP_IMAGES_DIR / safe_filename
+    # Validação da extensão via serviço de armazenamento
+    storage_service.validate_extension(file.filename)
 
     try:
-        # Gravação em stream do arquivo para suporte eficiente a imagens grandes
-        with open(target_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-
-        file_size = target_path.stat().st_size
-        logger.info(
-            "Arquivo salvo com sucesso: %s (%d bytes, tipo: %s)",
-            safe_filename,
-            file_size,
-            file.content_type,
-        )
+        # Gravação assíncrona não-bloqueante
+        target_path, file_size = await storage_service.save_image_async(file)
 
         # Dispara o processamento em segundo plano sem congelar a resposta para o usuário
         if background_tasks is not None:
@@ -136,13 +122,13 @@ async def upload_image(
             logger.info(
                 "Gatilho de IA agendado em segundo plano (delay: %.1fs): %s",
                 AI_DELAY_SECONDS,
-                safe_filename,
+                target_path.name,
             )
 
         return {
             "status": "success",
             "message": "Imagem enviada e salva com sucesso.",
-            "filename": safe_filename,
+            "filename": target_path.name,
             "original_filename": file.filename,
             "content_type": file.content_type,
             "size_bytes": file_size,
@@ -150,18 +136,7 @@ async def upload_image(
             "ai_status": "enqueued" if background_tasks is not None else "skipped",
         }
 
-    except Exception as exc:
-        # Em caso de erro na gravação, remove o arquivo incompleto caso exista
-        if target_path.exists():
-            target_path.unlink()
-        logger.error("Erro ao salvar o arquivo %s: %s", safe_filename, exc)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Falha ao salvar a imagem no servidor: {exc}",
-        ) from exc
-
     finally:
-        # Libera os recursos do arquivo temporário do FastAPI
         await file.close()
 
 
