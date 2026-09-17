@@ -3,3 +3,4 @@ uvicorn[standard]>=0.30.0
 supabase>=2.30.0
 python-dotenv>=1.0.0
 python-multipart>=0.0.20
+coverage>=7.0.0

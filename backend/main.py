@@ -5,14 +5,16 @@ e recebimento/armazenamento temporário de imagens enviadas pelo frontend.
 """
 
 import logging
+import os
 from pathlib import Path
 import shutil
 import uuid
 from typing import Any
 
-from fastapi import FastAPI, File, HTTPException, UploadFile, status
+from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 
+from ai_engine import DEFAULT_MODEL_PATH, processar_imagem_ia
 from database import check_connection
 
 # Configuração de logging
@@ -22,10 +24,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger("sugarvision-api")
 
-# Configuração de diretórios
+# Configuração de diretórios e modelos
 BASE_DIR = Path(__file__).resolve().parent
 TEMP_IMAGES_DIR = BASE_DIR / "temp_images"
 TEMP_IMAGES_DIR.mkdir(parents=True, exist_ok=True)
+MODEL_PATH = DEFAULT_MODEL_PATH
+
+# Configuração de tempo para despertar a IA após o upload (padrão: 1.0 segundo)
+AI_DELAY_SECONDS: float = float(os.getenv("AI_DELAY_SECONDS", "1.0"))
 
 # Extensões de imagens suportadas
 ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff"}
@@ -64,14 +70,20 @@ def health_check() -> dict[str, Any]:
 
 
 @app.post("/upload", status_code=status.HTTP_201_CREATED)
-async def upload_image(file: UploadFile = File(...)) -> dict[str, Any]:
+async def upload_image(
+    file: UploadFile = File(...),
+    background_tasks: BackgroundTasks = None,
+) -> dict[str, Any]:
     """Recebe uma imagem enviada pelo frontend e salva na pasta temp_images/.
 
     Utiliza UploadFile do FastAPI para suporte eficiente a arquivos grandes através
     de streaming direto para o disco, evitando alto consumo de memória RAM.
+    Utiliza BackgroundTasks para disparar automaticamente a avaliação da IA 1 segundo
+    após o upload sem travar a interface do usuário.
 
     Args:
         file: Arquivo de imagem enviado via multipart/form-data.
+        background_tasks: Instância injetada pelo FastAPI para execução em segundo plano.
 
     Returns:
         Dicionário com metadados do arquivo salvo e status da operação.
@@ -113,6 +125,20 @@ async def upload_image(file: UploadFile = File(...)) -> dict[str, Any]:
             file.content_type,
         )
 
+        # Dispara o processamento em segundo plano sem congelar a resposta para o usuário
+        if background_tasks is not None:
+            background_tasks.add_task(
+                processar_imagem_ia,
+                target_path,
+                AI_DELAY_SECONDS,
+                MODEL_PATH,
+            )
+            logger.info(
+                "Gatilho de IA agendado em segundo plano (delay: %.1fs): %s",
+                AI_DELAY_SECONDS,
+                safe_filename,
+            )
+
         return {
             "status": "success",
             "message": "Imagem enviada e salva com sucesso.",
@@ -121,6 +147,7 @@ async def upload_image(file: UploadFile = File(...)) -> dict[str, Any]:
             "content_type": file.content_type,
             "size_bytes": file_size,
             "saved_path": str(target_path),
+            "ai_status": "enqueued" if background_tasks is not None else "skipped",
         }
 
     except Exception as exc:
