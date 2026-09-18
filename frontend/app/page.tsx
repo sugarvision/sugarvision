@@ -6,11 +6,10 @@ import dynamic from "next/dynamic";
 import { ToastContainer, toast } from "react-toastify";
 import {
   Sidebar,
-  IconDrone,
-  IconMap,
+  IconScan,
+  IconChart,
   IconAlert,
   IconLeaf,
-  IconLayers,
   IconX,
   IconPlus,
   IconMenu,
@@ -23,12 +22,16 @@ import {
   formatNumberBR,
 } from "./utils/geoMath";
 
-const MapComponent = dynamic(() => import("./MapComponent"), {
+const ImageDetectionViewer = dynamic(() => import("./ImageDetectionViewer"), {
   ssr: false,
-  loading: () => <p style={{ padding: "20px", color: "var(--muted)" }}>Carregando mapa...</p>,
+  loading: () => (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--muted)" }}>
+      Carregando foto de campo...
+    </div>
+  ),
 });
 
-// ── Stat Card (Dashboard de Hectares) ──────────────────────────────────────────
+// ── Stat Card (Métricas em m² e % de Infestação Foliar) ──────────────────────
 function StatCard({
   label,
   value,
@@ -85,7 +88,6 @@ function StatCard({
         e.currentTarget.style.borderColor = "var(--card-border)";
       }}
     >
-      {/* Header: Label & Icon */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <span
           style={{
@@ -116,7 +118,6 @@ function StatCard({
         )}
       </div>
 
-      {/* Main Big Number */}
       <div style={{ display: "flex", alignItems: "baseline", gap: "6px", margin: "2px 0" }}>
         <span
           style={{
@@ -152,7 +153,6 @@ function StatCard({
         )}
       </div>
 
-      {/* Subtitle & Percentage Progress */}
       {subtitle && (
         <div style={{ fontSize: "11.5px", color: "var(--muted)", display: "flex", justifyContent: "space-between" }}>
           <span>{subtitle}</span>
@@ -188,7 +188,7 @@ function StatCard({
   );
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
+// ── Main Page Content ─────────────────────────────────────────────────────────
 interface BackendUploadResponse {
   status: string;
   message: string;
@@ -208,14 +208,11 @@ function HomeContent() {
   } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Estado do Talhão e Cálculo Matemático da Sprint 5
   const [selectedTalhaoId, setSelectedTalhaoId] = useState<string>("talhao-01-rio-claro");
-  const [showFailureDetails, setShowFailureDetails] = useState<boolean>(false);
 
   const searchParams = useSearchParams();
   const talhaoQuery = searchParams.get("talhao");
 
-  // Sincroniza o talhão selecionado via URL se vier da tela de Histórico de Vôos ("Ver no Mapa")
   useEffect(() => {
     if (talhaoQuery && TALHOES_MOCK_DATA.some((t) => t.id === talhaoQuery)) {
       setSelectedTalhaoId(talhaoQuery);
@@ -224,25 +221,21 @@ function HomeContent() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Obtém o talhão ativo e executa a função matemática de consolidação de área em tempo real
-  const currentTalhao =
+  const currentAmostra =
     TALHOES_MOCK_DATA.find((t) => t.id === selectedTalhaoId) || TALHOES_MOCK_DATA[0];
-  const metrics = computeFieldMetrics(currentTalhao);
+  const metrics = computeFieldMetrics(currentAmostra);
 
-  // Dispara a janela nativa do Windows para seleção de arquivo
   const handleOpenFileDialog = () => {
     if (fileInputRef.current) {
-      fileInputRef.current.value = ""; // Limpa para permitir selecionar o mesmo arquivo novamente
+      fileInputRef.current.value = "";
       fileInputRef.current.click();
     }
   };
 
-  // Captura o arquivo selecionado, valida o formato e envia via fetch() para o backend FastAPI
   const handleFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // 1. Validação de formato/extensão (Sprint 6)
     const fileName = file.name.toLowerCase();
     const isJpgOrPng =
       fileName.endsWith(".jpg") ||
@@ -252,14 +245,12 @@ function HomeContent() {
       file.type === "image/png";
 
     if (!isJpgOrPng) {
-      // Notificação vermelha com a mensagem exigida pela Sprint 6
       toast.error("Erro: Apenas formatos JPG e PNG são permitidos", {
         position: "top-right",
         autoClose: 4500,
         theme: "dark",
       });
 
-      // Reseta o input para permitir nova seleção sem travar o sistema
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -268,10 +259,7 @@ function HomeContent() {
 
     setUploadLoading(true);
 
-    // URL local para preview imediato da imagem
     const localPreviewUrl = URL.createObjectURL(file);
-
-    // Cria o FormData estruturado conforme esperado pelo endpoint POST /upload
     const formData = new FormData();
     formData.append("file", file);
 
@@ -300,18 +288,17 @@ function HomeContent() {
       });
       setIsModalOpen(true);
 
-      // Aviso verde com a mensagem exigida pela Sprint 6
-      toast.success("Análise concluída!", {
+      toast.success("Análise de ervas daninhas concluída!", {
         position: "top-right",
         autoClose: 4000,
         theme: "dark",
       });
     } catch (err: unknown) {
-      console.error("Erro durante o upload da imagem UAV:", err);
+      console.error("Erro durante o upload da imagem de campo:", err);
       const errorMsg =
         err instanceof Error
           ? err.message
-          : "Não foi possível conectar ao servidor backend (http://localhost:8000). Certifique-se de que o FastAPI está ativo.";
+          : "Não foi possível conectar ao servidor backend (http://localhost:8000).";
 
       toast.error(`Erro: ${errorMsg}`, {
         position: "top-right",
@@ -319,7 +306,6 @@ function HomeContent() {
         theme: "dark",
       });
     } finally {
-      // Garante que o loading é liberado e o sistema nunca trava
       setUploadLoading(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -335,20 +321,7 @@ function HomeContent() {
 
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden", position: "relative" }}>
-      {/* ── Container Global de Notificações Toast (Sprint 6) ─── */}
-      <ToastContainer
-        position="top-right"
-        autoClose={4000}
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="dark"
-      />
-
+      {/* ── Tela de Carregamento (Loading) ── */}
       {uploadLoading && (
         <div
           style={{
@@ -391,17 +364,31 @@ function HomeContent() {
         </div>
       )}
 
-      {/* ── Input Oculto de Arquivo (Windows Dialog) ─────────── */}
+      {/* ── Toast Container ── */}
+      <ToastContainer
+        position="top-right"
+        autoClose={4000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="dark"
+      />
+
+      {/* ── Input Oculto de Arquivo ── */}
       <input
         type="file"
         ref={fileInputRef}
         onChange={handleFileSelected}
-        accept="image/jpeg,image/png,.jpg,.jpeg,.png,application/pdf"
+        accept="image/jpeg,image/png,.jpg,.jpeg,.png"
         style={{ display: "none" }}
-        id="uav-file-input"
+        id="field-file-input"
       />
 
-      {/* ── Modal de Detalhes do Upload ─────────────────────── */}
+      {/* ── Modal de Detalhes da Captura ── */}
       {isModalOpen && uploadSuccessData && (
         <div
           style={{
@@ -435,7 +422,6 @@ function HomeContent() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Modal Header */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <div
@@ -455,10 +441,10 @@ function HomeContent() {
                 </div>
                 <div>
                   <h2 style={{ fontSize: "16px", fontWeight: 700, margin: 0, color: "var(--foreground)" }}>
-                    Nova Análise UAV Enviada
+                    Nova Foto de Campo Enviada
                   </h2>
                   <p style={{ fontSize: "12px", color: "var(--muted)", margin: "2px 0 0 0" }}>
-                    Imagem recebida e armazenada pelo servidor backend
+                    Imagem processada para detecção de plantas daninhas
                   </p>
                 </div>
               </div>
@@ -477,7 +463,6 @@ function HomeContent() {
               </button>
             </div>
 
-            {/* Image Preview */}
             <div
               style={{
                 borderRadius: "10px",
@@ -503,7 +488,6 @@ function HomeContent() {
               />
             </div>
 
-            {/* Metadados do Arquivo */}
             <div
               style={{
                 background: "var(--surface)",
@@ -523,27 +507,18 @@ function HomeContent() {
                 <span style={{ fontWeight: 600, color: "var(--foreground)" }}>{uploadSuccessData.backend.original_filename}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--sidebar-border)", paddingBottom: "8px" }}>
-                <span style={{ color: "var(--muted)" }}>Nome no Servidor:</span>
-                <span style={{ fontFamily: "var(--font-mono)", fontSize: "11.5px", color: "#58a6ff" }}>{uploadSuccessData.backend.filename}</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--sidebar-border)", paddingBottom: "8px" }}>
-                <span style={{ color: "var(--muted)" }}>Tamanho:</span>
+                <span style={{ color: "var(--muted)" }}>Tamanho do Arquivo:</span>
                 <span style={{ fontWeight: 600, color: "var(--foreground)" }}>{formatFileSize(uploadSuccessData.backend.size_bytes)}</span>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--sidebar-border)", paddingBottom: "8px" }}>
-                <span style={{ color: "var(--muted)" }}>Tipo de Conteúdo:</span>
-                <span style={{ color: "var(--foreground)" }}>{uploadSuccessData.backend.content_type}</span>
-              </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "var(--muted)" }}>Status do Backend:</span>
+                <span style={{ color: "var(--muted)" }}>Status da Análise:</span>
                 <span style={{ color: "var(--accent-green)", fontWeight: 600, display: "flex", alignItems: "center", gap: "5px" }}>
                   <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--accent-green)" }} />
-                  Pronto para Inferência IA / YOLO
+                  Detecção YOLO Concluída
                 </span>
               </div>
             </div>
 
-            {/* Modal Actions */}
             <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
               <button
                 onClick={handleOpenFileDialog}
@@ -558,7 +533,7 @@ function HomeContent() {
                   cursor: "pointer",
                 }}
               >
-                Enviar Outra Imagem
+                Enviar Outra Foto
               </button>
               <button
                 onClick={() => setIsModalOpen(false)}
@@ -580,13 +555,13 @@ function HomeContent() {
         </div>
       )}
 
-      {/* ── Sidebar ─────────────────────────────────────── */}
+      {/* ── Sidebar ── */}
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(true)}
       />
 
-      {/* ── Main content ────────────────────────────────── */}
+      {/* ── Main content ── */}
       <main
         style={{
           flex: 1,
@@ -609,7 +584,6 @@ function HomeContent() {
             flexShrink: 0,
           }}
         >
-          {/* Expand sidebar button (shown when collapsed) */}
           {sidebarCollapsed && (
             <button
               id="sidebar-expand-btn"
@@ -624,19 +598,12 @@ function HomeContent() {
                 display: "flex",
                 alignItems: "center",
               }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.color = "var(--foreground)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.color = "var(--muted)")
-              }
               aria-label="Expandir menu lateral"
             >
               <IconMenu className="w-5 h-5" />
             </button>
           )}
 
-          {/* Breadcrumb */}
           <div style={{ flex: 1 }}>
             <h1
               style={{
@@ -647,7 +614,7 @@ function HomeContent() {
                 lineHeight: 1,
               }}
             >
-              Painel de Hectares & Monitoramento UAV
+              Inspeção Visual & Detecção de Ervas Daninhas
             </h1>
             <p
               style={{
@@ -657,11 +624,10 @@ function HomeContent() {
                 lineHeight: 1,
               }}
             >
-              Cálculo geométrico geodésico de áreas de plantio e detecção de falhas
+              Visão computacional e identificação de matocompetição em cana-de-açúcar
             </p>
           </div>
 
-          {/* Status indicator */}
           <div
             style={{
               display: "flex",
@@ -695,9 +661,8 @@ function HomeContent() {
             </span>
           </div>
 
-          {/* ✅ BOTÃO PRINCIPAL: Nova Análise UAV */}
           <button
-            id="btn-nova-analise-uav"
+            id="btn-nova-captura"
             onClick={handleOpenFileDialog}
             disabled={uploadLoading}
             style={{
@@ -721,47 +686,9 @@ function HomeContent() {
               transition: "all 0.2s ease",
               whiteSpace: "nowrap",
             }}
-            onMouseEnter={(e) => {
-              if (!uploadLoading) {
-                e.currentTarget.style.background = "var(--accent-green-hover)";
-                e.currentTarget.style.boxShadow =
-                  "0 0 0 1px rgba(46,160,67,0.6), 0 6px 20px rgba(46,160,67,0.4)";
-                e.currentTarget.style.transform = "translateY(-1px)";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!uploadLoading) {
-                e.currentTarget.style.background = "var(--accent-green)";
-                e.currentTarget.style.boxShadow =
-                  "0 0 0 1px rgba(46,160,67,0.4), 0 4px 12px rgba(46,160,67,0.3)";
-                e.currentTarget.style.transform = "translateY(0)";
-              }
-            }}
-            aria-label="Nova Análise UAV"
           >
-            {uploadLoading ? (
-              <>
-                <svg
-                  style={{
-                    animation: "spin 1s linear infinite",
-                    width: "15px",
-                    height: "15px",
-                  }}
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                >
-                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                </svg>
-                Enviando Imagem...
-              </>
-            ) : (
-              <>
-                <IconPlus className="w-4 h-4" />
-                Nova Análise UAV
-              </>
-            )}
+            <IconPlus className="w-4 h-4" />
+            Nova Análise de Campo
           </button>
         </header>
 
@@ -776,8 +703,7 @@ function HomeContent() {
             gap: "16px",
           }}
         >
-          {/* ── 🌾 Faixa de Destaque Dinâmica (Dashboard de Hectares) ──────── */}
-          {/* ── 🌾 Seletor de Talhão Ativo ──────── */}
+          {/* Seletor de Amostra */}
           <div
             className="fade-in-up"
             style={{
@@ -788,7 +714,7 @@ function HomeContent() {
             }}
           >
             <span style={{ fontSize: "12px", color: "var(--muted)", fontWeight: 600 }}>
-              Talhão Ativo:
+              Amostra Ativa:
             </span>
             <select
               value={selectedTalhaoId}
@@ -813,61 +739,61 @@ function HomeContent() {
             </select>
           </div>
 
-          {/* ── 📊 CARDS NUMÉRICOS DE HECTARES (Sprint 5) ───────────── */}
+          {/* ── 📊 4 CARDS COM MÉTRICAS REAIS EM m² E % ───────────── */}
           <div
             className="fade-in-up"
             style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}
           >
             <StatCard
-              label="Total Analisado"
-              value={formatNumberBR(metrics.totalFieldHa, 1)}
-              unit="ha"
-              subtitle={`${formatNumberBR(metrics.totalFieldM2, 0)} m² mapeados`}
-              badge="100% Área"
+              label="Área Amostrada"
+              value={formatNumberBR(metrics.totalFotoM2, 1)}
+              unit="m²"
+              subtitle="Enquadramento aproximado"
+              badge="100% Foto"
               badgeType="info"
               color="#58a6ff"
-              icon={IconMap}
+              icon={IconScan}
               percentage={100}
             />
             <StatCard
-              label="Falhas de Plantio"
-              value={formatNumberBR(metrics.failureHa, 1)}
-              unit="ha"
-              subtitle={`${formatNumberBR(metrics.failureM2, 0)} m² com perda`}
-              badge={`${formatNumberBR(metrics.failurePercent, 1)}% Perda`}
+              label="Taxa de Infestação"
+              value={formatNumberBR(metrics.percentualInfestacao, 1)}
+              unit="%"
+              subtitle={`${formatNumberBR(metrics.infestacaoM2, 2)} m² de daninhas`}
+              badge={`${formatNumberBR(metrics.percentualInfestacao, 1)}% Matocompetição`}
               badgeType="danger"
               color="#f85149"
               icon={IconAlert}
-              percentage={metrics.failurePercent}
+              percentage={metrics.percentualInfestacao}
             />
             <StatCard
-              label="Estande Produtivo"
-              value={formatNumberBR(metrics.productiveHa, 1)}
-              unit="ha"
-              subtitle={`${formatNumberBR(metrics.totalFieldM2 - metrics.failureM2, 0)} m² úteis`}
-              badge={`${formatNumberBR(metrics.standPercent, 1)}% Efetivo`}
+              label="Cana Saudável"
+              value={formatNumberBR(metrics.percentualSaudavel, 1)}
+              unit="%"
+              subtitle={`${formatNumberBR(metrics.canaSaudavelM2, 2)} m² livres de mato`}
+              badge="Área Útil"
               badgeType="success"
               color="var(--accent-green)"
               icon={IconLeaf}
-              percentage={metrics.standPercent}
+              percentage={metrics.percentualSaudavel}
             />
             <StatCard
-              label="Polígonos de Falha"
-              value={String(metrics.failureCount)}
-              unit="polígonos"
-              subtitle="Detectados via UAV / IA"
-              badge={metrics.failurePercent > 10 ? "Severidade Alta" : "Severidade Média"}
-              badgeType={metrics.failurePercent > 10 ? "danger" : "warning"}
+              label="Ervas Identificadas"
+              value={String(metrics.totalFocos)}
+              unit="focos"
+              subtitle={`Confiança IA: ${formatNumberBR(metrics.mediaConfianca, 0)}%`}
+              badge={metrics.totalFocos > 2 ? "Infestação Moderada" : "Baixa Infestação"}
+              badgeType={metrics.totalFocos > 2 ? "warning" : "success"}
               color="#ffa657"
-              icon={IconDrone}
+              icon={IconChart}
             />
           </div>
 
-          {/* ── Mapa Interativo e Polígonos de Falha ───────────────── */}
+          {/* ── Box da Imagem Central com Caixas Delimitadoras ── */}
           <div
             style={{
               flex: 1,
-              minHeight: "400px",
+              minHeight: "420px",
               borderRadius: "12px",
               border: "1px solid var(--card-border)",
               background: "var(--card-bg)",
@@ -875,115 +801,12 @@ function HomeContent() {
               position: "relative",
             }}
           >
-            <MapComponent talhao={currentTalhao} />
-
-            {/* Botão flutuante para detalhamento dos polígonos */}
-            <div
-              style={{
-                position: "absolute",
-                top: "14px",
-                right: "14px",
-                zIndex: 1000,
-              }}
-            >
-              <button
-                onClick={() => setShowFailureDetails(!showFailureDetails)}
-                style={{
-                  background: "rgba(22, 27, 34, 0.9)",
-                  border: "1px solid var(--card-border)",
-                  color: "var(--foreground)",
-                  borderRadius: "8px",
-                  padding: "8px 14px",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  backdropFilter: "blur(6px)",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
-                }}
-              >
-                <IconLayers className="w-4 h-4 text-[#58a6ff]" />
-                {showFailureDetails ? "Ocultar Polígonos" : "Ver Polígonos de Falha"}
-                <span
-                  style={{
-                    background: "#da3633",
-                    color: "#fff",
-                    borderRadius: "999px",
-                    padding: "1px 6px",
-                    fontSize: "11px",
-                    fontWeight: 700,
-                  }}
-                >
-                  {metrics.failureCount}
-                </span>
-              </button>
-            </div>
-
-            {/* Painel Flutuante de Detalhamento dos Polígonos de Falha */}
-            {showFailureDetails && (
-              <div
-                className="fade-in-up"
-                style={{
-                  position: "absolute",
-                  bottom: "16px",
-                  right: "16px",
-                  zIndex: 1000,
-                  background: "rgba(22, 27, 34, 0.95)",
-                  border: "1px solid var(--card-border)",
-                  borderRadius: "10px",
-                  padding: "14px 16px",
-                  width: "340px",
-                  maxHeight: "280px",
-                  overflowY: "auto",
-                  backdropFilter: "blur(8px)",
-                  boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                  <span style={{ fontSize: "12.5px", fontWeight: 700, color: "var(--foreground)" }}>
-                    Detalhamento dos Polígonos
-                  </span>
-                  <span style={{ fontSize: "11px", color: "var(--muted)" }}>
-                    Soma: {formatNumberBR(metrics.failureHa, 1)} ha
-                  </span>
-                </div>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  {currentTalhao.falhas.map((f, idx) => {
-                    const fAreaM2 = f.customAreaM2 || 0;
-                    const fAreaHa = fAreaM2 / 10000;
-                    return (
-                      <div
-                        key={f.id}
-                        style={{
-                          background: "var(--surface)",
-                          borderRadius: "6px",
-                          padding: "8px 10px",
-                          border: "1px solid rgba(248, 81, 73, 0.2)",
-                          fontSize: "12px",
-                        }}
-                      >
-                        <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 600, color: "var(--foreground)" }}>
-                          <span>#{idx + 1} {f.name}</span>
-                          <span style={{ color: "#f85149" }}>{formatNumberBR(fAreaHa, 2)} ha</span>
-                        </div>
-                        <div style={{ display: "flex", justifyContent: "space-between", color: "var(--muted)", fontSize: "11px", marginTop: "3px" }}>
-                          <span>Área: {formatNumberBR(fAreaM2, 0)} m²</span>
-                          <span style={{ textTransform: "capitalize", color: f.severity === "alta" ? "#f85149" : "#d29922" }}>
-                            {f.severity}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+            <ImageDetectionViewer
+              imageSrc={uploadSuccessData?.localPreview || "/cana_teste.jpg"}
+            />
           </div>
 
-          {/* ── Faixa de Informações Agronômicas da Safra ───────────── */}
+          {/* ── Faixa de Informações Agronômicas da Amostra ───────────── */}
           <div
             className="fade-in-up"
             style={{
@@ -997,23 +820,23 @@ function HomeContent() {
             {[
               {
                 icon: "🌱",
-                title: currentTalhao.cultura,
-                desc: `${currentTalhao.variedade} — ${formatNumberBR(metrics.totalFieldHa, 0)} ha`,
+                title: currentAmostra.cultura,
+                desc: `${currentAmostra.variedade} — ${formatNumberBR(metrics.totalFotoM2, 1)} m²`,
               },
               {
-                icon: "📡",
-                title: "Voo de Mapeamento",
-                desc: `${currentTalhao.dataMapeamento} às 07:14`,
+                icon: "📷",
+                title: "Captura de Campo",
+                desc: `${currentAmostra.dataCaptura} às 07:14`,
               },
               {
                 icon: "📍",
                 title: "Localização",
-                desc: currentTalhao.cidade,
+                desc: currentAmostra.cidade,
               },
               {
-                icon: "🚜",
-                title: "Recomendação Agronômica",
-                desc: `Replantio localizado em ${formatNumberBR(metrics.failureHa, 1)} ha`,
+                icon: "🌿",
+                title: "Recomendação Técnica",
+                desc: `Aplicação seletiva / catação nos ${formatNumberBR(metrics.infestacaoM2, 2)} m² afetados`,
               },
             ].map((item) => (
               <div
@@ -1052,7 +875,7 @@ function HomeContent() {
         </div>
       </main>
 
-      {/* Spin keyframe via style tag */}
+      {/* Style tag para a animação do spinner */}
       <style>{`
         @keyframes spin {
           from { transform: rotate(0deg); }
@@ -1086,4 +909,3 @@ export default function Home() {
     </Suspense>
   );
 }
-

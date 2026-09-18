@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
-export function IconDrone({ className = "" }: { className?: string }) {
+export function IconScan({ className = "" }: { className?: string }) {
   return (
     <svg
       className={className}
@@ -15,13 +15,18 @@ export function IconDrone({ className = "" }: { className?: string }) {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <path d="M12 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0" />
-      <path d="M3 3l4 4M17 3l-4 4M3 21l4-4M17 21l-4-4" />
-      <path d="M7 7a4 4 0 0 1 5.657 0M11.343 7A4 4 0 0 1 17 7" />
-      <path d="M7 17a4 4 0 0 0 5.657 0M11.343 17A4 4 0 0 0 17 17" />
+      <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+      <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+      <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+      <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 16v3M12 5v3M16 12h3M5 12h3" />
     </svg>
   );
 }
+
+// Mantido export para compatibilidade com outros arquivos se necessário
+export const IconDrone = IconScan;
 
 export function IconMap({ className = "" }: { className?: string }) {
   return (
@@ -232,13 +237,12 @@ export function IconFileImage({ className = "" }: { className?: string }) {
 
 // ── Lista de itens da barra lateral ───────────────────────────────────────────
 export const navItems = [
-  { id: "mapa", href: "/", label: "Mapa de Campos", icon: IconMap },
-  { id: "historico", href: "/historico", label: "Histórico de Análises", icon: IconHistory },
-  { id: "analises", href: "/", label: "Análises UAV", icon: IconDrone },
-  { id: "relatorios", href: "/", label: "Relatórios NDVI", icon: IconChart },
-  { id: "culturas", href: "/", label: "Culturas", icon: IconLeaf },
-  { id: "alertas", href: "/", label: "Alertas", icon: IconAlert, badge: 3 },
-  { id: "camadas", href: "/", label: "Camadas de Mapa", icon: IconLayers },
+  { id: "deteccao", href: "/", label: "Detecção de Daninhas", icon: IconScan },
+  { id: "historico", href: "/historico", label: "Histórico de Capturas", icon: IconHistory },
+  { id: "analises", href: "/", label: "Análises de Campo", icon: IconChart },
+  { id: "culturas", href: "/", label: "Cana-de-Açúcar", icon: IconLeaf },
+  { id: "alertas", href: "/", label: "Alertas de Infestação", icon: IconAlert, badge: 3 },
+  { id: "amostras", href: "/", label: "Banco de Amostras", icon: IconLayers },
 ];
 
 export function Sidebar({
@@ -291,7 +295,7 @@ export function Sidebar({
                 flexShrink: 0,
               }}
             >
-              <IconDrone className="w-5 h-5 text-white" />
+              <IconScan className="w-5 h-5 text-white" />
             </div>
             <div>
               <div
@@ -312,7 +316,7 @@ export function Sidebar({
                   marginTop: "2px",
                 }}
               >
-                SugarVision UAV
+                SugarVision IA
               </div>
             </div>
           </Link>
@@ -331,7 +335,7 @@ export function Sidebar({
                 justifyContent: "center",
               }}
             >
-              <IconDrone className="w-5 h-5 text-white" />
+              <IconScan className="w-5 h-5 text-white" />
             </div>
           </Link>
         )}
@@ -384,7 +388,7 @@ export function Sidebar({
           {navItems.map((item) => {
             const isActive =
               item.href === "/"
-                ? pathname === "/" && item.id === "mapa"
+                ? pathname === "/" && item.id === "deteccao"
                 : pathname.startsWith(item.href);
             const Icon = item.icon;
 
@@ -519,14 +523,6 @@ export function Sidebar({
             color: "var(--muted)",
             width: "100%",
             transition: "all 0.2s ease",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "rgba(255,255,255,0.05)";
-            e.currentTarget.style.color = "var(--foreground)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "transparent";
-            e.currentTarget.style.color = "var(--muted)";
           }}
           aria-label="Configurações"
           title={collapsed ? "Configurações" : undefined}

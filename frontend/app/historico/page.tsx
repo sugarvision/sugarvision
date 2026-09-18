@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Sidebar, IconDrone, IconMap } from "../components/Sidebar";
+import { Sidebar, IconLeaf, IconScan } from "../components/Sidebar";
 import { formatNumberBR } from "../utils/geoMath";
 
 interface AnaliseHistorico {
   id: string;
-  dataVoo: string;
-  horaVoo: string;
+  dataCaptura: string;
+  horaCaptura: string;
   nomeImagem: string;
   tamanhoArquivo: string;
   formato: "JPG" | "PNG";
@@ -16,115 +16,115 @@ interface AnaliseHistorico {
   talhaoNome: string;
   cidade: string;
   variedade: string;
-  hectaresAnalisados: number;
-  metrosQuadrados: number;
-  hectaresFalhas: number;
-  percentualFalha: number;
+  areaAmostraM2: number;
+  areaInfestacaoM2: number;
+  percentualInfestacao: number;
+  focosDetectados: number;
   status: "Concluído" | "Em Processamento" | "Atenção";
 }
 
-// ── Mock Realista de Histórico de Vôos e Análises ────────────────────────────
+// ── Mock de Capturas de Campo & Detecção de Ervas Daninhas ────────────────────
 const ANALISES_HISTORICO_DATA: AnaliseHistorico[] = [
   {
     id: "analise-001",
-    dataVoo: "04/09/2026",
-    horaVoo: "07:14",
-    nomeImagem: "drone_talhao_01_rioclaro_ortofoto.jpg",
+    dataCaptura: "04/09/2026",
+    horaCaptura: "07:14",
+    nomeImagem: "campo_talhao_01_rioclaro_foto.jpg",
     tamanhoArquivo: "18.4 MB",
     formato: "JPG",
     talhaoId: "talhao-01-rio-claro",
-    talhaoNome: "Talhão 01 — Fazenda Boa Vista",
+    talhaoNome: "Amostra 01 — Fazenda Boa Vista",
     cidade: "Rio Claro - SP",
     variedade: "CTC-9001 (Plena Safra)",
-    hectaresAnalisados: 50.0,
-    metrosQuadrados: 500000,
-    hectaresFalhas: 4.0,
-    percentualFalha: 8.0,
+    areaAmostraM2: 2.5,
+    areaInfestacaoM2: 0.46,
+    percentualInfestacao: 18.4,
+    focosDetectados: 3,
     status: "Concluído",
   },
   {
     id: "analise-002",
-    dataVoo: "03/09/2026",
-    horaVoo: "08:30",
-    nomeImagem: "cana_socas_piracicaba_voo34.png",
+    dataCaptura: "03/09/2026",
+    horaCaptura: "08:30",
+    nomeImagem: "cana_socas_piracicaba_campo34.png",
     tamanhoArquivo: "24.1 MB",
     formato: "PNG",
     talhaoId: "talhao-02-piracicaba",
-    talhaoNome: "Talhão 02 — Polo Piracicaba",
+    talhaoNome: "Amostra 02 — Polo Piracicaba",
     cidade: "Piracicaba - SP",
     variedade: "RB867515 (Cana Soca)",
-    hectaresAnalisados: 85.0,
-    metrosQuadrados: 850000,
-    hectaresFalhas: 5.1,
-    percentualFalha: 6.0,
+    areaAmostraM2: 2.0,
+    areaInfestacaoM2: 0.30,
+    percentualInfestacao: 15.0,
+    focosDetectados: 2,
     status: "Concluído",
   },
   {
     id: "analise-003",
-    dataVoo: "01/09/2026",
-    horaVoo: "06:45",
-    nomeImagem: "safra2026_araras_ndvi_alta_res.jpg",
+    dataCaptura: "01/09/2026",
+    horaCaptura: "06:45",
+    nomeImagem: "safra2026_araras_inspecao_alta_res.jpg",
     tamanhoArquivo: "32.8 MB",
     formato: "JPG",
     talhaoId: "talhao-03-araras",
-    talhaoNome: "Talhão 03 — Fazenda São Martinho",
+    talhaoNome: "Amostra 03 — Fazenda São Martinho",
     cidade: "Araras - SP",
     variedade: "IACSP95-5000",
-    hectaresAnalisados: 120.0,
-    metrosQuadrados: 1200000,
-    hectaresFalhas: 7.2,
-    percentualFalha: 6.0,
+    areaAmostraM2: 3.0,
+    areaInfestacaoM2: 0.18,
+    percentualInfestacao: 6.0,
+    focosDetectados: 1,
     status: "Concluído",
   },
   {
     id: "analise-004",
-    dataVoo: "28/08/2026",
-    horaVoo: "16:20",
-    nomeImagem: "lavoura_sul_rioclaro_gaps.jpg",
+    dataCaptura: "28/08/2026",
+    horaCaptura: "16:20",
+    nomeImagem: "lavoura_sul_rioclaro_reboleiras.jpg",
     tamanhoArquivo: "15.2 MB",
     formato: "JPG",
     talhaoId: "talhao-01-rio-claro",
-    talhaoNome: "Talhão 01 — Setor Sul",
+    talhaoNome: "Amostra 01 — Setor Sul",
     cidade: "Rio Claro - SP",
     variedade: "CTC-9001",
-    hectaresAnalisados: 45.0,
-    metrosQuadrados: 450000,
-    hectaresFalhas: 5.4,
-    percentualFalha: 12.0,
+    areaAmostraM2: 2.5,
+    areaInfestacaoM2: 0.65,
+    percentualInfestacao: 26.0,
+    focosDetectados: 4,
     status: "Atenção",
   },
   {
     id: "analise-005",
-    dataVoo: "25/08/2026",
-    horaVoo: "09:10",
-    nomeImagem: "voo_uav_piracicaba_matocompeticao.png",
+    dataCaptura: "25/08/2026",
+    horaCaptura: "09:10",
+    nomeImagem: "campo_piracicaba_matocompeticao.png",
     tamanhoArquivo: "21.6 MB",
     formato: "PNG",
     talhaoId: "talhao-02-piracicaba",
-    talhaoNome: "Talhão 02 — Setor Leste",
+    talhaoNome: "Amostra 02 — Setor Leste",
     cidade: "Piracicaba - SP",
     variedade: "RB867515",
-    hectaresAnalisados: 60.0,
-    metrosQuadrados: 600000,
-    hectaresFalhas: 4.8,
-    percentualFalha: 8.0,
+    areaAmostraM2: 2.2,
+    areaInfestacaoM2: 0.24,
+    percentualInfestacao: 10.9,
+    focosDetectados: 2,
     status: "Concluído",
   },
   {
     id: "analise-006",
-    dataVoo: "20/08/2026",
-    horaVoo: "07:50",
+    dataCaptura: "20/08/2026",
+    horaCaptura: "07:50",
     nomeImagem: "inspecao_fitossanitaria_araras.jpg",
     tamanhoArquivo: "19.9 MB",
     formato: "JPG",
     talhaoId: "talhao-03-araras",
-    talhaoNome: "Talhão 03 — Gleba B",
+    talhaoNome: "Amostra 03 — Gleba B",
     cidade: "Araras - SP",
     variedade: "IACSP95-5000",
-    hectaresAnalisados: 95.0,
-    metrosQuadrados: 950000,
-    hectaresFalhas: 6.65,
-    percentualFalha: 7.0,
+    areaAmostraM2: 2.8,
+    areaInfestacaoM2: 0.35,
+    percentualInfestacao: 12.5,
+    focosDetectados: 2,
     status: "Concluído",
   },
 ];
@@ -134,13 +134,12 @@ export default function HistoricoPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFormat, setSelectedFormat] = useState<string>("todos");
 
-  // Filtra as análises por termo de busca ou formato
   const filteredAnalises = ANALISES_HISTORICO_DATA.filter((item) => {
     const matchesSearch =
       item.nomeImagem.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.talhaoNome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.cidade.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.dataVoo.includes(searchTerm);
+      item.dataCaptura.includes(searchTerm);
 
     const matchesFormat =
       selectedFormat === "todos" || item.formato.toLowerCase() === selectedFormat.toLowerCase();
@@ -148,10 +147,10 @@ export default function HistoricoPage() {
     return matchesSearch && matchesFormat;
   });
 
-  // Estatísticas calculadas dinamicamente
-  const totalHectares = ANALISES_HISTORICO_DATA.reduce((acc, curr) => acc + curr.hectaresAnalisados, 0);
-  const totalFalhasHa = ANALISES_HISTORICO_DATA.reduce((acc, curr) => acc + curr.hectaresFalhas, 0);
-  const mediaFalhas = (totalFalhasHa / totalHectares) * 100;
+  const totalAreaM2 = ANALISES_HISTORICO_DATA.reduce((acc, curr) => acc + curr.areaAmostraM2, 0);
+  const totalInfestacaoM2 = ANALISES_HISTORICO_DATA.reduce((acc, curr) => acc + curr.areaInfestacaoM2, 0);
+  const mediaInfestacao = (totalInfestacaoM2 / totalAreaM2) * 100;
+  const totalFocos = ANALISES_HISTORICO_DATA.reduce((acc, curr) => acc + curr.focosDetectados, 0);
 
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
@@ -184,7 +183,6 @@ export default function HistoricoPage() {
             flexShrink: 0,
           }}
         >
-          {/* Breadcrumb */}
           <div style={{ flex: 1 }}>
             <h1
               style={{
@@ -195,7 +193,7 @@ export default function HistoricoPage() {
                 lineHeight: 1,
               }}
             >
-              Histórico de Análises UAV
+              Histórico de Capturas & Análises de Campo
             </h1>
             <p
               style={{
@@ -205,11 +203,10 @@ export default function HistoricoPage() {
                 lineHeight: 1,
               }}
             >
-              Registro consolidado de missões de vôo, imagens capturadas e hectares processados
+              Registro consolidado de fotos de campo, área foliar inspecionada e detecção de ervas daninhas
             </p>
           </div>
 
-          {/* Status badge */}
           <div
             style={{
               display: "flex",
@@ -239,11 +236,10 @@ export default function HistoricoPage() {
                 color: "var(--accent-green)",
               }}
             >
-              {ANALISES_HISTORICO_DATA.length} Vôos Registrados
+              {ANALISES_HISTORICO_DATA.length} Capturas Registradas
             </span>
           </div>
 
-          {/* Botão para voltar ao mapa */}
           <Link
             href="/"
             style={{
@@ -261,8 +257,8 @@ export default function HistoricoPage() {
               transition: "all 0.2s ease",
             }}
           >
-            <IconMap className="w-4 h-4 text-[var(--accent-green)]" />
-            Mapa Interativo
+            <IconLeaf className="w-4 h-4 text-[var(--accent-green)]" />
+            Painel Principal
           </Link>
         </header>
 
@@ -289,11 +285,11 @@ export default function HistoricoPage() {
               }}
             >
               <div style={{ fontSize: "11px", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700 }}>
-                Total de Vôos
+                Total de Fotos
               </div>
               <div style={{ fontSize: "22px", fontWeight: 800, color: "#58a6ff", marginTop: "4px" }}>
                 {ANALISES_HISTORICO_DATA.length}{" "}
-                <span style={{ fontSize: "13px", color: "var(--muted)", fontWeight: 500 }}>missões</span>
+                <span style={{ fontSize: "13px", color: "var(--muted)", fontWeight: 500 }}>amostras</span>
               </div>
             </div>
 
@@ -307,11 +303,11 @@ export default function HistoricoPage() {
               }}
             >
               <div style={{ fontSize: "11px", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700 }}>
-                Hectares Totais Analisados
+                Área Total Amostrada
               </div>
               <div style={{ fontSize: "22px", fontWeight: 800, color: "var(--accent-green)", marginTop: "4px" }}>
-                {formatNumberBR(totalHectares, 1)}{" "}
-                <span style={{ fontSize: "13px", color: "var(--muted)", fontWeight: 500 }}>ha</span>
+                {formatNumberBR(totalAreaM2, 1)}{" "}
+                <span style={{ fontSize: "13px", color: "var(--muted)", fontWeight: 500 }}>m²</span>
               </div>
             </div>
 
@@ -325,11 +321,11 @@ export default function HistoricoPage() {
               }}
             >
               <div style={{ fontSize: "11px", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700 }}>
-                Média de Falhas de Plantio
+                Média de Infestação Foliar
               </div>
               <div style={{ fontSize: "22px", fontWeight: 800, color: "#f85149", marginTop: "4px" }}>
-                {formatNumberBR(mediaFalhas, 1)}{" "}
-                <span style={{ fontSize: "13px", color: "var(--muted)", fontWeight: 500 }}>% de perda</span>
+                {formatNumberBR(mediaInfestacao, 1)}{" "}
+                <span style={{ fontSize: "13px", color: "var(--muted)", fontWeight: 500 }}>% da área</span>
               </div>
             </div>
 
@@ -343,11 +339,11 @@ export default function HistoricoPage() {
               }}
             >
               <div style={{ fontSize: "11px", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700 }}>
-                Status do Pipeline IA
+                Focos Identificados
               </div>
-              <div style={{ fontSize: "22px", fontWeight: 800, color: "#3fb950", marginTop: "4px" }}>
-                100%{" "}
-                <span style={{ fontSize: "13px", color: "var(--muted)", fontWeight: 500 }}>processado</span>
+              <div style={{ fontSize: "22px", fontWeight: 800, color: "#ffa657", marginTop: "4px" }}>
+                {totalFocos}{" "}
+                <span style={{ fontSize: "13px", color: "var(--muted)", fontWeight: 500 }}>plantas daninhas</span>
               </div>
             </div>
           </div>
@@ -367,7 +363,6 @@ export default function HistoricoPage() {
               gap: "12px",
             }}
           >
-            {/* Campo de Busca */}
             <div style={{ display: "flex", alignItems: "center", gap: "10px", flex: "1 1 280px" }}>
               <svg
                 style={{ width: "16px", height: "16px", color: "var(--muted)" }}
@@ -383,7 +378,7 @@ export default function HistoricoPage() {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Buscar por nome da imagem, talhão ou cidade..."
+                placeholder="Buscar por nome da imagem, amostra ou cidade..."
                 style={{
                   background: "transparent",
                   border: "none",
@@ -395,7 +390,6 @@ export default function HistoricoPage() {
               />
             </div>
 
-            {/* Filtro por Formato */}
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <span style={{ fontSize: "12px", color: "var(--muted)", fontWeight: 600 }}>Formato:</span>
               <select
@@ -419,7 +413,7 @@ export default function HistoricoPage() {
             </div>
           </div>
 
-          {/* ── 📋 TABELA DE HISTÓRICO DE VÔOS (Sprint 7) ─────── */}
+          {/* ── 📋 TABELA DE HISTÓRICO DE CAPTURAS ───────────── */}
           <div
             className="fade-in-up"
             style={{
@@ -443,10 +437,10 @@ export default function HistoricoPage() {
                       letterSpacing: "0.05em",
                     }}
                   >
-                    <th style={{ padding: "14px 18px", fontWeight: 700 }}>Data do Vôo</th>
-                    <th style={{ padding: "14px 18px", fontWeight: 700 }}>Nome da Imagem</th>
-                    <th style={{ padding: "14px 18px", fontWeight: 700 }}>Hectares Analisados</th>
-                    <th style={{ padding: "14px 18px", fontWeight: 700 }}>Status / Severidade</th>
+                    <th style={{ padding: "14px 18px", fontWeight: 700 }}>Data da Captura</th>
+                    <th style={{ padding: "14px 18px", fontWeight: 700 }}>Nome da Foto</th>
+                    <th style={{ padding: "14px 18px", fontWeight: 700 }}>Área da Amostra</th>
+                    <th style={{ padding: "14px 18px", fontWeight: 700 }}>Focos / Status</th>
                     <th style={{ padding: "14px 18px", fontWeight: 700, textAlign: "right" }}>Ações</th>
                   </tr>
                 </thead>
@@ -454,7 +448,7 @@ export default function HistoricoPage() {
                   {filteredAnalises.length === 0 ? (
                     <tr>
                       <td colSpan={5} style={{ padding: "30px", textAlign: "center", color: "var(--muted)" }}>
-                        Nenhuma análise encontrada para os filtros selecionados.
+                        Nenhuma captura encontrada para os filtros selecionados.
                       </td>
                     </tr>
                   ) : (
@@ -472,7 +466,7 @@ export default function HistoricoPage() {
                           e.currentTarget.style.background = "transparent";
                         }}
                       >
-                        {/* 1. Coluna: Data do Vôo */}
+                        {/* 1. Data da Captura */}
                         <td style={{ padding: "14px 18px", whiteSpace: "nowrap" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                             <div
@@ -487,20 +481,20 @@ export default function HistoricoPage() {
                                 color: "#58a6ff",
                               }}
                             >
-                              <IconDrone className="w-4 h-4" />
+                              <IconScan className="w-4 h-4" />
                             </div>
                             <div>
                               <div style={{ fontWeight: 600, color: "var(--foreground)" }}>
-                                {item.dataVoo}
+                                {item.dataCaptura}
                               </div>
                               <div style={{ fontSize: "11.5px", color: "var(--muted)" }}>
-                                às {item.horaVoo}
+                                às {item.horaCaptura}
                               </div>
                             </div>
                           </div>
                         </td>
 
-                        {/* 2. Coluna: Nome da Imagem */}
+                        {/* 2. Nome da Foto */}
                         <td style={{ padding: "14px 18px" }}>
                           <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -534,51 +528,57 @@ export default function HistoricoPage() {
                           </div>
                         </td>
 
-                        {/* 3. Coluna: Hectares Analisados */}
+                        {/* 3. Área da Amostra (m²) */}
                         <td style={{ padding: "14px 18px", whiteSpace: "nowrap" }}>
                           <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                             <div style={{ fontWeight: 700, color: "var(--foreground)", fontSize: "14px" }}>
-                              {formatNumberBR(item.hectaresAnalisados, 1)}{" "}
-                              <span style={{ fontSize: "12px", color: "var(--muted)", fontWeight: 500 }}>ha</span>
+                              {formatNumberBR(item.areaAmostraM2, 1)}{" "}
+                              <span style={{ fontSize: "12px", color: "var(--muted)", fontWeight: 500 }}>m²</span>
                             </div>
                             <div style={{ fontSize: "11.5px", color: "var(--muted)" }}>
-                              {formatNumberBR(item.metrosQuadrados, 0)} m²
+                              {formatNumberBR(item.areaInfestacaoM2, 2)} m² afetados
                               <span style={{ color: "#f85149", marginLeft: "6px" }}>
-                                ({formatNumberBR(item.percentualFalha, 1)}% falha)
+                                ({formatNumberBR(item.percentualInfestacao, 1)}% daninhas)
                               </span>
                             </div>
                           </div>
                         </td>
 
-                        {/* 4. Coluna: Status */}
+                        {/* 4. Focos / Status */}
                         <td style={{ padding: "14px 18px", whiteSpace: "nowrap" }}>
-                          <span
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "6px",
-                              fontSize: "12px",
-                              fontWeight: 600,
-                              padding: "3px 10px",
-                              borderRadius: "999px",
-                              background: item.status === "Atenção" ? "rgba(248, 81, 73, 0.15)" : "rgba(46, 160, 67, 0.15)",
-                              border: `1px solid ${item.status === "Atenção" ? "rgba(248, 81, 73, 0.3)" : "rgba(46, 160, 67, 0.3)"}`,
-                              color: item.status === "Atenção" ? "#f85149" : "#3fb950",
-                            }}
-                          >
+                          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                             <span
                               style={{
-                                width: "6px",
-                                height: "6px",
-                                borderRadius: "50%",
-                                background: item.status === "Atenção" ? "#f85149" : "#3fb950",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "6px",
+                                fontSize: "12px",
+                                fontWeight: 600,
+                                padding: "2px 8px",
+                                borderRadius: "999px",
+                                background: item.status === "Atenção" ? "rgba(248, 81, 73, 0.15)" : "rgba(46, 160, 67, 0.15)",
+                                border: `1px solid ${item.status === "Atenção" ? "rgba(248, 81, 73, 0.3)" : "rgba(46, 160, 67, 0.3)"}`,
+                                color: item.status === "Atenção" ? "#f85149" : "#3fb950",
+                                width: "fit-content",
                               }}
-                            />
-                            {item.status}
-                          </span>
+                            >
+                              <span
+                                style={{
+                                  width: "6px",
+                                  height: "6px",
+                                  borderRadius: "50%",
+                                  background: item.status === "Atenção" ? "#f85149" : "#3fb950",
+                                }}
+                              />
+                              {item.status}
+                            </span>
+                            <span style={{ fontSize: "11.5px", color: "#ffa657", fontWeight: 600 }}>
+                              {item.focosDetectados} focos de ervas
+                            </span>
+                          </div>
                         </td>
 
-                        {/* 5. Coluna: Botão "Ver no Mapa" */}
+                        {/* 5. Ação: Ver Detecção */}
                         <td style={{ padding: "14px 18px", textAlign: "right", whiteSpace: "nowrap" }}>
                           <Link
                             href={`/?talhao=${item.talhaoId}`}
@@ -605,8 +605,8 @@ export default function HistoricoPage() {
                               e.currentTarget.style.color = "#3fb950";
                             }}
                           >
-                            <IconMap className="w-3.5 h-3.5" />
-                            Ver no Mapa
+                            <IconScan className="w-3.5 h-3.5" />
+                            Ver Detecção
                           </Link>
                         </td>
                       </tr>
