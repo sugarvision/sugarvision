@@ -227,3 +227,12 @@ __marimo__/
 temp_images/
 **/temp_images/*
 !**/temp_images/.gitkeep
+
+# Machine learning models & weights
+*.pt
+*.onnx
+
+# CV engine temporary run outputs
+cv_engine/resultado_anotado.jpg
+cv_engine/resultado_analise.json
+
