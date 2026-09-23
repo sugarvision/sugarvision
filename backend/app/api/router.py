@@ -66,6 +66,9 @@ async def upload_image(
         # Gravação assíncrona não-bloqueante
         target_path, file_size = await storage_service.save_image_async(file)
 
+        # Executa a inferência direta para gerar as bounding boxes de ervas daninhas para o frontend
+        ai_result = await ai_service.detect_image_async(target_path)
+
         # Disparo assíncrono do microserviço de IA
         if background_tasks is not None:
             background_tasks.add_task(
@@ -80,14 +83,17 @@ async def upload_image(
 
         return {
             "status": "success",
-            "message": "Imagem enviada e salva com sucesso.",
+            "message": "Imagem enviada e processada com sucesso.",
             "filename": target_path.name,
             "original_filename": file.filename,
             "content_type": file.content_type,
             "size_bytes": file_size,
             "saved_path": str(target_path),
             "ai_status": "enqueued" if background_tasks is not None else "skipped",
+            "detections": ai_result.get("detections", []),
+            "summary": ai_result.get("summary", {}),
         }
+
 
     finally:
         await file.close()

@@ -421,6 +421,82 @@ class TestSugarVisionBackend(unittest.TestCase):
         self.assertEqual(resultado.get("image_name"), test_img.name)
         print("  [PASS] 28 - AIService: process_image_async executado assincronamente com sucesso")
 
+    def test_29_upload_returns_weed_detections_and_bounding_boxes(self):
+        """Valida que o endpoint /upload retorna detecções de ervas daninhas com bounding boxes do modelo best.pt."""
+        amostra_path = Path(__file__).resolve().parent.parent / "cv_engine" / "amostra_erva_daninha.jpg"
+        if not amostra_path.exists():
+            self.skipTest(f"Imagem de amostra não encontrada em: {amostra_path}")
+
+        with open(amostra_path, "rb") as f:
+            file_payload = {"file": ("amostra_erva_daninha.jpg", f, "image/jpeg")}
+            response = self.client.post("/upload", files=file_payload)
+
+        self.assertEqual(response.status_code, 201)
+        data = response.json()
+        self.assertEqual(data.get("status"), "success")
+        self.assertEqual(data.get("ai_status"), "enqueued")
+        self.assertIn("detections", data)
+        self.assertIn("summary", data)
+
+        # Registra arquivo para limpeza
+        saved_path = Path(data.get("saved_path"))
+        self.created_files.append(saved_path)
+
+        detections = data["detections"]
+        self.assertIsInstance(detections, list)
+        self.assertGreater(len(detections), 0, "O modelo best.pt deve detectar ao menos um foco na amostra")
+
+        # Verifica se ao menos uma detecção é erva daninha
+        weeds = [d for d in detections if d.get("type") == "erva_daninha"]
+        self.assertGreater(len(weeds), 0, "Deve haver detecções do tipo 'erva_daninha'")
+
+        # Valida estrutura da caixa delimitadora (bounding box) da primeira erva daninha
+        first_weed = weeds[0]
+        self.assertIn("box", first_weed)
+        box = first_weed["box"]
+        self.assertIn("x", box)
+        self.assertIn("y", box)
+        self.assertIn("width", box)
+        self.assertIn("height", box)
+
+        # Valida que as coordenadas estão em porcentagem (0 a 100)
+        self.assertGreaterEqual(box["x"], 0)
+        self.assertLessEqual(box["x"], 100)
+        self.assertGreaterEqual(box["y"], 0)
+        self.assertLessEqual(box["y"], 100)
+        self.assertGreater(box["width"], 0)
+        self.assertGreater(box["height"], 0)
+
+        summary = data["summary"]
+        self.assertGreater(summary.get("total_ervas_daninhas", 0), 0)
+        self.assertGreater(summary.get("taxa_infestacao_percent", 0), 0)
+        print(f"  [PASS] 29 - Upload integrado com best.pt retornou {len(weeds)} ervas daninhas com bounding boxes")
+
+    def test_30_weed_bounding_boxes_format_validation(self):
+        """Valida que a função extract_yolo_detections normaliza caixas delimitadoras e calcula severidade."""
+        ai = AIService()
+        amostra_path = Path(__file__).resolve().parent.parent / "cv_engine" / "amostra_erva_daninha.jpg"
+        if not amostra_path.exists():
+            self.skipTest("Imagem de amostra não encontrada")
+
+        resultado = asyncio.run(ai.detect_image_async(amostra_path))
+        self.assertEqual(resultado.get("status"), "completed")
+        self.assertEqual(resultado.get("engine"), "ultralytics")
+
+        detections = resultado.get("detections", [])
+        self.assertGreater(len(detections), 0)
+
+        for det in detections:
+            self.assertIn("id", det)
+            self.assertIn("label", det)
+            self.assertIn("confidence", det)
+            self.assertIn("severity", det)
+            self.assertIn(det["severity"], ["baixa", "media", "alta"])
+            self.assertIn("box", det)
+            self.assertIn("box_pixels", det)
+
+        print(f"  [PASS] 30 - Formato das bounding boxes e severidades validado para {len(detections)} detecções")
+
 
 
 if __name__ == "__main__":
@@ -428,3 +504,4 @@ if __name__ == "__main__":
     print("  EXECUTANDO BATERIA DE TESTES - BACKEND SUGARVISION")
     print("=" * 65 + "\n")
     unittest.main(verbosity=0)
+

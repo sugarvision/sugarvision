@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from app.core.config import DEFAULT_MODEL_PATH
+from ai_engine import extract_yolo_detections
 
 logger = logging.getLogger("sugarvision-ai")
 
@@ -55,14 +56,24 @@ class AIService:
             logger.error("Erro ao instanciar modelo YOLO: %s", exc)
             return None
 
-    def _run_inference_sync(self, model: Any, image_path: Path) -> int:
+    def _run_inference_sync(self, model: Any, image_path: Path) -> tuple[int, list[dict[str, Any]], dict[str, Any]]:
         """Executa a predição síncrona do YOLO (chamada dentro de worker thread)."""
-        preds = model.predict(source=str(image_path), save=False, verbose=False)
-        if preds and len(preds) > 0:
-            first = preds[0]
-            if first.boxes is not None:
-                return len(first.boxes)
-        return 0
+        try:
+            preds = model.predict(source=str(image_path), save=False, verbose=False)
+        except Exception as exc:
+            logger.warning("Falha na inferência síncrona da IA: %s", exc)
+            preds = []
+
+        detections, summary = extract_yolo_detections(preds, model)
+        return summary["total_detecoes"], detections, summary
+
+    async def detect_image_async(
+        self,
+        image_path: Path | str,
+        model_path: Optional[Path] = None,
+    ) -> dict[str, Any]:
+        """Executa a predição imediata sem delay para resposta síncrona/direta da API."""
+        return await self.process_image_async(image_path, delay_seconds=0.0, model_path=model_path)
 
     async def process_image_async(
         self,
@@ -123,17 +134,15 @@ class AIService:
             if modelo is not None:
                 logger.info("[IA] Executando predição assíncrona com Ultralytics YOLO...")
                 # Executa predição em threadpool para não travar o loop do FastAPI
-                total_deteccoes = await asyncio.to_thread(
+                total_deteccoes, detections, summary = await asyncio.to_thread(
                     self._run_inference_sync, modelo, path_obj
                 )
 
                 resultado["status"] = "completed"
                 resultado["engine"] = "ultralytics"
                 resultado["detections_count"] = total_deteccoes
-                resultado["summary"] = {
-                    "falhas_identificadas": total_deteccoes,
-                    "status_analise": "concluida",
-                }
+                resultado["detections"] = detections
+                resultado["summary"] = summary
             else:
                 # Pipeline seguro de contingência quando ultralytics não estiver instalado
                 logger.info(
@@ -143,7 +152,13 @@ class AIService:
                 resultado["status"] = "completed"
                 resultado["engine"] = "mock_pipeline"
                 resultado["detections_count"] = 0
+                resultado["detections"] = []
                 resultado["summary"] = {
+                    "falhas_identificadas": 0,
+                    "total_detecoes": 0,
+                    "total_ervas_daninhas": 0,
+                    "total_cana": 0,
+                    "taxa_infestacao_percent": 0.0,
                     "modelo": caminho_modelo.name,
                     "tamanho_modelo_bytes": caminho_modelo.stat().st_size,
                     "tamanho_imagem_bytes": path_obj.stat().st_size,
@@ -156,6 +171,7 @@ class AIService:
                 resultado["status"],
             )
             return resultado
+
 
         except Exception as exc:
             logger.exception("[IA] Erro durante a avaliação assíncrona da imagem %s: %s", path_obj.name, exc)

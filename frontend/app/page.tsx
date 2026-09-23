@@ -21,6 +21,7 @@ import {
   computeFieldMetrics,
   formatNumberBR,
 } from "./utils/geoMath";
+import type { WeedDetection } from "./ImageDetectionViewer";
 
 const ImageDetectionViewer = dynamic(() => import("./ImageDetectionViewer"), {
   ssr: false,
@@ -197,6 +198,17 @@ interface BackendUploadResponse {
   content_type: string;
   size_bytes: number;
   saved_path: string;
+  ai_status?: string;
+  detections?: WeedDetection[];
+  summary?: {
+    total_detecoes?: number;
+    total_ervas_daninhas?: number;
+    total_cana?: number;
+    taxa_infestacao_percent?: number;
+    area_infestada_m2?: number;
+    area_infestada_ha?: number;
+    distribuicao_severidade_ervas?: Record<string, number>;
+  };
 }
 
 function HomeContent() {
@@ -206,6 +218,7 @@ function HomeContent() {
     backend: BackendUploadResponse;
     localPreview: string;
   } | null>(null);
+  const [activeDetections, setActiveDetections] = useState<WeedDetection[] | undefined>(undefined);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const [selectedTalhaoId, setSelectedTalhaoId] = useState<string>("talhao-01-rio-claro");
@@ -286,9 +299,13 @@ function HomeContent() {
         backend: result,
         localPreview: localPreviewUrl,
       });
+      if (result.detections) {
+        setActiveDetections(result.detections);
+      }
       setIsModalOpen(true);
 
-      toast.success("Análise de ervas daninhas concluída!", {
+      const weedCount = result.summary?.total_ervas_daninhas ?? (result.detections ? result.detections.filter(d => d.type !== 'cana_de_acucar').length : 0);
+      toast.success(`Análise concluída: ${weedCount} focos de ervas daninhas identificados!`, {
         position: "top-right",
         autoClose: 4000,
         theme: "dark",
@@ -510,11 +527,25 @@ function HomeContent() {
                 <span style={{ color: "var(--muted)" }}>Tamanho do Arquivo:</span>
                 <span style={{ fontWeight: 600, color: "var(--foreground)" }}>{formatFileSize(uploadSuccessData.backend.size_bytes)}</span>
               </div>
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--sidebar-border)", paddingBottom: "8px" }}>
+                <span style={{ color: "var(--muted)" }}>Ervas Daninhas (best.pt):</span>
+                <span style={{ fontWeight: 700, color: "#f85149" }}>
+                  {uploadSuccessData.backend.summary?.total_ervas_daninhas ?? (uploadSuccessData.backend.detections ? uploadSuccessData.backend.detections.filter(d => d.type !== 'cana_de_acucar').length : 0)} focos identificados
+                </span>
+              </div>
+              {uploadSuccessData.backend.summary?.taxa_infestacao_percent !== undefined && (
+                <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--sidebar-border)", paddingBottom: "8px" }}>
+                  <span style={{ color: "var(--muted)" }}>Taxa de Infestação Estimada:</span>
+                  <span style={{ fontWeight: 700, color: uploadSuccessData.backend.summary.taxa_infestacao_percent > 20 ? "#f85149" : "#d29922" }}>
+                    {uploadSuccessData.backend.summary.taxa_infestacao_percent.toFixed(1)}%
+                  </span>
+                </div>
+              )}
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span style={{ color: "var(--muted)" }}>Status da Análise:</span>
                 <span style={{ color: "var(--accent-green)", fontWeight: 600, display: "flex", alignItems: "center", gap: "5px" }}>
                   <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--accent-green)" }} />
-                  Detecção YOLO Concluída
+                  Detecção YOLO best.pt Concluída
                 </span>
               </div>
             </div>
@@ -740,54 +771,66 @@ function HomeContent() {
           </div>
 
           {/* ── 📊 4 CARDS COM MÉTRICAS REAIS EM m² E % ───────────── */}
-          <div
-            className="fade-in-up"
-            style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}
-          >
-            <StatCard
-              label="Área Amostrada"
-              value={formatNumberBR(metrics.totalFotoM2, 1)}
-              unit="m²"
-              subtitle="Enquadramento aproximado"
-              badge="100% Foto"
-              badgeType="info"
-              color="#58a6ff"
-              icon={IconScan}
-              percentage={100}
-            />
-            <StatCard
-              label="Taxa de Infestação"
-              value={formatNumberBR(metrics.percentualInfestacao, 1)}
-              unit="%"
-              subtitle={`${formatNumberBR(metrics.infestacaoM2, 2)} m² de daninhas`}
-              badge={`${formatNumberBR(metrics.percentualInfestacao, 1)}% Matocompetição`}
-              badgeType="danger"
-              color="#f85149"
-              icon={IconAlert}
-              percentage={metrics.percentualInfestacao}
-            />
-            <StatCard
-              label="Cana Saudável"
-              value={formatNumberBR(metrics.percentualSaudavel, 1)}
-              unit="%"
-              subtitle={`${formatNumberBR(metrics.canaSaudavelM2, 2)} m² livres de mato`}
-              badge="Área Útil"
-              badgeType="success"
-              color="var(--accent-green)"
-              icon={IconLeaf}
-              percentage={metrics.percentualSaudavel}
-            />
-            <StatCard
-              label="Ervas Identificadas"
-              value={String(metrics.totalFocos)}
-              unit="focos"
-              subtitle={`Confiança IA: ${formatNumberBR(metrics.mediaConfianca, 0)}%`}
-              badge={metrics.totalFocos > 2 ? "Infestação Moderada" : "Baixa Infestação"}
-              badgeType={metrics.totalFocos > 2 ? "warning" : "success"}
-              color="#ffa657"
-              icon={IconChart}
-            />
-          </div>
+          {(() => {
+            const hasModelData = Boolean(uploadSuccessData?.backend?.summary);
+            const modelSummary = uploadSuccessData?.backend?.summary;
+            const modelDetections = activeDetections;
+
+            const taxaInfestacao = modelSummary?.taxa_infestacao_percent ?? metrics.percentualInfestacao;
+            const totalFocos = modelSummary?.total_ervas_daninhas ?? (modelDetections ? modelDetections.filter(d => d.type !== 'cana_de_acucar').length : metrics.totalFocos);
+            const taxaSaudavel = Math.max(0, 100 - taxaInfestacao);
+
+            return (
+              <div
+                className="fade-in-up"
+                style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}
+              >
+                <StatCard
+                  label="Área Amostrada"
+                  value={formatNumberBR(metrics.totalFotoM2, 1)}
+                  unit="m²"
+                  subtitle="Enquadramento aproximado"
+                  badge={hasModelData ? "best.pt Ativo" : "100% Foto"}
+                  badgeType="info"
+                  color="#58a6ff"
+                  icon={IconScan}
+                  percentage={100}
+                />
+                <StatCard
+                  label="Taxa de Infestação"
+                  value={formatNumberBR(taxaInfestacao, 1)}
+                  unit="%"
+                  subtitle={hasModelData ? `Cálculo via rede YOLO best.pt` : `${formatNumberBR(metrics.infestacaoM2, 2)} m² de daninhas`}
+                  badge={`${formatNumberBR(taxaInfestacao, 1)}% Matocompetição`}
+                  badgeType={taxaInfestacao > 20 ? "danger" : "warning"}
+                  color={taxaInfestacao > 20 ? "#f85149" : "#d29922"}
+                  icon={IconAlert}
+                  percentage={taxaInfestacao}
+                />
+                <StatCard
+                  label="Cana Saudável"
+                  value={formatNumberBR(taxaSaudavel, 1)}
+                  unit="%"
+                  subtitle={hasModelData ? "Área livre de ervas daninhas" : `${formatNumberBR(metrics.canaSaudavelM2, 2)} m² livres de mato`}
+                  badge="Área Útil"
+                  badgeType="success"
+                  color="var(--accent-green)"
+                  icon={IconLeaf}
+                  percentage={taxaSaudavel}
+                />
+                <StatCard
+                  label="Ervas Identificadas"
+                  value={String(totalFocos)}
+                  unit="focos"
+                  subtitle={hasModelData ? `Identificadas pelo modelo best.pt` : `Confiança IA: ${formatNumberBR(metrics.mediaConfianca, 0)}%`}
+                  badge={totalFocos > 2 ? "Infestação Moderada" : "Baixa Infestação"}
+                  badgeType={totalFocos > 2 ? "warning" : "success"}
+                  color="#ffa657"
+                  icon={IconChart}
+                />
+              </div>
+            );
+          })()}
 
           {/* ── Box da Imagem Central com Caixas Delimitadoras ── */}
           <div
@@ -803,8 +846,10 @@ function HomeContent() {
           >
             <ImageDetectionViewer
               imageSrc={uploadSuccessData?.localPreview || "/cana_teste.jpg"}
+              detections={activeDetections}
             />
           </div>
+
 
           {/* ── Faixa de Informações Agronômicas da Amostra ───────────── */}
           <div

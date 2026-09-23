@@ -6,6 +6,8 @@ export interface WeedDetection {
   id: string | number;
   label: string;
   confidence: number;
+  type?: string;
+  severity?: 'baixa' | 'media' | 'alta' | string;
   box: {
     x: number;
     y: number;
@@ -16,6 +18,7 @@ export interface WeedDetection {
 
 interface ImageDetectionViewerProps {
   imageSrc?: string;
+  detections?: WeedDetection[];
 }
 
 // Detecções padrão de demonstração para quando o backend não retornar dados
@@ -24,29 +27,42 @@ const DEFAULT_DETECTIONS: WeedDetection[] = [
     id: 1,
     label: 'Erva Daninha: Braquiária',
     confidence: 0.94,
+    type: 'erva_daninha',
+    severity: 'alta',
     box: { x: 22, y: 35, width: 18, height: 22 },
   },
   {
     id: 2,
     label: 'Erva Daninha: Capim-Colonião',
     confidence: 0.88,
+    type: 'erva_daninha',
+    severity: 'media',
     box: { x: 55, y: 18, width: 20, height: 25 },
   },
   {
     id: 3,
     label: 'Erva Daninha: Corda-de-Viola',
     confidence: 0.91,
+    type: 'erva_daninha',
+    severity: 'alta',
     box: { x: 40, y: 62, width: 16, height: 20 },
   },
 ];
 
 export default function ImageDetectionViewer({
   imageSrc = '/cana_teste.jpg',
+  detections: propDetections,
 }: ImageDetectionViewerProps) {
-  const [detections, setDetections] = useState<WeedDetection[]>(DEFAULT_DETECTIONS);
+  const [detections, setDetections] = useState<WeedDetection[]>(propDetections || DEFAULT_DETECTIONS);
   const [selectedDetection, setSelectedDetection] = useState<WeedDetection | null>(null);
 
   useEffect(() => {
+    if (propDetections !== undefined) {
+      setDetections(propDetections);
+      setSelectedDetection(null);
+      return;
+    }
+
     async function fetchDetections() {
       try {
         const res = await fetch('http://localhost:8000/api/anomalies');
@@ -55,7 +71,6 @@ export default function ImageDetectionViewer({
           const list = Array.isArray(data) ? data : data.detections || data.anomalies || [];
           
           if (list.length > 0) {
-            // Normaliza cada item para garantir que sempre tenha a propriedade box válida
             const normalizedList: WeedDetection[] = list.map((item: any, index: number) => {
               const box = item.box || {
                 x: item.x ?? item.left ?? 20,
@@ -68,6 +83,8 @@ export default function ImageDetectionViewer({
                 id: item.id ?? index + 1,
                 label: item.label ?? item.name ?? 'Erva Daninha Detectada',
                 confidence: typeof item.confidence === 'number' ? item.confidence : 0.90,
+                type: item.type ?? 'erva_daninha',
+                severity: item.severity ?? 'media',
                 box: {
                   x: Number(box.x) || 0,
                   y: Number(box.y) || 0,
@@ -89,7 +106,7 @@ export default function ImageDetectionViewer({
     }
 
     fetchDetections();
-  }, [imageSrc]);
+  }, [propDetections, imageSrc]);
 
   return (
     <div
@@ -136,6 +153,9 @@ export default function ImageDetectionViewer({
         {/* Caixas Delimitadoras (Bounding Boxes) */}
         {detections.map((det) => {
           const isSelected = selectedDetection?.id === det.id;
+          const isWeed = det.type !== 'cana_de_acucar';
+          const boxColor = isWeed ? '#f85149' : '#2ea043';
+          const bgOpacity = isWeed ? 'rgba(248, 81, 73, 0.22)' : 'rgba(46, 160, 67, 0.2)';
           const boxX = det.box?.x ?? 0;
           const boxY = det.box?.y ?? 0;
           const boxW = det.box?.width ?? 10;
@@ -151,19 +171,19 @@ export default function ImageDetectionViewer({
                 top: `${boxY}%`,
                 width: `${boxW}%`,
                 height: `${boxH}%`,
-                border: isSelected ? '3px solid #ffcc00' : '2px solid #f85149',
+                border: isSelected ? '3px solid #ffcc00' : `2px solid ${boxColor}`,
                 backgroundColor: isSelected
-                  ? 'rgba(255, 204, 0, 0.25)'
-                  : 'rgba(248, 81, 73, 0.2)',
+                  ? 'rgba(255, 204, 0, 0.28)'
+                  : bgOpacity,
                 cursor: 'pointer',
                 borderRadius: '4px',
                 boxShadow: isSelected
-                  ? '0 0 12px rgba(255,204,0,0.8)'
-                  : '0 0 8px rgba(248,81,73,0.5)',
+                  ? '0 0 14px rgba(255,204,0,0.9)'
+                  : `0 0 8px ${isWeed ? 'rgba(248,81,73,0.5)' : 'rgba(46,160,67,0.4)'}`,
                 transition: 'all 0.15s ease-in-out',
-                zIndex: isSelected ? 20 : 10,
+                zIndex: isSelected ? 25 : 10,
               }}
-              title={`${det.label} (${(det.confidence * 100).toFixed(0)}%)`}
+              title={`${det.label} (${(det.confidence * 100).toFixed(0)}%) - Severidade: ${det.severity || 'n/a'}`}
             >
               {/* Etiqueta da Caixa Delimitadora */}
               <div
@@ -171,7 +191,7 @@ export default function ImageDetectionViewer({
                   position: 'absolute',
                   top: '-24px',
                   left: '-2px',
-                  background: isSelected ? '#ffcc00' : '#f85149',
+                  background: isSelected ? '#ffcc00' : boxColor,
                   color: isSelected ? '#000000' : '#ffffff',
                   fontSize: '11px',
                   fontWeight: 700,
@@ -179,9 +199,28 @@ export default function ImageDetectionViewer({
                   borderRadius: '3px',
                   whiteSpace: 'nowrap',
                   lineHeight: '1.2',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  boxShadow: '0 2px 5px rgba(0,0,0,0.5)',
                 }}
               >
-                🌿 {det.label} ({(det.confidence * 100).toFixed(0)}%)
+                <span>{isWeed ? '🌿' : '🌱'}</span>
+                <span>{det.label}</span>
+                <span style={{ opacity: 0.9 }}>({(det.confidence * 100).toFixed(0)}%)</span>
+                {det.severity && (
+                  <span
+                    style={{
+                      background: 'rgba(0,0,0,0.25)',
+                      padding: '1px 4px',
+                      borderRadius: '2px',
+                      textTransform: 'uppercase',
+                      fontSize: '9px',
+                    }}
+                  >
+                    {det.severity}
+                  </span>
+                )}
               </div>
             </div>
           );
@@ -194,31 +233,42 @@ export default function ImageDetectionViewer({
           position: 'absolute',
           bottom: '12px',
           left: '12px',
-          background: 'rgba(22, 27, 34, 0.85)',
-          backdropFilter: 'blur(6px)',
+          background: 'rgba(22, 27, 34, 0.9)',
+          backdropFilter: 'blur(8px)',
           border: '1px solid var(--card-border)',
           borderRadius: '8px',
-          padding: '6px 12px',
+          padding: '8px 14px',
           display: 'flex',
           alignItems: 'center',
-          gap: '8px',
+          gap: '12px',
           fontSize: '12px',
           color: 'var(--foreground)',
           zIndex: 30,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
         }}
       >
-        <span
-          style={{
-            width: '8px',
-            height: '8px',
-            borderRadius: '50%',
-            background: '#f85149',
-          }}
-        />
-        <span>
-          <strong>{detections.length}</strong> Focos de Ervas Daninhas Detectados
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span
+            style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              background: '#f85149',
+              display: 'inline-block',
+            }}
+          />
+          <span>
+            <strong>
+              {detections.filter((d) => d.type !== 'cana_de_acucar').length}
+            </strong>{' '}
+            Ervas Daninhas Marcadas
+          </span>
+        </div>
+        <span style={{ color: 'var(--muted)', fontSize: '10px' }}>|</span>
+        <span style={{ color: 'var(--accent-green)', fontSize: '11px', fontWeight: 600 }}>
+          YOLO best.pt Ativo
         </span>
       </div>
     </div>
   );
-}
+}
