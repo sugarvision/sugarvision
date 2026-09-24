@@ -6,7 +6,6 @@ import dynamic from "next/dynamic";
 import { ToastContainer, toast } from "react-toastify";
 import {
   Sidebar,
-  IconScan,
   IconChart,
   IconAlert,
   IconLeaf,
@@ -734,43 +733,7 @@ function HomeContent() {
             gap: "16px",
           }}
         >
-          {/* Seletor de Amostra */}
-          <div
-            className="fade-in-up"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "flex-end",
-              gap: "8px",
-            }}
-          >
-            <span style={{ fontSize: "12px", color: "var(--muted)", fontWeight: 600 }}>
-              Amostra Ativa:
-            </span>
-            <select
-              value={selectedTalhaoId}
-              onChange={(e) => setSelectedTalhaoId(e.target.value)}
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--card-border)",
-                color: "var(--foreground)",
-                borderRadius: "6px",
-                padding: "6px 12px",
-                fontSize: "12.5px",
-                fontWeight: 600,
-                cursor: "pointer",
-                outline: "none",
-              }}
-            >
-              {TALHOES_MOCK_DATA.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.nome} ({t.cidade})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* ── 📊 4 CARDS COM MÉTRICAS REAIS EM m² E % ───────────── */}
+          {/* ── 📊 CARDS COM MÉTRICAS ATIVAS ───────────── */}
           {(() => {
             const hasModelData = Boolean(uploadSuccessData?.backend?.summary);
             const modelSummary = uploadSuccessData?.backend?.summary;
@@ -786,17 +749,6 @@ function HomeContent() {
                 style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}
               >
                 <StatCard
-                  label="Área Amostrada"
-                  value={formatNumberBR(metrics.totalFotoM2, 1)}
-                  unit="m²"
-                  subtitle="Enquadramento aproximado"
-                  badge={hasModelData ? "best.pt Ativo" : "100% Foto"}
-                  badgeType="info"
-                  color="#58a6ff"
-                  icon={IconScan}
-                  percentage={100}
-                />
-                <StatCard
                   label="Taxa de Infestação"
                   value={formatNumberBR(taxaInfestacao, 1)}
                   unit="%"
@@ -807,6 +759,7 @@ function HomeContent() {
                   icon={IconAlert}
                   percentage={taxaInfestacao}
                 />
+
                 <StatCard
                   label="Cana Saudável"
                   value={formatNumberBR(taxaSaudavel, 1)}
@@ -818,6 +771,7 @@ function HomeContent() {
                   icon={IconLeaf}
                   percentage={taxaSaudavel}
                 />
+
                 <StatCard
                   label="Ervas Identificadas"
                   value={String(totalFocos)}
@@ -850,7 +804,6 @@ function HomeContent() {
             />
           </div>
 
-
           {/* ── Faixa de Informações Agronômicas da Amostra ───────────── */}
           <div
             className="fade-in-up"
@@ -863,11 +816,6 @@ function HomeContent() {
             }}
           >
             {[
-              {
-                icon: "🌱",
-                title: currentAmostra.cultura,
-                desc: `${currentAmostra.variedade} — ${formatNumberBR(metrics.totalFotoM2, 1)} m²`,
-              },
               {
                 icon: "📷",
                 title: "Captura de Campo",

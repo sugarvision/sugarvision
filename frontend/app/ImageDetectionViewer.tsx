@@ -226,49 +226,6 @@ export default function ImageDetectionViewer({
           );
         })}
       </div>
-
-      {/* Indicador de Status no Canto Inferior */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: '12px',
-          left: '12px',
-          background: 'rgba(22, 27, 34, 0.9)',
-          backdropFilter: 'blur(8px)',
-          border: '1px solid var(--card-border)',
-          borderRadius: '8px',
-          padding: '8px 14px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          fontSize: '12px',
-          color: 'var(--foreground)',
-          zIndex: 30,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span
-            style={{
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
-              background: '#f85149',
-              display: 'inline-block',
-            }}
-          />
-          <span>
-            <strong>
-              {detections.filter((d) => d.type !== 'cana_de_acucar').length}
-            </strong>{' '}
-            Ervas Daninhas Marcadas
-          </span>
-        </div>
-        <span style={{ color: 'var(--muted)', fontSize: '10px' }}>|</span>
-        <span style={{ color: 'var(--accent-green)', fontSize: '11px', fontWeight: 600 }}>
-          YOLO best.pt Ativo
-        </span>
-      </div>
     </div>
   );
-}
+}

@@ -207,39 +207,6 @@ export default function HistoricoPage() {
             </p>
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "7px",
-              padding: "5px 12px",
-              borderRadius: "999px",
-              background: "rgba(46,160,67,0.1)",
-              border: "1px solid rgba(46,160,67,0.25)",
-            }}
-          >
-            <span
-              className="pulse-dot"
-              style={{
-                width: "7px",
-                height: "7px",
-                borderRadius: "50%",
-                background: "var(--accent-green)",
-                flexShrink: 0,
-                display: "inline-block",
-              }}
-            />
-            <span
-              style={{
-                fontSize: "12px",
-                fontWeight: 500,
-                color: "var(--accent-green)",
-              }}
-            >
-              {ANALISES_HISTORICO_DATA.length} Capturas Registradas
-            </span>
-          </div>
-
           <Link
             href="/"
             style={{
@@ -266,7 +233,7 @@ export default function HistoricoPage() {
         <div
           style={{
             flex: 1,
-            overflow: "auto",
+            overflow: "hidden",
             padding: "20px 24px",
             display: "flex",
             flexDirection: "column",
@@ -274,7 +241,7 @@ export default function HistoricoPage() {
           }}
         >
           {/* ── Quick Stats Row ──────────────────────────────── */}
-          <div className="fade-in-up" style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+          <div className="fade-in-up" style={{ display: "flex", gap: "12px", flexWrap: "wrap", flexShrink: 0 }}>
             <div
               style={{
                 background: "var(--card-bg)",
@@ -290,24 +257,6 @@ export default function HistoricoPage() {
               <div style={{ fontSize: "22px", fontWeight: 800, color: "#58a6ff", marginTop: "4px" }}>
                 {ANALISES_HISTORICO_DATA.length}{" "}
                 <span style={{ fontSize: "13px", color: "var(--muted)", fontWeight: 500 }}>amostras</span>
-              </div>
-            </div>
-
-            <div
-              style={{
-                background: "var(--card-bg)",
-                border: "1px solid var(--card-border)",
-                borderRadius: "10px",
-                padding: "14px 18px",
-                flex: "1 1 180px",
-              }}
-            >
-              <div style={{ fontSize: "11px", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700 }}>
-                Área Total Amostrada
-              </div>
-              <div style={{ fontSize: "22px", fontWeight: 800, color: "var(--accent-green)", marginTop: "4px" }}>
-                {formatNumberBR(totalAreaM2, 1)}{" "}
-                <span style={{ fontSize: "13px", color: "var(--muted)", fontWeight: 500 }}>m²</span>
               </div>
             </div>
 
@@ -361,6 +310,7 @@ export default function HistoricoPage() {
               alignItems: "center",
               flexWrap: "wrap",
               gap: "12px",
+              flexShrink: 0,
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "10px", flex: "1 1 280px" }}>
@@ -413,23 +363,34 @@ export default function HistoricoPage() {
             </div>
           </div>
 
-          {/* ── 📋 TABELA DE HISTÓRICO DE CAPTURAS ───────────── */}
+          {/* ── 📋 TABELA DE HISTÓRICO COM SCROLLBAR DEDICADA ───────────── */}
           <div
             className="fade-in-up"
             style={{
+              flex: 1,
               background: "var(--card-bg)",
               border: "1px solid var(--card-border)",
               borderRadius: "12px",
-              overflow: "hidden",
               boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              minHeight: 0,
             }}
           >
-            <div style={{ overflowX: "auto" }}>
+            <div
+              className="custom-table-scrollbar"
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                overflowX: "auto",
+              }}
+            >
               <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "13px" }}>
-                <thead>
+                <thead style={{ position: "sticky", top: 0, zIndex: 10 }}>
                   <tr
                     style={{
-                      background: "rgba(22, 27, 34, 0.8)",
+                      background: "#161b22",
                       borderBottom: "1px solid var(--card-border)",
                       color: "var(--muted)",
                       fontSize: "11.5px",
@@ -618,6 +579,24 @@ export default function HistoricoPage() {
           </div>
         </div>
       </main>
+
+      {/* Estilização da Scrollbar para a Tabela */}
+      <style>{`
+        .custom-table-scrollbar::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+        .custom-table-scrollbar::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.03);
+        }
+        .custom-table-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.18);
+          border-radius: 4px;
+        }
+        .custom-table-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: var(--accent-green);
+        }
+      `}</style>
     </div>
   );
 }

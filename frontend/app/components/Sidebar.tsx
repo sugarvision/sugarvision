@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -92,7 +93,7 @@ export function IconAlert({ className = "" }: { className?: string }) {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 1 1.73-3Z" />
       <path d="M12 9v4" />
       <path d="M12 17h.01" />
     </svg>
@@ -235,13 +236,26 @@ export function IconFileImage({ className = "" }: { className?: string }) {
   );
 }
 
+// ── Tipagem dos Itens de Navegação ─────────────────────────────────────────────
+export interface NavItem {
+  id: string;
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  badge?: number;
+}
+
 // ── Lista de itens da barra lateral ───────────────────────────────────────────
-export const navItems = [
+export const navItems: NavItem[] = [
   { id: "deteccao", href: "/", label: "Detecção de Daninhas", icon: IconScan },
   { id: "historico", href: "/historico", label: "Histórico de Capturas", icon: IconHistory },
+
+  /* ── Abas comentadas temporariamente (retornar caso necessário) ──
   { id: "analises", href: "/", label: "Análises de Campo", icon: IconChart },
   { id: "culturas", href: "/", label: "Cana-de-Açúcar", icon: IconLeaf },
   { id: "alertas", href: "/", label: "Alertas de Infestação", icon: IconAlert, badge: 3 },
+  ── */
+
   { id: "amostras", href: "/", label: "Banco de Amostras", icon: IconLayers },
 ];
 
