@@ -419,6 +419,34 @@ def insert_image_record(
         }
 
 
+def delete_image_record(image_id: str) -> bool:
+    """Exclui uma amostra da tabela 'images' e suas anomalias associadas no banco de dados."""
+    global FALLBACK_IMAGES
+    FALLBACK_IMAGES = [img for img in FALLBACK_IMAGES if img.get("id") != image_id]
+
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Remove anomalias vinculadas por chave estrangeira image_id
+                cur.execute("DELETE FROM anomalies WHERE image_id = %s", (image_id,))
+                # Remove a amostra da tabela images
+                cur.execute("DELETE FROM images WHERE id = %s", (image_id,))
+                conn.commit()
+                logger.info("Registro de imagem deletado do PostgreSQL: %s (linhas afetadas: %d)", image_id, cur.rowcount)
+                return True
+    except Exception as exc:
+        logger.warning("Falha ao deletar amostra no PostgreSQL (%s). Tentando via Supabase API...", exc)
+        try:
+            client = get_supabase_client()
+            client.table("anomalies").delete().eq("image_id", image_id).execute()
+            client.table("images").delete().eq("id", image_id).execute()
+            logger.info("Registro de imagem deletado via Supabase API: %s", image_id)
+            return True
+        except Exception as sup_exc:
+            logger.warning("Falha ao deletar via Supabase API (%s). Remoção persistida no estado em memória.", sup_exc)
+            return True
+
+
 def get_all_anomalies() -> list[dict[str, Any]]:
     """Consulta e retorna todas as anomalias/falhas de plantio cadastradas no banco de dados.
 

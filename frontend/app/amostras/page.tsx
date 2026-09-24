@@ -3,6 +3,8 @@
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import {
   Sidebar,
   IconScan,
@@ -12,6 +14,27 @@ import {
   IconCheck,
   IconX,
 } from "../components/Sidebar";
+
+// ── Ícone de Lixeira (Exclusão) ──────────────────────────────────────────────
+function IconTrash({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 6h18" />
+      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+      <line x1="10" y1="11" x2="10" y2="17" />
+      <line x1="14" y1="11" x2="14" y2="17" />
+    </svg>
+  );
+}
 
 // ── Componente Resiliente de Imagem com Fallbacks ────────────────────────────
 function SampleImage({
@@ -42,12 +65,23 @@ function SampleImage({
     if (errorStage === 0) {
       setErrorStage(1);
       setSrc(`/${filename}`);
-    } else {
+    } else if (errorStage === 1) {
       setErrorStage(2);
+      const fnLower = (filename || "").toLowerCase();
+      if (fnLower.includes("daninha") || fnLower.includes("weed") || fnLower.includes("erva")) {
+        setSrc("/amostra_erva_daninha.jpg");
+      } else {
+        setSrc("/cana_teste.jpg");
+      }
+    } else if (errorStage === 2) {
+      setErrorStage(3);
+      setSrc("/cana_teste.jpg");
+    } else {
+      setErrorStage(4);
     }
   };
 
-  if (errorStage >= 2) {
+  if (errorStage >= 4) {
     return (
       <div
         style={{
@@ -125,10 +159,58 @@ export default function BancoDeAmostrasPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const router = useRouter();
 
+  const [sampleToDelete, setSampleToDelete] = useState<ImageSample | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // Executa navegação garantindo timestamp único para forçar nova inferência no painel principal
   const handleAnalyzeSample = (e: React.MouseEvent, sampleFilename: string, sampleId: string) => {
     e.preventDefault();
     router.push(`/?amostra=${encodeURIComponent(sampleFilename)}&id=${encodeURIComponent(sampleId)}&t=${Date.now()}`);
+  };
+
+  // Exclui uma amostra de imagem do banco de dados e sincroniza a listagem local
+  const confirmDeleteSample = async () => {
+    if (!sampleToDelete) return;
+    setIsDeleting(true);
+    const target = sampleToDelete;
+    try {
+      let res: Response | null = null;
+      try {
+        res = await fetch(
+          `http://127.0.0.1:8000/api/images/${encodeURIComponent(target.id)}?filename=${encodeURIComponent(target.filename)}`,
+          { method: "DELETE" }
+        );
+      } catch {
+        res = await fetch(
+          `http://localhost:8000/api/images/${encodeURIComponent(target.id)}?filename=${encodeURIComponent(target.filename)}`,
+          { method: "DELETE" }
+        );
+      }
+
+      if (!res || !res.ok) {
+        throw new Error(`Servidor retornou status ${res?.status || "offline"}`);
+      }
+
+      setSamples((prev) => prev.filter((s) => s.id !== target.id));
+      if (selectedSample?.id === target.id) {
+        setSelectedSample(null);
+      }
+      setSampleToDelete(null);
+      toast.success(`Amostra '${target.filename}' excluída com sucesso do banco de dados!`, {
+        position: "top-right",
+        autoClose: 4000,
+        theme: "dark",
+      });
+    } catch (err: any) {
+      console.error("Falha ao excluir amostra do banco:", err);
+      toast.error(`Falha ao excluir amostra: ${err.message}`, {
+        position: "top-right",
+        autoClose: 4000,
+        theme: "dark",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   // ── Busca de dados da tabela 'images' via API do Backend ────────────────────
@@ -1044,7 +1126,7 @@ export default function BancoDeAmostrasPage() {
                     )}
 
                     {/* Botões de Ação */}
-                    <div style={{ marginTop: "auto", paddingTop: "8px", display: "flex", gap: "8px" }}>
+                    <div style={{ marginTop: "auto", paddingTop: "8px", display: "flex", gap: "8px", alignItems: "center" }}>
                       <button
                         onClick={() => setSelectedSample(sample)}
                         style={{
@@ -1086,6 +1168,33 @@ export default function BancoDeAmostrasPage() {
                       >
                         Analisar
                       </Link>
+                      <button
+                        id={`btn-delete-sample-${sample.id}`}
+                        onClick={() => setSampleToDelete(sample)}
+                        title="Excluir amostra do banco de dados"
+                        style={{
+                          padding: "6px 8px",
+                          borderRadius: "6px",
+                          background: "rgba(248, 81, 73, 0.1)",
+                          border: "1px solid rgba(248, 81, 73, 0.25)",
+                          color: "#f85149",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          transition: "all 0.2s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = "rgba(248, 81, 73, 0.2)";
+                          e.currentTarget.style.borderColor = "rgba(248, 81, 73, 0.5)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = "rgba(248, 81, 73, 0.1)";
+                          e.currentTarget.style.borderColor = "rgba(248, 81, 73, 0.25)";
+                        }}
+                      >
+                        <IconTrash className="w-3.5 h-3.5 text-[#f85149]" />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1228,6 +1337,24 @@ export default function BancoDeAmostrasPage() {
                             >
                               Analisar
                             </Link>
+                            <button
+                              id={`btn-table-delete-${sample.id}`}
+                              onClick={() => setSampleToDelete(sample)}
+                              title="Excluir amostra do banco de dados"
+                              style={{
+                                padding: "4px 8px",
+                                borderRadius: "6px",
+                                background: "rgba(248, 81, 73, 0.1)",
+                                border: "1px solid rgba(248, 81, 73, 0.25)",
+                                color: "#f85149",
+                                cursor: "pointer",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                            >
+                              <IconTrash className="w-3.5 h-3.5 text-[#f85149]" />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -1431,13 +1558,170 @@ export default function BancoDeAmostrasPage() {
                   padding: "14px 20px",
                   borderTop: "1px solid var(--sidebar-border)",
                   display: "flex",
-                  justifyContent: "flex-end",
+                  alignItems: "center",
+                  justifyContent: "space-between",
                   gap: "10px",
                   background: "var(--surface)",
                 }}
               >
                 <button
-                  onClick={() => setSelectedSample(null)}
+                  onClick={() => setSampleToDelete(selectedSample)}
+                  style={{
+                    padding: "8px 14px",
+                    borderRadius: "6px",
+                    background: "rgba(248, 81, 73, 0.12)",
+                    border: "1px solid rgba(248, 81, 73, 0.3)",
+                    color: "#f85149",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                  title="Excluir esta amostra do banco de dados"
+                >
+                  <IconTrash className="w-3.5 h-3.5 text-[#f85149]" />
+                  Excluir Amostra
+                </button>
+
+                <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                  <button
+                    onClick={() => setSelectedSample(null)}
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: "6px",
+                      background: "transparent",
+                      border: "1px solid var(--card-border)",
+                      color: "var(--foreground)",
+                      fontSize: "12px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Fechar
+                  </button>
+                  <Link
+                    href={`/?amostra=${encodeURIComponent(selectedSample.filename)}&id=${encodeURIComponent(selectedSample.id)}&t=${Date.now()}`}
+                    onClick={(e) => handleAnalyzeSample(e, selectedSample.filename, selectedSample.id)}
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: "6px",
+                      background: "var(--accent-green)",
+                      border: "none",
+                      color: "#ffffff",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      textDecoration: "none",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    <IconScan className="w-3.5 h-3.5 text-white" />
+                    Abrir e Inferir no Painel
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── MODAL DE CONFIRMAÇÃO DE EXCLUSÃO ── */}
+        {sampleToDelete && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 9999,
+              background: "rgba(0, 0, 0, 0.8)",
+              backdropFilter: "blur(6px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "20px",
+            }}
+            onClick={() => !isDeleting && setSampleToDelete(null)}
+          >
+            <div
+              className="fade-in-up"
+              style={{
+                background: "var(--card-bg)",
+                border: "1px solid rgba(248, 81, 73, 0.35)",
+                borderRadius: "14px",
+                width: "100%",
+                maxWidth: "460px",
+                padding: "24px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "18px",
+                boxShadow: "0 24px 50px rgba(0,0,0,0.75)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div
+                  style={{
+                    width: "44px",
+                    height: "44px",
+                    borderRadius: "10px",
+                    background: "rgba(248, 81, 73, 0.15)",
+                    border: "1px solid rgba(248, 81, 73, 0.3)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#f85149",
+                    flexShrink: 0,
+                  }}
+                >
+                  <IconTrash className="w-5 h-5 text-[#f85149]" />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: "16px", fontWeight: 700, margin: 0, color: "var(--foreground)" }}>
+                    Excluir Amostra do Banco?
+                  </h3>
+                  <p style={{ fontSize: "12px", color: "var(--muted)", margin: "3px 0 0 0" }}>
+                    Esta ação removerá a imagem e seus vínculos permanentemente.
+                  </p>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  background: "var(--surface)",
+                  borderRadius: "8px",
+                  padding: "12px 14px",
+                  border: "1px solid var(--card-border)",
+                  fontSize: "12.5px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "6px",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "var(--muted)" }}>Arquivo:</span>
+                  <span style={{ fontWeight: 600, color: "var(--foreground)" }}>{sampleToDelete.filename}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "var(--muted)" }}>UUID:</span>
+                  <span style={{ fontFamily: "monospace", color: "#58a6ff", fontSize: "11px" }}>
+                    {sampleToDelete.id.slice(0, 16)}...
+                  </span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "var(--muted)" }}>Anomalias Mapeadas:</span>
+                  <span style={{ fontWeight: 600, color: "#ffa657" }}>{sampleToDelete.total_anomalies} focos</span>
+                </div>
+              </div>
+
+              <p style={{ fontSize: "12px", color: "var(--muted)", margin: 0, lineHeight: 1.5 }}>
+                Tem certeza de que deseja excluir esta foto de campo? A amostra será removida da tabela <code>images</code> e o arquivo local correspondente será limpo.
+              </p>
+
+              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "4px" }}>
+                <button
+                  id="cancel-delete-sample-btn"
+                  disabled={isDeleting}
+                  onClick={() => setSampleToDelete(null)}
                   style={{
                     padding: "8px 16px",
                     borderRadius: "6px",
@@ -1445,35 +1729,63 @@ export default function BancoDeAmostrasPage() {
                     border: "1px solid var(--card-border)",
                     color: "var(--foreground)",
                     fontSize: "12px",
-                    cursor: "pointer",
+                    fontWeight: 600,
+                    cursor: isDeleting ? "not-allowed" : "pointer",
                   }}
                 >
-                  Fechar
+                  Cancelar
                 </button>
-                <Link
-                  href={`/?amostra=${encodeURIComponent(selectedSample.filename)}&id=${encodeURIComponent(selectedSample.id)}&t=${Date.now()}`}
-                  onClick={(e) => handleAnalyzeSample(e, selectedSample.filename, selectedSample.id)}
+                <button
+                  id="confirm-delete-sample-btn"
+                  disabled={isDeleting}
+                  onClick={confirmDeleteSample}
                   style={{
-                    padding: "8px 16px",
+                    padding: "8px 18px",
                     borderRadius: "6px",
-                    background: "var(--accent-green)",
+                    background: "#da3633",
                     border: "none",
                     color: "#ffffff",
                     fontSize: "12px",
                     fontWeight: 600,
-                    textDecoration: "none",
+                    cursor: isDeleting ? "not-allowed" : "pointer",
                     display: "flex",
                     alignItems: "center",
                     gap: "6px",
+                    boxShadow: "0 2px 8px rgba(218, 54, 51, 0.4)",
                   }}
                 >
-                  <IconScan className="w-3.5 h-3.5 text-white" />
-                  Abrir e Inferir no Painel
-                </Link>
+                  {isDeleting ? (
+                    <>
+                      <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                      </svg>
+                      Excluindo...
+                    </>
+                  ) : (
+                    <>
+                      <IconTrash className="w-3.5 h-3.5 text-white" />
+                      Sim, Excluir Amostra
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </div>
         )}
+
+        {/* ── Toast Container de Notificações ── */}
+        <ToastContainer
+          position="top-right"
+          autoClose={4000}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="dark"
+        />
       </main>
     </div>
   );

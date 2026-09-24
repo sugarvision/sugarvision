@@ -107,6 +107,27 @@ async def get_images_samples(
     return await image_service.get_all_images_async()
 
 
+@app.delete("/api/images/{image_id}", status_code=status.HTTP_200_OK)
+@app.delete("/api/amostras/{image_id}", status_code=status.HTTP_200_OK)
+async def delete_image(
+    image_id: str,
+    filename: Optional[str] = None,
+    image_service: ImageService = Depends(get_image_service),
+) -> dict[str, Any]:
+    """Exclui permanentemente uma amostra da tabela images e suas anomalias associadas."""
+    success = await image_service.delete_image_async(image_id, filename=filename)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Não foi possível excluir a amostra '{image_id}' do banco de dados.",
+        )
+    return {
+        "status": "success",
+        "message": f"Amostra '{image_id}' excluída com sucesso do banco de dados.",
+        "id": image_id,
+    }
+
+
 class AnalyzeSampleRequest(BaseModel):
     filename: Optional[str] = None
 
