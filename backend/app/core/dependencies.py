@@ -4,6 +4,7 @@ from functools import lru_cache
 
 from app.services.ai_service import AIService
 from app.services.anomaly_service import AnomalyService
+from app.services.image_service import ImageService
 from app.services.storage_service import StorageService
 
 
@@ -23,3 +24,9 @@ def get_ai_service() -> AIService:
 def get_anomaly_service() -> AnomalyService:
     """Provedor singleton do serviço de anomalias e conexão com banco."""
     return AnomalyService()
+
+
+@lru_cache(maxsize=1)
+def get_image_service() -> ImageService:
+    """Provedor singleton do serviço do banco de imagens/amostras."""
+    return ImageService()

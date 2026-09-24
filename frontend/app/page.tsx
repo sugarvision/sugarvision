@@ -224,12 +224,99 @@ function HomeContent() {
 
   const searchParams = useSearchParams();
   const talhaoQuery = searchParams.get("talhao");
+  const amostraQuery = searchParams.get("amostra");
+  const timestampQuery = searchParams.get("t");
+  const idQuery = searchParams.get("id");
 
   useEffect(() => {
     if (talhaoQuery && TALHOES_MOCK_DATA.some((t) => t.id === talhaoQuery)) {
       setSelectedTalhaoId(talhaoQuery);
     }
   }, [talhaoQuery]);
+
+  // Carrega e executa inferência YOLO automaticamente quando uma amostra for selecionada do Banco de Amostras
+  useEffect(() => {
+    if (!amostraQuery) return;
+
+    let isMounted = true;
+    async function loadAndInferSample(filename: string) {
+      setUploadLoading(true);
+      try {
+        let response: Response | null = null;
+        try {
+          response = await fetch(
+            `http://127.0.0.1:8000/api/analyze-sample?filename=${encodeURIComponent(filename)}`
+          );
+        } catch {
+          response = await fetch(
+            `http://localhost:8000/api/analyze-sample?filename=${encodeURIComponent(filename)}`
+          );
+        }
+
+        if (!response.ok) {
+          throw new Error(`Erro ${response.status} ao processar a amostra`);
+        }
+
+        const result: BackendUploadResponse = await response.json();
+        if (!isMounted) return;
+
+        let rawPreviewUrl =
+          (result as any).image_url || `http://127.0.0.1:8000/temp_images/${filename}`;
+        
+        if (rawPreviewUrl.startsWith("http://localhost:8000")) {
+          rawPreviewUrl = rawPreviewUrl.replace("http://localhost:8000", "http://127.0.0.1:8000");
+        }
+
+        const cacheBuster = `cb=${Date.now()}`;
+        const previewUrl = rawPreviewUrl.includes("?")
+          ? `${rawPreviewUrl}&${cacheBuster}`
+          : `${rawPreviewUrl}?${cacheBuster}`;
+
+        setUploadSuccessData({
+          backend: result,
+          localPreview: previewUrl,
+        });
+
+        if (result.detections) {
+          setActiveDetections(result.detections);
+        }
+
+        setIsModalOpen(true);
+
+        const weedCount =
+          result.summary?.total_ervas_daninhas ??
+          (result.detections
+            ? result.detections.filter((d) => d.type !== "cana_de_acucar").length
+            : 0);
+
+        toast.success(
+          `Amostra '${filename}' analisada: ${weedCount} focos de ervas daninhas identificados pelo modelo best.pt!`,
+          {
+            position: "top-right",
+            autoClose: 4500,
+            theme: "dark",
+          }
+        );
+      } catch (err: any) {
+        console.error("Falha ao analisar amostra selecionada:", err);
+        toast.error(`Falha ao inferir na amostra: ${err.message}`, {
+          position: "top-right",
+          autoClose: 4000,
+          theme: "dark",
+        });
+      } finally {
+        if (isMounted) {
+          setUploadLoading(false);
+        }
+      }
+    }
+
+    loadAndInferSample(amostraQuery);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [amostraQuery, timestampQuery, idQuery]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -799,7 +886,8 @@ function HomeContent() {
             }}
           >
             <ImageDetectionViewer
-              imageSrc={uploadSuccessData?.localPreview || "/cana_teste.jpg"}
+              key={uploadSuccessData?.localPreview || (amostraQuery ? `amostra-${amostraQuery}-${timestampQuery || ''}` : "default")}
+              imageSrc={uploadSuccessData?.localPreview || (amostraQuery ? `http://127.0.0.1:8000/temp_images/${amostraQuery}` : "/cana_teste.jpg")}
               detections={activeDetections}
             />
           </div>

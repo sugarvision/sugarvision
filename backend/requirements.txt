@@ -7,3 +7,4 @@ coverage>=7.0.0
 ultralytics>=8.0.0
 opencv-python>=4.7.0
 pillow>=9.0.0
+psycopg2-binary>=2.9.0

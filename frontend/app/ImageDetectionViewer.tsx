@@ -55,6 +55,12 @@ export default function ImageDetectionViewer({
 }: ImageDetectionViewerProps) {
   const [detections, setDetections] = useState<WeedDetection[]>(propDetections || DEFAULT_DETECTIONS);
   const [selectedDetection, setSelectedDetection] = useState<WeedDetection | null>(null);
+  const [displaySrc, setDisplaySrc] = useState<string>(imageSrc);
+
+  // Sincroniza displaySrc sempre que a prop imageSrc for atualizada
+  useEffect(() => {
+    setDisplaySrc(imageSrc);
+  }, [imageSrc]);
 
   useEffect(() => {
     if (propDetections !== undefined) {
@@ -65,8 +71,11 @@ export default function ImageDetectionViewer({
 
     async function fetchDetections() {
       try {
-        const res = await fetch('http://localhost:8000/api/anomalies');
-        if (res.ok) {
+        let res = await fetch('http://127.0.0.1:8000/api/anomalies').catch(() => null);
+        if (!res || !res.ok) {
+          res = await fetch('http://localhost:8000/api/anomalies').catch(() => null);
+        }
+        if (res && res.ok) {
           const data = await res.json();
           const list = Array.isArray(data) ? data : data.detections || data.anomalies || [];
           
@@ -108,6 +117,15 @@ export default function ImageDetectionViewer({
     fetchDetections();
   }, [propDetections, imageSrc]);
 
+  const handleImageError = () => {
+    // Tenta carregar do diretório público local com o mesmo nome exato
+    const filename = imageSrc.split("/").pop()?.split("?")[0];
+    if (filename && !displaySrc.startsWith("/") && !displaySrc.startsWith("blob:")) {
+      setDisplaySrc(`/${decodeURIComponent(filename)}`);
+      return;
+    }
+  };
+
   return (
     <div
       style={{
@@ -134,7 +152,8 @@ export default function ImageDetectionViewer({
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={imageSrc}
+          key={displaySrc}
+          src={displaySrc}
           alt="Monitoramento UAV - Detecção de Ervas Daninhas"
           style={{
             maxWidth: '100%',
@@ -143,11 +162,7 @@ export default function ImageDetectionViewer({
             display: 'block',
             borderRadius: '8px',
           }}
-          onError={(e) => {
-            // Imagem de contingência caso a foto padrão não seja encontrada no disco
-            e.currentTarget.src =
-              'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=1200&q=80';
-          }}
+          onError={handleImageError}
         />
 
         {/* Caixas Delimitadoras (Bounding Boxes) */}

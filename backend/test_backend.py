@@ -497,6 +497,42 @@ class TestSugarVisionBackend(unittest.TestCase):
 
         print(f"  [PASS] 30 - Formato das bounding boxes e severidades validado para {len(detections)} detecções")
 
+    def test_31_get_images_endpoint(self):
+        """Valida que o endpoint GET /api/images e /api/amostras retornam status 200 e lista de amostras do banco."""
+        for endpoint in ["/api/images", "/api/amostras"]:
+            response = self.client.get(endpoint)
+            self.assertEqual(response.status_code, 200, f"Falha na rota {endpoint}")
+            data = response.json()
+            self.assertIsInstance(data, list, f"Resposta de {endpoint} deve ser uma lista")
+            self.assertGreater(len(data), 0, "O banco de dados deve retornar ao menos uma amostra")
+            first_item = data[0]
+            self.assertIn("id", first_item)
+            self.assertIn("filename", first_item)
+            self.assertIn("status", first_item)
+            self.assertIn("uploaded_at", first_item)
+            self.assertIn("total_anomalies", first_item)
+            self.assertIn("total_area_ha", first_item)
+        print("  [PASS] 31 - Endpoints GET /api/images e /api/amostras validados com sucesso")
+
+    def test_32_database_get_all_images(self):
+        """Valida a consulta direta à tabela 'images' via get_all_images()."""
+        from database import get_all_images
+        imgs = get_all_images()
+        self.assertIsInstance(imgs, list)
+        self.assertGreaterEqual(len(imgs), 1)
+        sample = imgs[0]
+        self.assertTrue(sample["filename"])
+        self.assertIn("anomalies", sample)
+        print(f"  [PASS] 32 - Consulta get_all_images() retornou {len(imgs)} amostras válidas")
+
+    def test_33_image_service_async(self):
+        """Valida ImageService e inserção/consulta assíncrona."""
+        from app.services.image_service import ImageService
+        service = ImageService()
+        items = asyncio.run(service.get_all_images_async())
+        self.assertIsInstance(items, list)
+        self.assertGreaterEqual(len(items), 1)
+        print(f"  [PASS] 33 - ImageService assíncrono validado com sucesso")
 
 
 if __name__ == "__main__":
@@ -504,4 +540,5 @@ if __name__ == "__main__":
     print("  EXECUTANDO BATERIA DE TESTES - BACKEND SUGARVISION")
     print("=" * 65 + "\n")
     unittest.main(verbosity=0)
+
 

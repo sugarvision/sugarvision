@@ -168,6 +168,22 @@ export function IconX({ className = "" }: { className?: string }) {
   );
 }
 
+export function IconCheck({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
 export function IconPlus({ className = "" }: { className?: string }) {
   return (
     <svg
@@ -256,7 +272,7 @@ export const navItems: NavItem[] = [
   { id: "alertas", href: "/", label: "Alertas de Infestação", icon: IconAlert, badge: 3 },
   ── */
 
-  { id: "amostras", href: "/", label: "Banco de Amostras", icon: IconLayers },
+  { id: "amostras", href: "/amostras", label: "Banco de Amostras", icon: IconLayers },
 ];
 
 export function Sidebar({

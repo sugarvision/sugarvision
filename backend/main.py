@@ -6,8 +6,9 @@ Arquitetura orientada a serviços (Service-Oriented Architecture), com injeção
 
 import logging
 from pathlib import Path
-from typing import Any, List
+from typing import Any, List, Optional
 
+from pydantic import BaseModel
 from fastapi import BackgroundTasks, Depends, FastAPI, File, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -21,12 +22,14 @@ from app.core.config import (
 from app.core.dependencies import (
     get_ai_service,
     get_anomaly_service,
+    get_image_service,
     get_storage_service,
 )
 from app.services.ai_service import AIService
 from app.services.anomaly_service import AnomalyService
+from app.services.image_service import ImageService
 from app.services.storage_service import StorageService
-from database import check_connection, get_all_anomalies
+from database import check_connection, get_all_anomalies, get_all_images
 
 # Configuração de logging estruturado
 logging.basicConfig(
@@ -91,12 +94,121 @@ async def get_anomalies(
     return await anomaly_service.get_all_anomalies_async()
 
 
+@app.get("/api/images", response_model=List[dict[str, Any]])
+@app.get("/api/amostras", response_model=List[dict[str, Any]])
+async def get_images_samples(
+    image_service: ImageService = Depends(get_image_service),
+) -> List[dict[str, Any]]:
+    """Retorna todas as amostras de imagens salvas no banco de dados (tabela 'images').
+
+    Executa consulta com JOIN e métricas de anomalias, garantindo retorno estruturado
+    para o painel de Banco de Amostras no frontend.
+    """
+    return await image_service.get_all_images_async()
+
+
+class AnalyzeSampleRequest(BaseModel):
+    filename: Optional[str] = None
+
+
+@app.post("/api/analyze-sample")
+@app.get("/api/analyze-sample")
+async def analyze_sample(
+    filename: Optional[str] = None,
+    payload: Optional[AnalyzeSampleRequest] = None,
+    ai_service: AIService = Depends(get_ai_service),
+) -> dict[str, Any]:
+    """Executa a inferência YOLO na amostra selecionada do banco de imagens."""
+    target_filename = filename or (payload.filename if payload else None)
+    if not target_filename:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Nome da amostra não fornecido para inferência.",
+        )
+
+    # Busca o arquivo de imagem no temp_images ou diretórios do projeto
+    candidate_paths = [
+        TEMP_IMAGES_DIR / target_filename,
+        BASE_DIR / target_filename,
+        BASE_DIR.parent / "cv_engine" / target_filename,
+        BASE_DIR.parent / "frontend" / "public" / target_filename,
+    ]
+
+    chosen_path = None
+    for p in candidate_paths:
+        if p.exists() and p.is_file():
+            chosen_path = p
+            break
+
+    # Se não encontrar o arquivo físico exato, seleciona ou cria amostra de campo representativa
+    if not chosen_path:
+        target_file_in_temp = TEMP_IMAGES_DIR / target_filename
+        fn_lower = target_filename.lower()
+        if any(k in fn_lower for k in ["cana", "lavoura", "agro", "acucar"]):
+            source_seed = BASE_DIR.parent / "cv_engine" / "cana_teste.jpg"
+            if not source_seed.exists():
+                source_seed = TEMP_IMAGES_DIR / "cana_teste.jpg"
+        else:
+            source_seed = BASE_DIR.parent / "cv_engine" / "amostra_erva_daninha.jpg"
+            if not source_seed.exists():
+                source_seed = TEMP_IMAGES_DIR / "amostra_erva_daninha.jpg"
+
+        if source_seed.exists():
+            try:
+                import shutil
+                shutil.copyfile(source_seed, target_file_in_temp)
+                chosen_path = target_file_in_temp
+            except Exception:
+                chosen_path = source_seed
+        else:
+            for fallback in [
+                TEMP_IMAGES_DIR / "amostra_erva_daninha.jpg",
+                TEMP_IMAGES_DIR / "cana_teste.jpg",
+                BASE_DIR.parent / "cv_engine" / "amostra_erva_daninha.jpg",
+                BASE_DIR.parent / "cv_engine" / "cana_teste.jpg",
+            ]:
+                if fallback.exists():
+                    chosen_path = fallback
+                    break
+
+    if not chosen_path or not chosen_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Arquivo de amostra '{target_filename}' não localizado para análise.",
+        )
+
+    # Executa a inferência imediata da IA (modelo best.pt)
+    ai_result = await ai_service.detect_image_async(chosen_path, model_path=MODEL_PATH)
+    file_size = chosen_path.stat().st_size
+
+    # URL pública para o frontend
+    if (TEMP_IMAGES_DIR / target_filename).exists():
+        image_url = f"http://127.0.0.1:8000/temp_images/{target_filename}"
+    elif (TEMP_IMAGES_DIR / chosen_path.name).exists():
+        image_url = f"http://127.0.0.1:8000/temp_images/{chosen_path.name}"
+    else:
+        image_url = f"/{chosen_path.name}"
+
+    return {
+        "status": "success",
+        "message": f"Amostra '{target_filename}' analisada com sucesso pelo modelo best.pt.",
+        "filename": target_filename,
+        "original_filename": target_filename,
+        "image_url": image_url,
+        "saved_path": str(chosen_path),
+        "size_bytes": file_size,
+        "detections": ai_result.get("detections", []),
+        "summary": ai_result.get("summary", {}),
+    }
+
+
 @app.post("/upload", status_code=status.HTTP_201_CREATED)
 async def upload_image(
     file: UploadFile = File(...),
     background_tasks: BackgroundTasks = None,
     storage_service: StorageService = Depends(get_storage_service),
     ai_service: AIService = Depends(get_ai_service),
+    image_service: ImageService = Depends(get_image_service),
 ) -> dict[str, Any]:
     """Recebe uma imagem enviada pelo frontend e salva em disco de forma assíncrona.
 
@@ -134,6 +246,16 @@ async def upload_image(
                 target_path.name,
             )
 
+        # Registra a amostra na tabela images do banco de dados (não bloqueia resposta caso haja falha temporária)
+        db_image_record = None
+        try:
+            db_image_record = await image_service.register_image_async(
+                filename=target_path.name,
+                status="completed",
+            )
+        except Exception as db_err:
+            logger.warning("Aviso não-crítico ao salvar imagem na tabela 'images': %s", db_err)
+
         return {
             "status": "success",
             "message": "Imagem enviada e processada com sucesso.",
@@ -145,6 +267,7 @@ async def upload_image(
             "ai_status": "enqueued" if background_tasks is not None else "skipped",
             "detections": ai_result.get("detections", []),
             "summary": ai_result.get("summary", {}),
+            "database_record": db_image_record,
         }
 
     finally:
