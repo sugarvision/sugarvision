@@ -591,6 +591,12 @@ const navItems = [
         href: "/amostras",
         label: "Banco de Amostras",
         icon: IconLayers
+    },
+    {
+        id: "mapa",
+        href: "/mapa",
+        label: "Mapa de Campo",
+        icon: IconMap
     }
 ];
 function Sidebar({ collapsed, onToggle }) {
@@ -644,12 +650,12 @@ function Sidebar({ collapsed, onToggle }) {
                                     className: "w-5 h-5 text-white"
                                 }, void 0, false, {
                                     fileName: "[project]/app/components/Sidebar.tsx",
-                                    lineNumber: 328,
+                                    lineNumber: 329,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/app/components/Sidebar.tsx",
-                                lineNumber: 315,
+                                lineNumber: 316,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -664,7 +670,7 @@ function Sidebar({ collapsed, onToggle }) {
                                         children: "MyAgro"
                                     }, void 0, false, {
                                         fileName: "[project]/app/components/Sidebar.tsx",
-                                        lineNumber: 331,
+                                        lineNumber: 332,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -677,19 +683,19 @@ function Sidebar({ collapsed, onToggle }) {
                                         children: "SugarVision IA"
                                     }, void 0, false, {
                                         fileName: "[project]/app/components/Sidebar.tsx",
-                                        lineNumber: 341,
+                                        lineNumber: 342,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/components/Sidebar.tsx",
-                                lineNumber: 330,
+                                lineNumber: 331,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/components/Sidebar.tsx",
-                        lineNumber: 314,
+                        lineNumber: 315,
                         columnNumber: 11
                     }, this),
                     collapsed && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -713,17 +719,17 @@ function Sidebar({ collapsed, onToggle }) {
                                 className: "w-5 h-5 text-white"
                             }, void 0, false, {
                                 fileName: "[project]/app/components/Sidebar.tsx",
-                                lineNumber: 368,
+                                lineNumber: 369,
                                 columnNumber: 15
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/app/components/Sidebar.tsx",
-                            lineNumber: 357,
+                            lineNumber: 358,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/app/components/Sidebar.tsx",
-                        lineNumber: 356,
+                        lineNumber: 357,
                         columnNumber: 11
                     }, this),
                     !collapsed && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -748,18 +754,18 @@ function Sidebar({ collapsed, onToggle }) {
                             className: "w-4 h-4"
                         }, void 0, false, {
                             fileName: "[project]/app/components/Sidebar.tsx",
-                            lineNumber: 397,
+                            lineNumber: 398,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/app/components/Sidebar.tsx",
-                        lineNumber: 374,
+                        lineNumber: 375,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/components/Sidebar.tsx",
-                lineNumber: 303,
+                lineNumber: 304,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("nav", {
@@ -826,14 +832,14 @@ function Sidebar({ collapsed, onToggle }) {
                                     }
                                 }, void 0, false, {
                                     fileName: "[project]/app/components/Sidebar.tsx",
-                                    lineNumber: 467,
+                                    lineNumber: 468,
                                     columnNumber: 19
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(Icon, {
                                     className: `flex-shrink-0 ${collapsed ? "w-5 h-5" : "w-4 h-4"}`
                                 }, void 0, false, {
                                     fileName: "[project]/app/components/Sidebar.tsx",
-                                    lineNumber: 481,
+                                    lineNumber: 482,
                                     columnNumber: 17
                                 }, this),
                                 !collapsed && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
@@ -848,7 +854,7 @@ function Sidebar({ collapsed, onToggle }) {
                                             children: item.label
                                         }, void 0, false, {
                                             fileName: "[project]/app/components/Sidebar.tsx",
-                                            lineNumber: 487,
+                                            lineNumber: 488,
                                             columnNumber: 21
                                         }, this),
                                         item.badge && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -864,13 +870,13 @@ function Sidebar({ collapsed, onToggle }) {
                                             children: item.badge
                                         }, void 0, false, {
                                             fileName: "[project]/app/components/Sidebar.tsx",
-                                            lineNumber: 498,
+                                            lineNumber: 499,
                                             columnNumber: 23
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/app/components/Sidebar.tsx",
-                                    lineNumber: 486,
+                                    lineNumber: 487,
                                     columnNumber: 19
                                 }, this),
                                 collapsed && item.badge && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -885,24 +891,24 @@ function Sidebar({ collapsed, onToggle }) {
                                     }
                                 }, void 0, false, {
                                     fileName: "[project]/app/components/Sidebar.tsx",
-                                    lineNumber: 516,
+                                    lineNumber: 517,
                                     columnNumber: 19
                                 }, this)
                             ]
                         }, item.id, true, {
                             fileName: "[project]/app/components/Sidebar.tsx",
-                            lineNumber: 426,
+                            lineNumber: 427,
                             columnNumber: 15
                         }, this);
                     })
                 }, void 0, false, {
                     fileName: "[project]/app/components/Sidebar.tsx",
-                    lineNumber: 410,
+                    lineNumber: 411,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/app/components/Sidebar.tsx",
-                lineNumber: 403,
+                lineNumber: 404,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -934,7 +940,7 @@ function Sidebar({ collapsed, onToggle }) {
                                 className: `flex-shrink-0 ${collapsed ? "w-5 h-5" : "w-4 h-4"}`
                             }, void 0, false, {
                                 fileName: "[project]/app/components/Sidebar.tsx",
-                                lineNumber: 560,
+                                lineNumber: 561,
                                 columnNumber: 11
                             }, this),
                             !collapsed && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -945,13 +951,13 @@ function Sidebar({ collapsed, onToggle }) {
                                 children: "Configurações"
                             }, void 0, false, {
                                 fileName: "[project]/app/components/Sidebar.tsx",
-                                lineNumber: 564,
+                                lineNumber: 565,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/components/Sidebar.tsx",
-                        lineNumber: 541,
+                        lineNumber: 542,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -981,7 +987,7 @@ function Sidebar({ collapsed, onToggle }) {
                                 children: "M4"
                             }, void 0, false, {
                                 fileName: "[project]/app/components/Sidebar.tsx",
-                                lineNumber: 581,
+                                lineNumber: 582,
                                 columnNumber: 11
                             }, this),
                             !collapsed && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -996,7 +1002,7 @@ function Sidebar({ collapsed, onToggle }) {
                                         children: "Membro 4"
                                     }, void 0, false, {
                                         fileName: "[project]/app/components/Sidebar.tsx",
-                                        lineNumber: 600,
+                                        lineNumber: 601,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1008,31 +1014,31 @@ function Sidebar({ collapsed, onToggle }) {
                                         children: "Frontend Dev"
                                     }, void 0, false, {
                                         fileName: "[project]/app/components/Sidebar.tsx",
-                                        lineNumber: 610,
+                                        lineNumber: 611,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/components/Sidebar.tsx",
-                                lineNumber: 599,
+                                lineNumber: 600,
                                 columnNumber: 13
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/components/Sidebar.tsx",
-                        lineNumber: 571,
+                        lineNumber: 572,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/components/Sidebar.tsx",
-                lineNumber: 535,
+                lineNumber: 536,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/app/components/Sidebar.tsx",
-        lineNumber: 288,
+        lineNumber: 289,
         columnNumber: 5
     }, this);
 }
