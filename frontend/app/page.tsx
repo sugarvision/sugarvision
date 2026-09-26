@@ -188,7 +188,6 @@ function StatCard({
   );
 }
 
-// ── Main Page Content ─────────────────────────────────────────────────────────
 interface BackendUploadResponse {
   status: string;
   message: string;
@@ -219,14 +218,18 @@ function HomeContent() {
   } | null>(null);
   const [activeDetections, setActiveDetections] = useState<WeedDetection[] | undefined>(undefined);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isViewingSavedHistory, setIsViewingSavedHistory] = useState(false);
 
   const [selectedTalhaoId, setSelectedTalhaoId] = useState<string>("talhao-01-rio-claro");
 
   const searchParams = useSearchParams();
   const talhaoQuery = searchParams.get("talhao");
   const amostraQuery = searchParams.get("amostra");
+  const analiseIdQuery = searchParams.get("analise_id"); // ID da análise já salva
   const timestampQuery = searchParams.get("t");
-  const idQuery = searchParams.get("id");
+
+  // Trava para evitar que o React Strict Mode faça chamadas duplas
+  const processedParamRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (talhaoQuery && TALHOES_MOCK_DATA.some((t) => t.id === talhaoQuery)) {
@@ -234,89 +237,142 @@ function HomeContent() {
     }
   }, [talhaoQuery]);
 
-  // Carrega e executa inferência YOLO automaticamente quando uma amostra for selecionada do Banco de Amostras
+  // EFEITO: Trata tanto a visualização do histórico quanto a nova inferência de amostra
   useEffect(() => {
-    if (!amostraQuery) return;
+    // 1. CASO A: Usuário veio do Histórico para "Ver Detecção" (Não reprocessa IA!)
+    if (analiseIdQuery) {
+      if (processedParamRef.current === `hist-${analiseIdQuery}`) return;
+      processedParamRef.current = `hist-${analiseIdQuery}`;
 
-    let isMounted = true;
-    async function loadAndInferSample(filename: string) {
-      setUploadLoading(true);
-      try {
-        let response: Response | null = null;
+      async function loadSavedAnalysis(id: string) {
+        setUploadLoading(true);
         try {
-          response = await fetch(
-            `http://127.0.0.1:8000/api/analyze-sample?filename=${encodeURIComponent(filename)}`
-          );
-        } catch {
-          response = await fetch(
-            `http://localhost:8000/api/analyze-sample?filename=${encodeURIComponent(filename)}`
-          );
-        }
+          const res = await fetch(`http://127.0.0.1:8000/api/historico/${encodeURIComponent(id)}`);
+          if (!res.ok) throw new Error("Análise não encontrada no banco");
+          const data = await res.json();
 
-        if (!response.ok) {
-          throw new Error(`Erro ${response.status} ao processar a amostra`);
-        }
+          const imgUrl = data.image_url || `http://127.0.0.1:8000/temp_images/${data.nome_imagem}`;
+          const detections = data.detections || [];
+          const weedCount = data.focos_detectados ?? detections.length;
 
-        const result: BackendUploadResponse = await response.json();
-        if (!isMounted) return;
+          setUploadSuccessData({
+            backend: {
+              status: "success",
+              message: "Análise recuperada do histórico",
+              filename: data.nome_imagem,
+              original_filename: data.nome_imagem,
+              content_type: "image/jpeg",
+              size_bytes: 0,
+              saved_path: "",
+              detections: detections,
+              summary: {
+                total_ervas_daninhas: weedCount,
+                taxa_infestacao_percent: data.percentual_infestacao || 0,
+                area_infestada_m2: data.area_infestacao_m2 || 0,
+              },
+            },
+            localPreview: imgUrl,
+          });
 
-        let rawPreviewUrl =
-          (result as any).image_url || `http://127.0.0.1:8000/temp_images/${filename}`;
-        
-        if (rawPreviewUrl.startsWith("http://localhost:8000")) {
-          rawPreviewUrl = rawPreviewUrl.replace("http://localhost:8000", "http://127.0.0.1:8000");
-        }
+          setActiveDetections(detections);
+          setIsViewingSavedHistory(true);
 
-        const cacheBuster = `cb=${Date.now()}`;
-        const previewUrl = rawPreviewUrl.includes("?")
-          ? `${rawPreviewUrl}&${cacheBuster}`
-          : `${rawPreviewUrl}?${cacheBuster}`;
-
-        setUploadSuccessData({
-          backend: result,
-          localPreview: previewUrl,
-        });
-
-        if (result.detections) {
-          setActiveDetections(result.detections);
-        }
-
-        setIsModalOpen(true);
-
-        const weedCount =
-          result.summary?.total_ervas_daninhas ??
-          (result.detections
-            ? result.detections.filter((d) => d.type !== "cana_de_acucar").length
-            : 0);
-
-        toast.success(
-          `Amostra '${filename}' analisada: ${weedCount} focos de ervas daninhas identificados pelo modelo best.pt!`,
-          {
+          toast.info(`Exibindo análise salva: ${data.nome_imagem} (${weedCount} focos detectados)`, {
             position: "top-right",
-            autoClose: 4500,
+            autoClose: 3500,
             theme: "dark",
-          }
-        );
-      } catch (err: any) {
-        console.error("Falha ao analisar amostra selecionada:", err);
-        toast.error(`Falha ao inferir na amostra: ${err.message}`, {
-          position: "top-right",
-          autoClose: 4000,
-          theme: "dark",
-        });
-      } finally {
-        if (isMounted) {
+          });
+        } catch (err: any) {
+          console.error("Erro ao carregar análise salva:", err);
+          toast.error("Não foi possível carregar a análise do histórico.");
+        } finally {
           setUploadLoading(false);
         }
       }
+
+      loadSavedAnalysis(analiseIdQuery);
+      return;
     }
 
-    loadAndInferSample(amostraQuery);
+    // 2. CASO B: Usuário veio de "Banco de Amostras" para fazer uma NOVA análise
+    if (amostraQuery) {
+      const currentCallKey = `amostra-${amostraQuery}-${timestampQuery || ""}`;
+      if (processedParamRef.current === currentCallKey) return;
+      processedParamRef.current = currentCallKey;
 
-    return () => {
-      isMounted = false;
-    };
-  }, [amostraQuery, timestampQuery, idQuery]);
+      async function loadAndInferSample(filename: string) {
+        setUploadLoading(true);
+        setIsViewingSavedHistory(false);
+        try {
+          let response: Response | null = null;
+          try {
+            response = await fetch(
+              `http://127.0.0.1:8000/api/analyze-sample?filename=${encodeURIComponent(filename)}`
+            );
+          } catch {
+            response = await fetch(
+              `http://localhost:8000/api/analyze-sample?filename=${encodeURIComponent(filename)}`
+            );
+          }
+
+          if (!response.ok) {
+            throw new Error(`Erro ${response.status} ao processar a amostra`);
+          }
+
+          const result: BackendUploadResponse = await response.json();
+
+          let rawPreviewUrl =
+            (result as any).image_url || `http://127.0.0.1:8000/temp_images/${filename}`;
+
+          if (rawPreviewUrl.startsWith("http://localhost:8000")) {
+            rawPreviewUrl = rawPreviewUrl.replace("http://localhost:8000", "http://127.0.0.1:8000");
+          }
+
+          const cacheBuster = `cb=${Date.now()}`;
+          const previewUrl = rawPreviewUrl.includes("?")
+            ? `${rawPreviewUrl}&${cacheBuster}`
+            : `${rawPreviewUrl}?${cacheBuster}`;
+
+          setUploadSuccessData({
+            backend: result,
+            localPreview: previewUrl,
+          });
+
+          if (result.detections) {
+            setActiveDetections(result.detections);
+          }
+
+          setIsModalOpen(true);
+
+          const weedCount =
+            result.summary?.total_ervas_daninhas ??
+            (result.detections
+              ? result.detections.filter((d) => d.type !== "cana_de_acucar").length
+              : 0);
+
+          toast.success(
+            `Amostra '${filename}' analisada: ${weedCount} focos identificados e salvos no histórico!`,
+            {
+              position: "top-right",
+              autoClose: 4500,
+              theme: "dark",
+            }
+          );
+        } catch (err: any) {
+          console.error("Falha ao analisar amostra selecionada:", err);
+          toast.error(`Falha ao inferir na amostra: ${err.message}`, {
+            position: "top-right",
+            autoClose: 4000,
+            theme: "dark",
+          });
+        } finally {
+          setUploadLoading(false);
+        }
+      }
+
+      loadAndInferSample(amostraQuery);
+    }
+  }, [amostraQuery, analiseIdQuery, timestampQuery]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -349,14 +405,12 @@ function HomeContent() {
         autoClose: 4500,
         theme: "dark",
       });
-
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
     setUploadLoading(true);
+    setIsViewingSavedHistory(false);
 
     const localPreviewUrl = URL.createObjectURL(file);
     const formData = new FormData();
@@ -373,9 +427,7 @@ function HomeContent() {
         try {
           const errData = await response.json();
           if (errData.detail) errorDetail = errData.detail;
-        } catch {
-          // Mantém mensagem padrão
-        }
+        } catch {}
         throw new Error(errorDetail);
       }
 
@@ -390,7 +442,10 @@ function HomeContent() {
       }
       setIsModalOpen(true);
 
-      const weedCount = result.summary?.total_ervas_daninhas ?? (result.detections ? result.detections.filter(d => d.type !== 'cana_de_acucar').length : 0);
+      const weedCount =
+        result.summary?.total_ervas_daninhas ??
+        (result.detections ? result.detections.filter((d) => d.type !== "cana_de_acucar").length : 0);
+
       toast.success(`Análise concluída: ${weedCount} focos de ervas daninhas identificados!`, {
         position: "top-right",
         autoClose: 4000,
@@ -462,7 +517,7 @@ function HomeContent() {
               letterSpacing: "0.02em",
             }}
           >
-            Enviando para o servidor... Aguarde.
+            {analiseIdQuery ? "Carregando análise salva do histórico..." : "Processando imagem com IA... Aguarde."}
           </div>
         </div>
       )}
@@ -544,10 +599,10 @@ function HomeContent() {
                 </div>
                 <div>
                   <h2 style={{ fontSize: "16px", fontWeight: 700, margin: 0, color: "var(--foreground)" }}>
-                    Nova Foto de Campo Enviada
+                    Foto de Campo Processada
                   </h2>
                   <p style={{ fontSize: "12px", color: "var(--muted)", margin: "2px 0 0 0" }}>
-                    Imagem processada para detecção de plantas daninhas
+                    Detecção e contagem de focos de ervas daninhas
                   </p>
                 </div>
               </div>
@@ -605,23 +660,25 @@ function HomeContent() {
               <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--sidebar-border)", paddingBottom: "8px" }}>
                 <span style={{ color: "var(--muted)", display: "flex", alignItems: "center", gap: "6px" }}>
                   <IconFileImage className="w-4 h-4 text-muted" />
-                  Arquivo original:
+                  Arquivo:
                 </span>
                 <span style={{ fontWeight: 600, color: "var(--foreground)" }}>{uploadSuccessData.backend.original_filename}</span>
               </div>
+              {uploadSuccessData.backend.size_bytes > 0 && (
+                <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--sidebar-border)", paddingBottom: "8px" }}>
+                  <span style={{ color: "var(--muted)" }}>Tamanho do Arquivo:</span>
+                  <span style={{ fontWeight: 600, color: "var(--foreground)" }}>{formatFileSize(uploadSuccessData.backend.size_bytes)}</span>
+                </div>
+              )}
               <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--sidebar-border)", paddingBottom: "8px" }}>
-                <span style={{ color: "var(--muted)" }}>Tamanho do Arquivo:</span>
-                <span style={{ fontWeight: 600, color: "var(--foreground)" }}>{formatFileSize(uploadSuccessData.backend.size_bytes)}</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--sidebar-border)", paddingBottom: "8px" }}>
-                <span style={{ color: "var(--muted)" }}>Ervas Daninhas (best.pt):</span>
+                <span style={{ color: "var(--muted)" }}>Ervas Daninhas:</span>
                 <span style={{ fontWeight: 700, color: "#f85149" }}>
                   {uploadSuccessData.backend.summary?.total_ervas_daninhas ?? (uploadSuccessData.backend.detections ? uploadSuccessData.backend.detections.filter(d => d.type !== 'cana_de_acucar').length : 0)} focos identificados
                 </span>
               </div>
               {uploadSuccessData.backend.summary?.taxa_infestacao_percent !== undefined && (
                 <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--sidebar-border)", paddingBottom: "8px" }}>
-                  <span style={{ color: "var(--muted)" }}>Taxa de Infestação Estimada:</span>
+                  <span style={{ color: "var(--muted)" }}>Taxa de Infestação:</span>
                   <span style={{ fontWeight: 700, color: uploadSuccessData.backend.summary.taxa_infestacao_percent > 20 ? "#f85149" : "#d29922" }}>
                     {uploadSuccessData.backend.summary.taxa_infestacao_percent.toFixed(1)}%
                   </span>
@@ -631,27 +688,12 @@ function HomeContent() {
                 <span style={{ color: "var(--muted)" }}>Status da Análise:</span>
                 <span style={{ color: "var(--accent-green)", fontWeight: 600, display: "flex", alignItems: "center", gap: "5px" }}>
                   <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--accent-green)" }} />
-                  Detecção YOLO best.pt Concluída
+                  Detecção Concluída e Registrada
                 </span>
               </div>
             </div>
 
             <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
-              <button
-                onClick={handleOpenFileDialog}
-                style={{
-                  padding: "9px 16px",
-                  borderRadius: "8px",
-                  background: "transparent",
-                  border: "1px solid var(--card-border)",
-                  color: "var(--foreground)",
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
-                Enviar Outra Foto
-              </button>
               <button
                 onClick={() => setIsModalOpen(false)}
                 style={{
@@ -665,7 +707,7 @@ function HomeContent() {
                   cursor: "pointer",
                 }}
               >
-                Concluir
+                Fechar Detalhes
               </button>
             </div>
           </div>
@@ -741,42 +783,28 @@ function HomeContent() {
                 lineHeight: 1,
               }}
             >
-              Visão computacional e identificação de matocompetição em cana-de-açúcar
+              {isViewingSavedHistory ? "Visualizando análise salva no Histórico (Modo Leitura)" : "Visão computacional e identificação de matocompetição em cana-de-açúcar"}
             </p>
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "7px",
-              padding: "5px 12px",
-              borderRadius: "999px",
-              background: "rgba(46,160,67,0.1)",
-              border: "1px solid rgba(46,160,67,0.25)",
-            }}
-          >
-            <span
-              className="pulse-dot"
+          {isViewingSavedHistory && (
+            <div
               style={{
-                width: "7px",
-                height: "7px",
-                borderRadius: "50%",
-                background: "var(--accent-green)",
-                flexShrink: 0,
-                display: "inline-block",
-              }}
-            />
-            <span
-              style={{
-                fontSize: "12px",
-                fontWeight: 500,
-                color: "var(--accent-green)",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "4px 12px",
+                borderRadius: "20px",
+                background: "rgba(88, 166, 255, 0.15)",
+                border: "1px solid rgba(88, 166, 255, 0.3)",
+                fontSize: "11.5px",
+                color: "#58a6ff",
+                fontWeight: 600,
               }}
             >
-              Sistema online
-            </span>
-          </div>
+              📁 Visualização do Histórico
+            </div>
+          )}
 
           <button
             id="btn-nova-captura"
@@ -839,7 +867,7 @@ function HomeContent() {
                   label="Taxa de Infestação"
                   value={formatNumberBR(taxaInfestacao, 1)}
                   unit="%"
-                  subtitle={hasModelData ? `Cálculo via rede YOLO best.pt` : `${formatNumberBR(metrics.infestacaoM2, 2)} m² de daninhas`}
+                  subtitle={hasModelData ? `Cálculo registrado da amostra` : `${formatNumberBR(metrics.infestacaoM2, 2)} m² de daninhas`}
                   badge={`${formatNumberBR(taxaInfestacao, 1)}% Matocompetição`}
                   badgeType={taxaInfestacao > 20 ? "danger" : "warning"}
                   color={taxaInfestacao > 20 ? "#f85149" : "#d29922"}
@@ -863,7 +891,7 @@ function HomeContent() {
                   label="Ervas Identificadas"
                   value={String(totalFocos)}
                   unit="focos"
-                  subtitle={hasModelData ? `Identificadas pelo modelo best.pt` : `Confiança IA: ${formatNumberBR(metrics.mediaConfianca, 0)}%`}
+                  subtitle={hasModelData ? `Identificadas e mapeadas` : `Confiança IA: ${formatNumberBR(metrics.mediaConfianca, 0)}%`}
                   badge={totalFocos > 2 ? "Infestação Moderada" : "Baixa Infestação"}
                   badgeType={totalFocos > 2 ? "warning" : "success"}
                   color="#ffa657"

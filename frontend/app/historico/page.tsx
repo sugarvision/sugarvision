@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Sidebar, IconLeaf, IconScan } from "../components/Sidebar";
 import { formatNumberBR } from "../utils/geoMath";
@@ -21,136 +21,80 @@ interface AnaliseHistorico {
   percentualInfestacao: number;
   focosDetectados: number;
   status: "Concluído" | "Em Processamento" | "Atenção";
+  image_url?: string;
 }
-
-// ── Mock de Capturas de Campo & Detecção de Ervas Daninhas ────────────────────
-const ANALISES_HISTORICO_DATA: AnaliseHistorico[] = [
-  {
-    id: "analise-001",
-    dataCaptura: "04/09/2026",
-    horaCaptura: "07:14",
-    nomeImagem: "campo_talhao_01_rioclaro_foto.jpg",
-    tamanhoArquivo: "18.4 MB",
-    formato: "JPG",
-    talhaoId: "talhao-01-rio-claro",
-    talhaoNome: "Amostra 01 — Fazenda Boa Vista",
-    cidade: "Rio Claro - SP",
-    variedade: "CTC-9001 (Plena Safra)",
-    areaAmostraM2: 2.5,
-    areaInfestacaoM2: 0.46,
-    percentualInfestacao: 18.4,
-    focosDetectados: 3,
-    status: "Concluído",
-  },
-  {
-    id: "analise-002",
-    dataCaptura: "03/09/2026",
-    horaCaptura: "08:30",
-    nomeImagem: "cana_socas_piracicaba_campo34.png",
-    tamanhoArquivo: "24.1 MB",
-    formato: "PNG",
-    talhaoId: "talhao-02-piracicaba",
-    talhaoNome: "Amostra 02 — Polo Piracicaba",
-    cidade: "Piracicaba - SP",
-    variedade: "RB867515 (Cana Soca)",
-    areaAmostraM2: 2.0,
-    areaInfestacaoM2: 0.30,
-    percentualInfestacao: 15.0,
-    focosDetectados: 2,
-    status: "Concluído",
-  },
-  {
-    id: "analise-003",
-    dataCaptura: "01/09/2026",
-    horaCaptura: "06:45",
-    nomeImagem: "safra2026_araras_inspecao_alta_res.jpg",
-    tamanhoArquivo: "32.8 MB",
-    formato: "JPG",
-    talhaoId: "talhao-03-araras",
-    talhaoNome: "Amostra 03 — Fazenda São Martinho",
-    cidade: "Araras - SP",
-    variedade: "IACSP95-5000",
-    areaAmostraM2: 3.0,
-    areaInfestacaoM2: 0.18,
-    percentualInfestacao: 6.0,
-    focosDetectados: 1,
-    status: "Concluído",
-  },
-  {
-    id: "analise-004",
-    dataCaptura: "28/08/2026",
-    horaCaptura: "16:20",
-    nomeImagem: "lavoura_sul_rioclaro_reboleiras.jpg",
-    tamanhoArquivo: "15.2 MB",
-    formato: "JPG",
-    talhaoId: "talhao-01-rio-claro",
-    talhaoNome: "Amostra 01 — Setor Sul",
-    cidade: "Rio Claro - SP",
-    variedade: "CTC-9001",
-    areaAmostraM2: 2.5,
-    areaInfestacaoM2: 0.65,
-    percentualInfestacao: 26.0,
-    focosDetectados: 4,
-    status: "Atenção",
-  },
-  {
-    id: "analise-005",
-    dataCaptura: "25/08/2026",
-    horaCaptura: "09:10",
-    nomeImagem: "campo_piracicaba_matocompeticao.png",
-    tamanhoArquivo: "21.6 MB",
-    formato: "PNG",
-    talhaoId: "talhao-02-piracicaba",
-    talhaoNome: "Amostra 02 — Setor Leste",
-    cidade: "Piracicaba - SP",
-    variedade: "RB867515",
-    areaAmostraM2: 2.2,
-    areaInfestacaoM2: 0.24,
-    percentualInfestacao: 10.9,
-    focosDetectados: 2,
-    status: "Concluído",
-  },
-  {
-    id: "analise-006",
-    dataCaptura: "20/08/2026",
-    horaCaptura: "07:50",
-    nomeImagem: "inspecao_fitossanitaria_araras.jpg",
-    tamanhoArquivo: "19.9 MB",
-    formato: "JPG",
-    talhaoId: "talhao-03-araras",
-    talhaoNome: "Amostra 03 — Gleba B",
-    cidade: "Araras - SP",
-    variedade: "IACSP95-5000",
-    areaAmostraM2: 2.8,
-    areaInfestacaoM2: 0.35,
-    percentualInfestacao: 12.5,
-    focosDetectados: 2,
-    status: "Concluído",
-  },
-];
 
 export default function HistoricoPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFormat, setSelectedFormat] = useState<string>("todos");
+  
+  // Estado real vindo do Backend
+  const [analises, setAnalises] = useState<AnaliseHistorico[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredAnalises = ANALISES_HISTORICO_DATA.filter((item) => {
+  // Função para buscar histórico real do Backend
+  const carregarHistorico = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch("http://127.0.0.1:8000/api/historico");
+      if (!res.ok) {
+        throw new Error("Falha ao carregar histórico do servidor.");
+      }
+      const data = await res.json();
+      setAnalises(data);
+    } catch (err: any) {
+      console.error("Erro ao carregar histórico:", err);
+      setError("Não foi possível conectar ao backend. Verifique se o servidor FastAPI está ligado.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    carregarHistorico();
+  }, []);
+
+  // Excluir análise do histórico
+  const handleDelete = async (id: string, nome: string) => {
+    const confirmou = window.confirm(`Deseja realmente excluir a análise de "${nome}" do histórico?`);
+    if (!confirmou) return;
+
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/historico/${id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setAnalises((prev) => prev.filter((item) => item.id !== id));
+      } else {
+        alert("Erro ao excluir análise.");
+      }
+    } catch (err) {
+      console.error("Erro ao deletar:", err);
+      alert("Falha de comunicação com o backend.");
+    }
+  };
+
+  const filteredAnalises = analises.filter((item) => {
     const matchesSearch =
-      item.nomeImagem.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.talhaoNome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.cidade.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.dataCaptura.includes(searchTerm);
+      (item.nomeImagem || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.talhaoNome || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.cidade || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.dataCaptura || "").includes(searchTerm);
 
     const matchesFormat =
-      selectedFormat === "todos" || item.formato.toLowerCase() === selectedFormat.toLowerCase();
+      selectedFormat === "todos" || (item.formato || "").toLowerCase() === selectedFormat.toLowerCase();
 
     return matchesSearch && matchesFormat;
   });
 
-  const totalAreaM2 = ANALISES_HISTORICO_DATA.reduce((acc, curr) => acc + curr.areaAmostraM2, 0);
-  const totalInfestacaoM2 = ANALISES_HISTORICO_DATA.reduce((acc, curr) => acc + curr.areaInfestacaoM2, 0);
-  const mediaInfestacao = (totalInfestacaoM2 / totalAreaM2) * 100;
-  const totalFocos = ANALISES_HISTORICO_DATA.reduce((acc, curr) => acc + curr.focosDetectados, 0);
+  // Métricas calculadas dinamicamente
+  const totalAreaM2 = analises.reduce((acc, curr) => acc + (curr.areaAmostraM2 || 0), 0);
+  const totalInfestacaoM2 = analises.reduce((acc, curr) => acc + (curr.areaInfestacaoM2 || 0), 0);
+  const mediaInfestacao = totalAreaM2 > 0 ? (totalInfestacaoM2 / totalAreaM2) * 100 : 0;
+  const totalFocos = analises.reduce((acc, curr) => acc + (curr.focosDetectados || 0), 0);
 
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
@@ -203,30 +147,52 @@ export default function HistoricoPage() {
                 lineHeight: 1,
               }}
             >
-              Registro consolidado de fotos de campo, área foliar inspecionada e detecção de ervas daninhas
+              Registro consolidado persistente no Supabase de inspeções e detecção de ervas daninhas
             </p>
           </div>
 
-          <Link
-            href="/"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "8px 16px",
-              borderRadius: "8px",
-              background: "var(--surface)",
-              border: "1px solid var(--card-border)",
-              color: "var(--foreground)",
-              fontSize: "13px",
-              fontWeight: 600,
-              textDecoration: "none",
-              transition: "all 0.2s ease",
-            }}
-          >
-            <IconLeaf className="w-4 h-4 text-[var(--accent-green)]" />
-            Painel Principal
-          </Link>
+          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+            <button
+              onClick={carregarHistorico}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "8px 12px",
+                borderRadius: "8px",
+                background: "var(--surface)",
+                border: "1px solid var(--card-border)",
+                color: "var(--foreground)",
+                fontSize: "12.5px",
+                fontWeight: 500,
+                cursor: "pointer",
+              }}
+              title="Recarregar dados do banco"
+            >
+              🔄 Atualizar
+            </button>
+
+            <Link
+              href="/"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "8px 16px",
+                borderRadius: "8px",
+                background: "var(--surface)",
+                border: "1px solid var(--card-border)",
+                color: "var(--foreground)",
+                fontSize: "13px",
+                fontWeight: 600,
+                textDecoration: "none",
+                transition: "all 0.2s ease",
+              }}
+            >
+              <IconLeaf className="w-4 h-4 text-[var(--accent-green)]" />
+              Painel Principal
+            </Link>
+          </div>
         </header>
 
         {/* Content Area */}
@@ -240,6 +206,22 @@ export default function HistoricoPage() {
             gap: "16px",
           }}
         >
+          {/* Alerta de erro de conexão se houver */}
+          {error && (
+            <div
+              style={{
+                background: "rgba(248, 81, 73, 0.1)",
+                border: "1px solid rgba(248, 81, 73, 0.3)",
+                color: "#f85149",
+                borderRadius: "8px",
+                padding: "10px 16px",
+                fontSize: "13px",
+              }}
+            >
+              ⚠️ {error}
+            </div>
+          )}
+
           {/* ── Quick Stats Row ──────────────────────────────── */}
           <div className="fade-in-up" style={{ display: "flex", gap: "12px", flexWrap: "wrap", flexShrink: 0 }}>
             <div
@@ -252,11 +234,11 @@ export default function HistoricoPage() {
               }}
             >
               <div style={{ fontSize: "11px", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700 }}>
-                Total de Fotos
+                Total de Análises
               </div>
               <div style={{ fontSize: "22px", fontWeight: 800, color: "#58a6ff", marginTop: "4px" }}>
-                {ANALISES_HISTORICO_DATA.length}{" "}
-                <span style={{ fontSize: "13px", color: "var(--muted)", fontWeight: 500 }}>amostras</span>
+                {analises.length}{" "}
+                <span style={{ fontSize: "13px", color: "var(--muted)", fontWeight: 500 }}>registros</span>
               </div>
             </div>
 
@@ -406,10 +388,16 @@ export default function HistoricoPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredAnalises.length === 0 ? (
+                  {loading ? (
                     <tr>
-                      <td colSpan={5} style={{ padding: "30px", textAlign: "center", color: "var(--muted)" }}>
-                        Nenhuma captura encontrada para os filtros selecionados.
+                      <td colSpan={5} style={{ padding: "40px", textAlign: "center", color: "var(--muted)" }}>
+                        ⏳ Carregando histórico de análises do banco...
+                      </td>
+                    </tr>
+                  ) : filteredAnalises.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} style={{ padding: "40px", textAlign: "center", color: "var(--muted)" }}>
+                        Nenhuma análise registrada no histórico ainda. Faça um upload no Painel para gerar sua primeira análise!
                       </td>
                     </tr>
                   ) : (
@@ -446,10 +434,10 @@ export default function HistoricoPage() {
                             </div>
                             <div>
                               <div style={{ fontWeight: 600, color: "var(--foreground)" }}>
-                                {item.dataCaptura}
+                                {item.dataCaptura || "Hoje"}
                               </div>
                               <div style={{ fontSize: "11.5px", color: "var(--muted)" }}>
-                                às {item.horaCaptura}
+                                às {item.horaCaptura || "--:--"}
                               </div>
                             </div>
                           </div>
@@ -493,13 +481,13 @@ export default function HistoricoPage() {
                         <td style={{ padding: "14px 18px", whiteSpace: "nowrap" }}>
                           <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                             <div style={{ fontWeight: 700, color: "var(--foreground)", fontSize: "14px" }}>
-                              {formatNumberBR(item.areaAmostraM2, 1)}{" "}
+                              {formatNumberBR(item.areaAmostraM2 || 0, 1)}{" "}
                               <span style={{ fontSize: "12px", color: "var(--muted)", fontWeight: 500 }}>m²</span>
                             </div>
                             <div style={{ fontSize: "11.5px", color: "var(--muted)" }}>
-                              {formatNumberBR(item.areaInfestacaoM2, 2)} m² afetados
+                              {formatNumberBR(item.areaInfestacaoM2 || 0, 2)} m² afetados
                               <span style={{ color: "#f85149", marginLeft: "6px" }}>
-                                ({formatNumberBR(item.percentualInfestacao, 1)}% daninhas)
+                                ({formatNumberBR(item.percentualInfestacao || 0, 1)}% daninhas)
                               </span>
                             </div>
                           </div>
@@ -539,36 +527,66 @@ export default function HistoricoPage() {
                           </div>
                         </td>
 
-                        {/* 5. Ação: Ver Detecção */}
+                        {/* 5. Ações: Ver Detecção + Excluir */}
                         <td style={{ padding: "14px 18px", textAlign: "right", whiteSpace: "nowrap" }}>
-                          <Link
-                            href={`/?talhao=${item.talhaoId}`}
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "6px",
-                              padding: "7px 14px",
-                              borderRadius: "6px",
-                              background: "rgba(46, 160, 67, 0.15)",
-                              border: "1px solid rgba(46, 160, 67, 0.4)",
-                              color: "#3fb950",
-                              fontSize: "12.5px",
-                              fontWeight: 600,
-                              textDecoration: "none",
-                              transition: "all 0.2s ease",
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background = "var(--accent-green)";
-                              e.currentTarget.style.color = "#fff";
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = "rgba(46, 160, 67, 0.15)";
-                              e.currentTarget.style.color = "#3fb950";
-                            }}
-                          >
-                            <IconScan className="w-3.5 h-3.5" />
-                            Ver Detecção
-                          </Link>
+                          <div style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+                            <Link
+                              href={`/?analise_id=${encodeURIComponent(item.id)}&amostra=${encodeURIComponent(item.nomeImagem)}`}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "6px",
+                                padding: "7px 12px",
+                                borderRadius: "6px",
+                                background: "rgba(46, 160, 67, 0.15)",
+                                border: "1px solid rgba(46, 160, 67, 0.4)",
+                                color: "#3fb950",
+                                fontSize: "12px",
+                                fontWeight: 600,
+                                textDecoration: "none",
+                                transition: "all 0.2s ease",
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = "var(--accent-green)";
+                                e.currentTarget.style.color = "#fff";
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = "rgba(46, 160, 67, 0.15)";
+                                e.currentTarget.style.color = "#3fb950";
+                              }}
+                            >
+                              <IconScan className="w-3.5 h-3.5" />
+                              Ver Detecção
+                            </Link>
+
+                            <button
+                              onClick={() => handleDelete(item.id, item.nomeImagem)}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                width: "30px",
+                                height: "30px",
+                                borderRadius: "6px",
+                                background: "rgba(248, 81, 73, 0.1)",
+                                border: "1px solid rgba(248, 81, 73, 0.3)",
+                                color: "#f85149",
+                                cursor: "pointer",
+                                transition: "all 0.2s ease",
+                              }}
+                              title="Excluir esta análise do histórico"
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = "#f85149";
+                                e.currentTarget.style.color = "#fff";
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = "rgba(248, 81, 73, 0.1)";
+                                e.currentTarget.style.color = "#f85149";
+                              }}
+                            >
+                              ✕
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))

@@ -36,6 +36,23 @@ function IconTrash({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
+// ── Ícone de Lápis (Renomear) ────────────────────────────────────────────────
+function IconPencil({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+    </svg>
+  );
+}
+
 // ── Componente Resiliente de Imagem com Fallbacks ────────────────────────────
 function SampleImage({
   filename,
@@ -159,13 +176,73 @@ export default function BancoDeAmostrasPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const router = useRouter();
 
+  // Estados de Exclusão
   const [sampleToDelete, setSampleToDelete] = useState<ImageSample | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Estados de Renomeação
+  const [sampleToRename, setSampleToRename] = useState<ImageSample | null>(null);
+  const [newFilename, setNewFilename] = useState("");
+  const [isRenaming, setIsRenaming] = useState(false);
 
   // Executa navegação garantindo timestamp único para forçar nova inferência no painel principal
   const handleAnalyzeSample = (e: React.MouseEvent, sampleFilename: string, sampleId: string) => {
     e.preventDefault();
     router.push(`/?amostra=${encodeURIComponent(sampleFilename)}&id=${encodeURIComponent(sampleId)}&t=${Date.now()}`);
+  };
+
+  // Abre o modal de renomear
+  const handleOpenRename = (sample: ImageSample) => {
+    setSampleToRename(sample);
+    setNewFilename(sample.filename);
+  };
+
+  // Confirma a renomeação da amostra
+  const confirmRenameSample = async () => {
+    if (!sampleToRename || !newFilename.trim()) return;
+    setIsRenaming(true);
+    const target = sampleToRename;
+    const cleanName = newFilename.trim();
+
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/images/${encodeURIComponent(target.id)}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ filename: cleanName }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Falha no servidor: status ${res.status}`);
+      }
+
+      // Atualiza a listagem local
+      setSamples((prev) =>
+        prev.map((s) => (s.id === target.id ? { ...s, filename: cleanName } : s))
+      );
+
+      if (selectedSample?.id === target.id) {
+        setSelectedSample((prev) => (prev ? { ...prev, filename: cleanName } : null));
+      }
+
+      toast.success(`Amostra renomeada para "${cleanName}" com sucesso!`, {
+        position: "top-right",
+        autoClose: 3500,
+        theme: "dark",
+      });
+
+      setSampleToRename(null);
+    } catch (err: any) {
+      console.error("Erro ao renomear:", err);
+      toast.error(`Falha ao renomear amostra: ${err.message}`, {
+        position: "top-right",
+        autoClose: 4000,
+        theme: "dark",
+      });
+    } finally {
+      setIsRenaming(false);
+    }
   };
 
   // Exclui uma amostra de imagem do banco de dados e sincroniza a listagem local
@@ -1126,12 +1203,12 @@ export default function BancoDeAmostrasPage() {
                     )}
 
                     {/* Botões de Ação */}
-                    <div style={{ marginTop: "auto", paddingTop: "8px", display: "flex", gap: "8px", alignItems: "center" }}>
+                    <div style={{ marginTop: "auto", paddingTop: "8px", display: "flex", gap: "6px", alignItems: "center" }}>
                       <button
                         onClick={() => setSelectedSample(sample)}
                         style={{
                           flex: 1,
-                          padding: "6px 10px",
+                          padding: "6px 8px",
                           borderRadius: "6px",
                           background: "var(--surface)",
                           border: "1px solid var(--card-border)",
@@ -1146,8 +1223,9 @@ export default function BancoDeAmostrasPage() {
                         }}
                       >
                         <IconScan className="w-3 h-3 text-[var(--accent-green)]" />
-                        Ver Detalhes
+                        Ver
                       </button>
+
                       <Link
                         href={`/?amostra=${encodeURIComponent(sample.filename)}&id=${encodeURIComponent(sample.id)}&t=${Date.now()}`}
                         onClick={(e) => handleAnalyzeSample(e, sample.filename, sample.id)}
@@ -1168,6 +1246,37 @@ export default function BancoDeAmostrasPage() {
                       >
                         Analisar
                       </Link>
+
+                      {/* Botão Renomear (Lápis) */}
+                      <button
+                        id={`btn-rename-sample-${sample.id}`}
+                        onClick={() => handleOpenRename(sample)}
+                        title="Renomear esta amostra"
+                        style={{
+                          padding: "6px 8px",
+                          borderRadius: "6px",
+                          background: "rgba(88, 166, 255, 0.1)",
+                          border: "1px solid rgba(88, 166, 255, 0.25)",
+                          color: "#58a6ff",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          transition: "all 0.2s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = "rgba(88, 166, 255, 0.2)";
+                          e.currentTarget.style.borderColor = "rgba(88, 166, 255, 0.5)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = "rgba(88, 166, 255, 0.1)";
+                          e.currentTarget.style.borderColor = "rgba(88, 166, 255, 0.25)";
+                        }}
+                      >
+                        <IconPencil className="w-3.5 h-3.5 text-[#58a6ff]" />
+                      </button>
+
+                      {/* Botão Excluir (Lixeira) */}
                       <button
                         id={`btn-delete-sample-${sample.id}`}
                         onClick={() => setSampleToDelete(sample)}
@@ -1307,7 +1416,7 @@ export default function BancoDeAmostrasPage() {
                             <button
                               onClick={() => setSelectedSample(sample)}
                               style={{
-                                padding: "4px 10px",
+                                padding: "4px 8px",
                                 borderRadius: "6px",
                                 background: "var(--surface)",
                                 border: "1px solid var(--card-border)",
@@ -1322,7 +1431,7 @@ export default function BancoDeAmostrasPage() {
                               href={`/?amostra=${encodeURIComponent(sample.filename)}&id=${encodeURIComponent(sample.id)}&t=${Date.now()}`}
                               onClick={(e) => handleAnalyzeSample(e, sample.filename, sample.id)}
                               style={{
-                                padding: "4px 10px",
+                                padding: "4px 8px",
                                 borderRadius: "6px",
                                 background: "rgba(46, 160, 67, 0.15)",
                                 border: "1px solid rgba(46, 160, 67, 0.3)",
@@ -1337,12 +1446,34 @@ export default function BancoDeAmostrasPage() {
                             >
                               Analisar
                             </Link>
+
+                            {/* Botão Renomear na Tabela */}
+                            <button
+                              id={`btn-table-rename-${sample.id}`}
+                              onClick={() => handleOpenRename(sample)}
+                              title="Renomear amostra"
+                              style={{
+                                padding: "4px 6px",
+                                borderRadius: "6px",
+                                background: "rgba(88, 166, 255, 0.1)",
+                                border: "1px solid rgba(88, 166, 255, 0.25)",
+                                color: "#58a6ff",
+                                cursor: "pointer",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                            >
+                              <IconPencil className="w-3.5 h-3.5 text-[#58a6ff]" />
+                            </button>
+
+                            {/* Botão Excluir na Tabela */}
                             <button
                               id={`btn-table-delete-${sample.id}`}
                               onClick={() => setSampleToDelete(sample)}
                               title="Excluir amostra do banco de dados"
                               style={{
-                                padding: "4px 8px",
+                                padding: "4px 6px",
                                 borderRadius: "6px",
                                 background: "rgba(248, 81, 73, 0.1)",
                                 border: "1px solid rgba(248, 81, 73, 0.25)",
@@ -1365,6 +1496,132 @@ export default function BancoDeAmostrasPage() {
             </div>
           )}
         </div>
+
+        {/* ── MODAL DE RENOMEAR AMOSTRA (NOVO) ── */}
+        {sampleToRename && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 9999,
+              background: "rgba(0, 0, 0, 0.8)",
+              backdropFilter: "blur(6px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "20px",
+            }}
+            onClick={() => !isRenaming && setSampleToRename(null)}
+          >
+            <div
+              className="fade-in-up"
+              style={{
+                background: "var(--card-bg)",
+                border: "1px solid rgba(88, 166, 255, 0.35)",
+                borderRadius: "14px",
+                width: "100%",
+                maxWidth: "460px",
+                padding: "24px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "18px",
+                boxShadow: "0 24px 50px rgba(0,0,0,0.75)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div
+                  style={{
+                    width: "44px",
+                    height: "44px",
+                    borderRadius: "10px",
+                    background: "rgba(88, 166, 255, 0.15)",
+                    border: "1px solid rgba(88, 166, 255, 0.3)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#58a6ff",
+                    flexShrink: 0,
+                  }}
+                >
+                  <IconPencil className="w-5 h-5 text-[#58a6ff]" />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: "16px", fontWeight: 700, margin: 0, color: "var(--foreground)" }}>
+                    Renomear Foto / Amostra
+                  </h3>
+                  <p style={{ fontSize: "12px", color: "var(--muted)", margin: "3px 0 0 0" }}>
+                    Altere o nome desta foto de campo como preferir.
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: "12px", color: "var(--muted)", display: "block", marginBottom: "6px" }}>
+                  Novo Nome da Amostra:
+                </label>
+                <input
+                  type="text"
+                  value={newFilename}
+                  onChange={(e) => setNewFilename(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") confirmRenameSample();
+                  }}
+                  autoFocus
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    borderRadius: "8px",
+                    background: "var(--surface)",
+                    border: "1px solid var(--card-border)",
+                    color: "var(--foreground)",
+                    fontSize: "13px",
+                    outline: "none",
+                  }}
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "4px" }}>
+                <button
+                  disabled={isRenaming}
+                  onClick={() => setSampleToRename(null)}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: "6px",
+                    background: "transparent",
+                    border: "1px solid var(--card-border)",
+                    color: "var(--foreground)",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    cursor: isRenaming ? "not-allowed" : "pointer",
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  disabled={isRenaming || !newFilename.trim()}
+                  onClick={confirmRenameSample}
+                  style={{
+                    padding: "8px 18px",
+                    borderRadius: "6px",
+                    background: "#238636",
+                    border: "none",
+                    color: "#ffffff",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    cursor: isRenaming || !newFilename.trim() ? "not-allowed" : "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    boxShadow: "0 2px 8px rgba(35, 134, 54, 0.4)",
+                  }}
+                >
+                  {isRenaming ? "Salvando..." : "Salvar Nome"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── MODAL DE DETALHES DA AMOSTRA ── */}
         {selectedSample && (
@@ -1564,26 +1821,53 @@ export default function BancoDeAmostrasPage() {
                   background: "var(--surface)",
                 }}
               >
-                <button
-                  onClick={() => setSampleToDelete(selectedSample)}
-                  style={{
-                    padding: "8px 14px",
-                    borderRadius: "6px",
-                    background: "rgba(248, 81, 73, 0.12)",
-                    border: "1px solid rgba(248, 81, 73, 0.3)",
-                    color: "#f85149",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                  }}
-                  title="Excluir esta amostra do banco de dados"
-                >
-                  <IconTrash className="w-3.5 h-3.5 text-[#f85149]" />
-                  Excluir Amostra
-                </button>
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <button
+                    onClick={() => {
+                      const s = selectedSample;
+                      setSelectedSample(null);
+                      handleOpenRename(s);
+                    }}
+                    style={{
+                      padding: "8px 12px",
+                      borderRadius: "6px",
+                      background: "rgba(88, 166, 255, 0.12)",
+                      border: "1px solid rgba(88, 166, 255, 0.3)",
+                      color: "#58a6ff",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                    title="Renomear amostra"
+                  >
+                    <IconPencil className="w-3.5 h-3.5 text-[#58a6ff]" />
+                    Renomear
+                  </button>
+
+                  <button
+                    onClick={() => setSampleToDelete(selectedSample)}
+                    style={{
+                      padding: "8px 12px",
+                      borderRadius: "6px",
+                      background: "rgba(248, 81, 73, 0.12)",
+                      border: "1px solid rgba(248, 81, 73, 0.3)",
+                      color: "#f85149",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                    title="Excluir esta amostra do banco de dados"
+                  >
+                    <IconTrash className="w-3.5 h-3.5 text-[#f85149]" />
+                    Excluir
+                  </button>
+                </div>
 
                 <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
                   <button
@@ -1618,7 +1902,7 @@ export default function BancoDeAmostrasPage() {
                     }}
                   >
                     <IconScan className="w-3.5 h-3.5 text-white" />
-                    Abrir e Inferir no Painel
+                    Abrir no Painel
                   </Link>
                 </div>
               </div>

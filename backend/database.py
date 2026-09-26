@@ -12,6 +12,7 @@ import logging
 import os
 from pathlib import Path
 from typing import Any, Generator, List, Optional
+import urllib.parse
 import uuid
 
 from dotenv import load_dotenv
@@ -91,7 +92,8 @@ def get_pg_connection_string() -> str:
 
     # Constrói a partir dos parâmetros individuais
     user = DB_USER or "postgres.hbropsjrbebbuiwcjrcu"
-    pwd = DATABASE_PASSWORD or "Sug@rCarne67!"
+    raw_pwd = DATABASE_PASSWORD or "Sug@rCarne67!"
+    pwd = urllib.parse.quote_plus(raw_pwd)
     host = DB_HOST or "aws-0-us-west-2.pooler.supabase.com"
     port = DB_PORT or "5432"
     dbname = DB_NAME or "postgres"
@@ -417,6 +419,294 @@ def insert_image_record(
             "total_area_ha": 0.0,
             "anomalies": [],
         }
+
+
+def update_image_filename(image_id: str, new_filename: str) -> bool:
+    """Atualiza o nome de exibição de uma imagem cadastrada na tabela 'images' do Supabase."""
+    clean_name = new_filename.strip()
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE images SET filename = %s WHERE id = %s",
+                    (clean_name, image_id),
+                )
+                cur.execute(
+                    "UPDATE analyses SET nome_imagem = %s WHERE image_id = %s",
+                    (clean_name, image_id),
+                )
+                conn.commit()
+                logger.info("Amostra '%s' renomeada para '%s' no Supabase", image_id, clean_name)
+                return True
+    except Exception as exc:
+        logger.error("Erro ao renomear imagem no banco (%s): %s", image_id, exc)
+        return False
+
+
+import json
+
+# Arquivo de segurança local caso a conexão direta falhe sem o painel
+LOCAL_HISTORY_FILE = _BASE_DIR / "analyses_history.json"
+
+
+def init_db():
+    """Tenta criar a tabela 'analyses' diretamente no banco via Python."""
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS analyses (
+                        id TEXT PRIMARY KEY,
+                        image_id TEXT,
+                        nome_imagem TEXT NOT NULL,
+                        image_url TEXT,
+                        tamanho_arquivo TEXT,
+                        formato TEXT,
+                        talhao_id TEXT,
+                        talhao_nome TEXT,
+                        cidade TEXT,
+                        variedade TEXT,
+                        area_amostra_m2 REAL,
+                        area_infestacao_m2 REAL,
+                        percentual_infestacao REAL,
+                        focos_detectados INTEGER,
+                        status TEXT DEFAULT 'Concluído',
+                        detections_json TEXT,
+                        summary_json TEXT,
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                    );
+                    """
+                )
+                conn.commit()
+                logger.info("Tabela 'analyses' verificada/criada com sucesso no Supabase!")
+    except Exception as exc:
+        logger.warning("Supabase não executou DDL direta (%s). Operando com contingência local.", exc)
+
+
+# Executa a verificação assim que o módulo carregar
+init_db()
+
+
+def _load_local_analyses() -> List[dict[str, Any]]:
+    """Carrega análises do arquivo local caso o banco esteja inacessível."""
+    if LOCAL_HISTORY_FILE.exists():
+        try:
+            with open(LOCAL_HISTORY_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return []
+
+
+def _save_local_analyses(data: List[dict[str, Any]]) -> None:
+    """Salva análises no arquivo local."""
+    try:
+        with open(LOCAL_HISTORY_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.error("Erro ao salvar histórico local: %s", e)
+
+
+def get_all_analyses() -> List[dict[str, Any]]:
+    """Consulta histórico no Supabase. Se falhar, busca do arquivo local seguro."""
+    try:
+        import psycopg2.extras
+        with get_db_connection() as conn:
+            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    SELECT 
+                        id, image_id, nome_imagem, image_url, tamanho_arquivo, formato,
+                        talhao_id, talhao_nome, cidade, variedade,
+                        area_amostra_m2, area_infestacao_m2, percentual_infestacao,
+                        focos_detectados, status, detections_json, summary_json, created_at
+                    FROM analyses
+                    ORDER BY created_at DESC
+                    """
+                )
+                rows = cur.fetchall()
+                results = []
+                for r in rows:
+                    created_dt = r.get("created_at")
+                    data_str = created_dt.strftime("%d/%m/%Y") if created_dt else "Hoje"
+                    hora_str = created_dt.strftime("%H:%M") if created_dt else "--:--"
+                    
+                    detections = []
+                    summary = {}
+                    if r.get("detections_json"):
+                        try:
+                            detections = json.loads(r["detections_json"])
+                        except Exception:
+                            pass
+                    if r.get("summary_json"):
+                        try:
+                            summary = json.loads(r["summary_json"])
+                        except Exception:
+                            pass
+
+                    results.append({
+                        "id": str(r["id"]),
+                        "image_id": str(r["image_id"]) if r.get("image_id") else None,
+                        "nome_imagem": r["nome_imagem"],
+                        "nomeImagem": r["nome_imagem"],
+                        "image_url": r.get("image_url") or "",
+                        "tamanho_arquivo": r.get("tamanho_arquivo") or "15.0 MB",
+                        "tamanhoArquivo": r.get("tamanho_arquivo") or "15.0 MB",
+                        "formato": (r.get("formato") or "JPG").upper(),
+                        "talhao_id": r.get("talhao_id") or "talhao-01",
+                        "talhaoId": r.get("talhao_id") or "talhao-01",
+                        "talhao_nome": r.get("talhao_nome") or "Amostra Geral",
+                        "talhaoNome": r.get("talhao_nome") or "Amostra Geral",
+                        "cidade": r.get("cidade") or "Rio Claro - SP",
+                        "variedade": r.get("variedade") or "CTC-9001",
+                        "area_amostra_m2": round(float(r.get("area_amostra_m2") or 0), 2),
+                        "areaAmostraM2": round(float(r.get("area_amostra_m2") or 0), 2),
+                        "area_infestacao_m2": round(float(r.get("area_infestacao_m2") or 0), 2),
+                        "areaInfestacaoM2": round(float(r.get("area_infestacao_m2") or 0), 2),
+                        "percentual_infestacao": round(float(r.get("percentual_infestacao") or 0), 1),
+                        "percentualInfestacao": round(float(r.get("percentual_infestacao") or 0), 1),
+                        "focos_detectados": int(r.get("focos_detectados") or 0),
+                        "focosDetectados": int(r.get("focos_detectados") or 0),
+                        "status": r.get("status") or "Concluído",
+                        "detections": detections,
+                        "summary": summary,
+                        "dataCaptura": data_str,
+                        "horaCaptura": hora_str,
+                        "created_at": created_dt.isoformat() if created_dt else None,
+                    })
+                return results
+    except Exception as exc:
+        logger.warning("Supabase offline ou tabela inexistente (%s). Usando contingência local.", exc)
+        return _load_local_analyses()
+
+
+def insert_analysis(data: dict[str, Any]) -> dict[str, Any]:
+    """Salva análise no Supabase com trava anti-duplicação (evita registros gêmeos do React)."""
+    analysis_id = data.get("id") or str(uuid.uuid4())
+    nome_imagem = data.get("nome_imagem") or data.get("nomeImagem") or "amostra.jpg"
+    image_url = data.get("image_url") or ""
+    tamanho_arquivo = data.get("tamanho_arquivo") or data.get("tamanhoArquivo") or "10.0 MB"
+    formato = (data.get("formato") or "JPG").upper()
+    talhao_id = data.get("talhao_id") or data.get("talhaoId") or "talhao-01"
+    talhao_nome = data.get("talhao_nome") or data.get("talhaoNome") or "Amostra de Campo"
+    cidade = data.get("cidade") or "Rio Claro - SP"
+    variedade = data.get("variedade") or "CTC-9001"
+    area_amostra_m2 = float(data.get("area_amostra_m2") or data.get("areaAmostraM2") or 2.5)
+    area_infestacao_m2 = float(data.get("area_infestacao_m2") or data.get("areaInfestacaoM2") or 0.0)
+    percentual_infestacao = float(data.get("percentual_infestacao") or data.get("percentualInfestacao") or 0.0)
+    focos_detectados = int(data.get("focos_detectados") or data.get("focosDetectados") or 0)
+    status = data.get("status") or "Concluído"
+    detections_json = data.get("detections_json") or json.dumps(data.get("detections", []))
+    summary_json = data.get("summary_json") or json.dumps(data.get("summary", {}))
+    image_id = data.get("image_id")
+    now_iso = datetime.now().isoformat()
+
+    # -------------------------------------------------------------
+    # TRAVA ANTI-DUPLICAÇÃO: Verifica se já existe análise idêntica
+    # criada há menos de 5 segundos no Supabase
+    # -------------------------------------------------------------
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id, created_at FROM analyses 
+                    WHERE nome_imagem = %s AND created_at >= NOW() - INTERVAL '5 seconds'
+                    ORDER BY created_at DESC LIMIT 1
+                    """,
+                    (nome_imagem,)
+                )
+                existing = cur.fetchone()
+                if existing:
+                    logger.info("Análise duplicada ignorada (duplo disparo em < 5s): %s", nome_imagem)
+                    return {**data, "id": str(existing[0]), "created_at": existing[1].isoformat()}
+    except Exception:
+        pass
+
+    # Checagem na contingência local também
+    local_data = _load_local_analyses()
+    if local_data and local_data[0].get("nome_imagem") == nome_imagem:
+        try:
+            last_time = datetime.fromisoformat(local_data[0].get("created_at", ""))
+            if (datetime.now() - last_time).total_seconds() < 5:
+                logger.info("Análise duplicada ignorada no backup local: %s", nome_imagem)
+                return local_data[0]
+        except Exception:
+            pass
+
+    record = {
+        **data,
+        "id": analysis_id,
+        "nomeImagem": nome_imagem,
+        "nome_imagem": nome_imagem,
+        "tamanhoArquivo": tamanho_arquivo,
+        "formato": formato,
+        "talhaoNome": talhao_nome,
+        "talhaoId": talhao_id,
+        "cidade": cidade,
+        "variedade": variedade,
+        "areaAmostraM2": area_amostra_m2,
+        "areaInfestacaoM2": area_infestacao_m2,
+        "percentualInfestacao": percentual_infestacao,
+        "focosDetectados": focos_detectados,
+        "status": status,
+        "image_url": image_url,
+        "dataCaptura": datetime.now().strftime("%d/%m/%Y"),
+        "horaCaptura": datetime.now().strftime("%H:%M"),
+        "created_at": now_iso,
+    }
+
+    # Salva na cópia local
+    local_data.insert(0, record)
+    _save_local_analyses(local_data)
+
+    # Persiste no Supabase
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO analyses (
+                        id, image_id, nome_imagem, image_url, tamanho_arquivo, formato,
+                        talhao_id, talhao_nome, cidade, variedade,
+                        area_amostra_m2, area_infestacao_m2, percentual_infestacao,
+                        focos_detectados, status, detections_json, summary_json, created_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                    RETURNING id, created_at
+                    """,
+                    (
+                        analysis_id, image_id, nome_imagem, image_url, tamanho_arquivo, formato,
+                        talhao_id, talhao_nome, cidade, variedade,
+                        area_amostra_m2, area_infestacao_m2, percentual_infestacao,
+                        focos_detectados, status, detections_json, summary_json
+                    ),
+                )
+                conn.commit()
+                row = cur.fetchone()
+                record["created_at"] = row[1].isoformat()
+                logger.info("Análise gravada uma única vez no Supabase: %s", nome_imagem)
+    except Exception as exc:
+        logger.warning("Falha ao salvar no Supabase (%s), mantido apenas no local.", exc)
+
+    return record
+
+
+def delete_analysis(analysis_id: str) -> bool:
+    """Exclui análise do Supabase e do arquivo local."""
+    local_data = _load_local_analyses()
+    updated = [a for a in local_data if a.get("id") != analysis_id]
+    _save_local_analyses(updated)
+
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM analyses WHERE id = %s", (analysis_id,))
+                conn.commit()
+                return True
+    except Exception as exc:
+        logger.warning("Falha ao deletar no Supabase (%s), excluído apenas localmente.", exc)
+        return True
 
 
 def delete_image_record(image_id: str) -> bool:

@@ -4,7 +4,7 @@ import asyncio
 import logging
 from pathlib import Path
 import uuid
-from typing import Tuple
+from typing import Optional, Tuple
 
 from fastapi import HTTPException, UploadFile, status
 
@@ -42,15 +42,32 @@ class StorageService:
             )
         return extension
 
-    def generate_safe_filename(self, original_filename: str) -> str:
-        """Gera nome único seguro com prefixo UUID para evitar colisões e path traversal."""
-        original_path = Path(original_filename)
+    def generate_safe_filename(self, original_filename: str, custom_name: Optional[str] = None) -> str:
+        """Gera nome seguro preservando o nome original do arquivo ou o nome customizado pelo usuário."""
+        base_name = custom_name.strip() if custom_name and custom_name.strip() else original_filename
+        original_path = Path(base_name)
         extension = self.validate_extension(original_filename)
-        clean_stem = original_path.stem.replace(" ", "_")
-        return f"{uuid.uuid4().hex[:8]}_{clean_stem}{extension}"
+        clean_stem = "".join(c for c in original_path.stem if c.isalnum() or c in (" ", "_", "-")).strip()
+        if not clean_stem:
+            clean_stem = "amostra"
+
+        candidate = f"{clean_stem}{extension}"
+        target = self.target_dir / candidate
+        if not target.exists():
+            return candidate
+
+        counter = 1
+        while counter < 1000:
+            candidate = f"{clean_stem} ({counter}){extension}"
+            target = self.target_dir / candidate
+            if not target.exists():
+                return candidate
+            counter += 1
+
+        return f"{clean_stem}_{uuid.uuid4().hex[:6]}{extension}"
 
     async def save_image_async(
-        self, file: UploadFile, chunk_size: int = 1024 * 1024
+        self, file: UploadFile, custom_name: Optional[str] = None, chunk_size: int = 1024 * 1024
     ) -> Tuple[Path, int]:
         """Salva a imagem no disco através de streaming assíncrono em chunks.
 
@@ -58,12 +75,13 @@ class StorageService:
 
         Args:
             file: Arquivo recebido do upload FastAPI.
+            custom_name: Nome customizado opcional fornecido pelo usuário.
             chunk_size: Tamanho do chunk em bytes (padrão: 1MB).
 
         Returns:
             Tupla contendo (caminho_do_arquivo_salvo, tamanho_total_bytes).
         """
-        safe_filename = self.generate_safe_filename(file.filename or "upload.jpg")
+        safe_filename = self.generate_safe_filename(file.filename or "upload.jpg", custom_name=custom_name)
         target_path = self.target_dir / safe_filename
 
         try:

@@ -5,7 +5,7 @@ import logging
 from typing import Any, List, Optional
 
 from app.core.config import TEMP_IMAGES_DIR
-from database import delete_image_record, get_all_images, insert_image_record
+from database import delete_image_record, get_all_images, insert_image_record, update_image_filename
 
 logger = logging.getLogger("sugarvision-images")
 
@@ -29,6 +29,10 @@ class ImageService:
     ) -> dict[str, Any]:
         """Registra uma nova amostra de imagem na tabela 'images' de forma assíncrona."""
         return await asyncio.to_thread(insert_image_record, filename, status, image_id)
+
+    async def rename_image_async(self, image_id: str, new_filename: str) -> bool:
+        """Renomeia a amostra de imagem na tabela 'images' e no histórico associado."""
+        return await asyncio.to_thread(update_image_filename, image_id, new_filename)
 
     async def delete_image_async(self, image_id: str, filename: Optional[str] = None) -> bool:
         """Exclui a amostra da tabela 'images' e suas anomalias, além do arquivo físico temporário."""

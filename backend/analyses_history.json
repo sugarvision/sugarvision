@@ -1,0 +1,339 @@
+[
+  {
+    "image_id": null,
+    "nome_imagem": "amostra_erva_daninha.jpg",
+    "image_url": "http://127.0.0.1:8000/temp_images/c50a630b_amostra_erva_daninha.jpg",
+    "tamanho_arquivo": "534.0 KB",
+    "formato": "JPG",
+    "talhao_id": "talhao-01",
+    "talhao_nome": "Amostra amostra_erva_daninha",
+    "cidade": "Rio Claro - SP",
+    "variedade": "CTC-9001 (Plena Safra)",
+    "area_amostra_m2": 2.5,
+    "area_infestacao_m2": 1.68,
+    "percentual_infestacao": 67.2,
+    "focos_detectados": 14,
+    "status": "Atenção",
+    "detections": [
+      {
+        "id": "weed_1",
+        "label": "Erva Daninha #1",
+        "type": "erva_daninha",
+        "severity": "baixa",
+        "confidence": 0.7839,
+        "box": {
+          "x": 7.34,
+          "y": 60.67,
+          "width": 19.59,
+          "height": 12.83
+        },
+        "box_pixels": {
+          "x1": 75.19,
+          "y1": 828.13,
+          "x2": 275.83,
+          "y2": 1003.23,
+          "width": 200.64,
+          "height": 175.1
+        }
+      },
+      {
+        "id": "weed_2",
+        "label": "Erva Daninha #2",
+        "type": "erva_daninha",
+        "severity": "baixa",
+        "confidence": 0.6584,
+        "box": {
+          "x": 61.33,
+          "y": 55.19,
+          "width": 18.28,
+          "height": 13.97
+        },
+        "box_pixels": {
+          "x1": 628.04,
+          "y1": 753.33,
+          "x2": 815.21,
+          "y2": 944.08,
+          "width": 187.17,
+          "height": 190.75
+        }
+      },
+      {
+        "id": "weed_3",
+        "label": "Erva Daninha #3",
+        "type": "erva_daninha",
+        "severity": "baixa",
+        "confidence": 0.6475,
+        "box": {
+          "x": 45.47,
+          "y": 45.5,
+          "width": 8.46,
+          "height": 8.34
+        },
+        "box_pixels": {
+          "x1": 465.61,
+          "y1": 621.04,
+          "x2": 552.2,
+          "y2": 734.83,
+          "width": 86.59,
+          "height": 113.79
+        }
+      },
+      {
+        "id": "weed_4",
+        "label": "Erva Daninha #4",
+        "type": "erva_daninha",
+        "severity": "alta",
+        "confidence": 0.602,
+        "box": {
+          "x": 17.43,
+          "y": 9.87,
+          "width": 35.79,
+          "height": 35.57
+        },
+        "box_pixels": {
+          "x1": 178.47,
+          "y1": 134.74,
+          "x2": 545.01,
+          "y2": 620.26,
+          "width": 366.54,
+          "height": 485.52
+        }
+      },
+      {
+        "id": "weed_5",
+        "label": "Erva Daninha #5",
+        "type": "erva_daninha",
+        "severity": "alta",
+        "confidence": 0.5552,
+        "box": {
+          "x": 0.09,
+          "y": 23.27,
+          "width": 43.75,
+          "height": 36.49
+        },
+        "box_pixels": {
+          "x1": 0.92,
+          "y1": 317.6,
+          "x2": 448.88,
+          "y2": 815.73,
+          "width": 447.96,
+          "height": 498.13
+        }
+      },
+      {
+        "id": "weed_6",
+        "label": "Erva Daninha #6",
+        "type": "erva_daninha",
+        "severity": "baixa",
+        "confidence": 0.5319,
+        "box": {
+          "x": 77.73,
+          "y": 41.06,
+          "width": 16.3,
+          "height": 9.02
+        },
+        "box_pixels": {
+          "x1": 795.95,
+          "y1": 560.42,
+          "x2": 962.89,
+          "y2": 683.57,
+          "width": 166.94,
+          "height": 123.15
+        }
+      },
+      {
+        "id": "weed_7",
+        "label": "Erva Daninha #7",
+        "type": "erva_daninha",
+        "severity": "alta",
+        "confidence": 0.4505,
+        "box": {
+          "x": 51.52,
+          "y": 13.3,
+          "width": 48.48,
+          "height": 33.69
+        },
+        "box_pixels": {
+          "x1": 527.53,
+          "y1": 181.54,
+          "x2": 1024.0,
+          "y2": 641.37,
+          "width": 496.47,
+          "height": 459.82
+        }
+      },
+      {
+        "id": "weed_8",
+        "label": "Erva Daninha #8",
+        "type": "erva_daninha",
+        "severity": "baixa",
+        "confidence": 0.437,
+        "box": {
+          "x": 81.55,
+          "y": 91.62,
+          "width": 18.45,
+          "height": 8.38
+        },
+        "box_pixels": {
+          "x1": 835.08,
+          "y1": 1250.59,
+          "x2": 1024.0,
+          "y2": 1365.0,
+          "width": 188.92,
+          "height": 114.41
+        }
+      },
+      {
+        "id": "weed_9",
+        "label": "Erva Daninha #9",
+        "type": "erva_daninha",
+        "severity": "alta",
+        "confidence": 0.4286,
+        "box": {
+          "x": 2.45,
+          "y": 3.75,
+          "width": 48.78,
+          "height": 24.32
+        },
+        "box_pixels": {
+          "x1": 25.12,
+          "y1": 51.24,
+          "x2": 524.63,
+          "y2": 383.25,
+          "width": 499.51,
+          "height": 332.02
+        }
+      },
+      {
+        "id": "weed_10",
+        "label": "Erva Daninha #10",
+        "type": "erva_daninha",
+        "severity": "baixa",
+        "confidence": 0.3716,
+        "box": {
+          "x": 46.16,
+          "y": 87.8,
+          "width": 24.48,
+          "height": 12.17
+        },
+        "box_pixels": {
+          "x1": 472.66,
+          "y1": 1198.52,
+          "x2": 723.37,
+          "y2": 1364.7,
+          "width": 250.7,
+          "height": 166.18
+        }
+      },
+      {
+        "id": "weed_11",
+        "label": "Erva Daninha #11",
+        "type": "erva_daninha",
+        "severity": "media",
+        "confidence": 0.3487,
+        "box": {
+          "x": 49.46,
+          "y": 0.31,
+          "width": 30.17,
+          "height": 16.53
+        },
+        "box_pixels": {
+          "x1": 506.43,
+          "y1": 4.22,
+          "x2": 815.4,
+          "y2": 229.86,
+          "width": 308.97,
+          "height": 225.64
+        }
+      },
+      {
+        "id": "weed_12",
+        "label": "Erva Daninha #12",
+        "type": "erva_daninha",
+        "severity": "media",
+        "confidence": 0.2942,
+        "box": {
+          "x": 77.88,
+          "y": 22.99,
+          "width": 22.08,
+          "height": 21.55
+        },
+        "box_pixels": {
+          "x1": 797.53,
+          "y1": 313.8,
+          "x2": 1023.68,
+          "y2": 608.01,
+          "width": 226.15,
+          "height": 294.21
+        }
+      },
+      {
+        "id": "weed_13",
+        "label": "Erva Daninha #13",
+        "type": "erva_daninha",
+        "severity": "baixa",
+        "confidence": 0.2594,
+        "box": {
+          "x": 31.53,
+          "y": 93.76,
+          "width": 13.3,
+          "height": 5.21
+        },
+        "box_pixels": {
+          "x1": 322.91,
+          "y1": 1279.8,
+          "x2": 459.07,
+          "y2": 1350.93,
+          "width": 136.16,
+          "height": 71.13
+        }
+      },
+      {
+        "id": "weed_14",
+        "label": "Erva Daninha #14",
+        "type": "erva_daninha",
+        "severity": "baixa",
+        "confidence": 0.2561,
+        "box": {
+          "x": 0.18,
+          "y": 87.03,
+          "width": 19.64,
+          "height": 12.64
+        },
+        "box_pixels": {
+          "x1": 1.8,
+          "y1": 1187.89,
+          "x2": 202.93,
+          "y2": 1360.49,
+          "width": 201.14,
+          "height": 172.6
+        }
+      }
+    ],
+    "summary": {
+      "falhas_identificadas": 14,
+      "total_detecoes": 14,
+      "total_ervas_daninhas": 14,
+      "total_cana": 0,
+      "taxa_infestacao_percent": 100.0,
+      "distribuicao_severidade_ervas": {
+        "baixa": 8,
+        "media": 2,
+        "alta": 4
+      },
+      "status_analise": "concluida"
+    },
+    "id": "9b3e0c04-130a-4cd5-8fd8-0e7029a83ccf",
+    "nomeImagem": "amostra_erva_daninha.jpg",
+    "tamanhoArquivo": "534.0 KB",
+    "talhaoNome": "Amostra amostra_erva_daninha",
+    "talhaoId": "talhao-01",
+    "areaAmostraM2": 2.5,
+    "areaInfestacaoM2": 1.68,
+    "percentualInfestacao": 67.2,
+    "focosDetectados": 14,
+    "dataCaptura": "26/09/2026",
+    "horaCaptura": "11:17",
+    "created_at": "2026-09-26T11:17:45.296195"
+  }
+]
