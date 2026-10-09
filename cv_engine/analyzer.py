@@ -6,6 +6,15 @@ de ervas daninhas (weed) e plantas de cana-de-açúcar (sugarcane), extrai caixa
 delimitadoras e polígonos das infestações e os transforma em coordenadas reais
 georreferenciadas formatadas em JSON.
 """
+# Importação no topo
+import sys
+import os
+# Adiciona a pasta backend ao path para conseguir importar o database
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
+try:
+    from database import salvar_deteccao_trigo
+except ImportError:
+    salvar_deteccao_trigo = None
 
 from datetime import datetime
 import json
@@ -497,6 +506,24 @@ def analyze_sugarcane_image(
 
     if output_json_path:
         analyzer.export_json(result, output_json_path=output_json_path)
+
+    # --- INTEGRAÇÃO COM O SUPABASE (TRIGO) ---
+    if salvar_deteccao_trigo:
+        try:
+             lat = result["deteccoes"][0]["coordinates"][0][0] if len(result["deteccoes"]) > 0 else None
+             lon = result["deteccoes"][0]["coordinates"][0][1] if len(result["deteccoes"]) > 0 else None
+             salvar_deteccao_trigo(
+                  nome_amostra=Path(image_path).name,
+                  data=datetime.now().isoformat(),
+                  total_espigas=result["summary"].get("total_cana", 0),
+                  densidade=result["summary"].get("taxa_infestacao_percent", 0.0),
+                  lat=lat,
+                  lon=lon,
+                  bounding_boxes_json=result["deteccoes"]
+             )
+        except Exception as e:
+             logger.error("Erro ao salvar no banco a partir do analyzer: %s", e)
+    # -----------------------------------------
 
     return result
 
