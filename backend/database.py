@@ -781,3 +781,37 @@ if __name__ == "__main__":
     for im in imgs:
         print(f"  - [{im['id']}] {im['filename']} | Status: {im['status']} | Anomalias: {im['total_anomalies']} | Área: {im['total_area_ha']} ha")
     print("=" * 60)
+
+def salvar_deteccao_trigo(nome_amostra, data, total_espigas, densidade, lat, lon, bounding_boxes_json):
+    """
+    Guarda os resultados do processamento de trigo na tabela 'anomalies' usando tipos primitivos.
+    """
+    try:
+        # 1. Utilizamos a ligação segura que já existe no teu ficheiro
+        client = get_supabase_client()
+        
+        # 2. O payload funciona como um mapa direto para as colunas numéricas
+        payload = {
+            "nome_amostra": nome_amostra,
+            "data": data,
+            "total_espigas": int(total_espigas),
+            "densidade_estimada": float(densidade),
+            "latitude": float(lat) if lat is not None else None,
+            "longitude": float(lon) if lon is not None else None,
+            "bounding_boxes": bounding_boxes_json,
+            "anomaly_type": "trigo"
+        }
+
+        # 3. Inserção na base de dados
+        response = client.table("anomalies").insert(payload).execute()
+        
+        if response.data:
+            novo_id = response.data[0].get("id")
+            logger.info("Sucesso! Trigo registado com ID: %s", novo_id)
+            return novo_id
+            
+        return None
+
+    except Exception as e:
+        logger.error("Ocorreu um desvio no caminho ao guardar o trigo: %s", e)
+        return None
