@@ -263,13 +263,13 @@ export interface NavItem {
 
 // ── Lista de itens da barra lateral ───────────────────────────────────────────
 export const navItems: NavItem[] = [
-  { id: "deteccao", href: "/", label: "Detecção de Daninhas", icon: IconScan },
+  { id: "deteccao", href: "/", label: "Detecção de Trigo", icon: IconScan },
   { id: "historico", href: "/historico", label: "Histórico de Capturas", icon: IconHistory },
 
   /* ── Abas comentadas temporariamente (retornar caso necessário) ──
   { id: "analises", href: "/", label: "Análises de Campo", icon: IconChart },
-  { id: "culturas", href: "/", label: "Cana-de-Açúcar", icon: IconLeaf },
-  { id: "alertas", href: "/", label: "Alertas de Infestação", icon: IconAlert, badge: 3 },
+  { id: "culturas", href: "/", label: "Cultura do Trigo", icon: IconLeaf },
+  { id: "alertas", href: "/", label: "Alertas de Detecção", icon: IconAlert, badge: 3 },
   ── */
 
   { id: "amostras", href: "/amostras", label: "Banco de Amostras", icon: IconLayers },

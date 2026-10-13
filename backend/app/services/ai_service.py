@@ -65,7 +65,7 @@ class AIService:
             preds = []
 
         detections, summary = extract_yolo_detections(preds, model)
-        return summary["total_detecoes"], detections, summary
+        return summary["total_cabecas_trigo"], detections, summary
 
     async def detect_image_async(
         self,

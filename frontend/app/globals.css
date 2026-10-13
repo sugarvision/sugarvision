@@ -99,6 +99,81 @@ body {
   background-size: 40px 40px;
 }
 
+.detection-image {
+  flex: 1;
+  min-width: 0;
+  min-height: 420px;
+}
+
+.detection-legend {
+  width: 190px;
+  flex: 0 0 190px;
+  padding: 20px 16px;
+  border-left: 1px solid var(--card-border);
+  background: var(--sidebar-bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.detection-legend h2 {
+  margin: 0 0 16px;
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.detection-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.detection-legend-swatch {
+  width: 24px;
+  height: 16px;
+  flex: 0 0 24px;
+  border: 2px solid #f85149;
+}
+
+.ai-disclaimer {
+  margin: 0;
+  margin-top: auto;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .detection-panel {
+    flex-direction: column;
+  }
+
+  .detection-image {
+    flex: none;
+  }
+
+  .detection-legend {
+    width: auto;
+    flex: none;
+    padding: 12px 16px;
+    border-left: 0;
+    border-top: 1px solid var(--card-border);
+  }
+
+  .detection-legend h2 {
+    margin-bottom: 8px;
+  }
+
+  .ai-disclaimer {
+    margin-top: 12px;
+    text-align: center;
+  }
+}
+
 /* Shimmer animation */
 @keyframes shimmer {
   0% {

@@ -75,14 +75,14 @@ class TestSugarVisionBackend(unittest.TestCase):
             b"\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00"
             b"\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
         )
-        file_payload = {"file": ("cana_de_acucar.png", io.BytesIO(png_bytes), "image/png")}
+        file_payload = {"file": ("trigo_lavoura.png", io.BytesIO(png_bytes), "image/png")}
 
         response = self.client.post("/upload", files=file_payload)
         self.assertEqual(response.status_code, 201)
         data = response.json()
 
         self.assertEqual(data.get("status"), "success")
-        self.assertEqual(data.get("original_filename"), "cana_de_acucar.png")
+        self.assertEqual(data.get("original_filename"), "trigo_lavoura.png")
         self.assertEqual(data.get("size_bytes"), len(png_bytes))
 
         # Verifica persistência real no disco
@@ -162,7 +162,7 @@ class TestSugarVisionBackend(unittest.TestCase):
 
     def test_10_upload_enqueues_background_task(self):
         """Valida se a rota /upload retorna o status de agendamento da IA ('enqueued')."""
-        payload = {"file": ("cana_bg_test.png", io.BytesIO(b"\x89PNG\r\n\x1a\n" + b"X" * 32), "image/png")}
+        payload = {"file": ("trigo_bg_test.png", io.BytesIO(b"\x89PNG\r\n\x1a\n" + b"X" * 32), "image/png")}
         response = self.client.post("/upload", files=payload)
         self.assertEqual(response.status_code, 201)
         data = response.json()
@@ -252,7 +252,7 @@ class TestSugarVisionBackend(unittest.TestCase):
         self.assertEqual(resultado.get("status"), "completed")
         self.assertEqual(resultado.get("engine"), "ultralytics")
         self.assertEqual(resultado.get("detections_count"), 3)
-        self.assertEqual(resultado.get("summary", {}).get("falhas_identificadas"), 3)
+        self.assertEqual(resultado.get("summary", {}).get("total_cabecas_trigo"), 3)
         print("  [PASS] 17 - Inferência com mock do Ultralytics processada com contagem de detecções correta")
 
     @patch("ai_engine.carregar_modelo_yolo")
@@ -318,7 +318,6 @@ class TestSugarVisionBackend(unittest.TestCase):
         self.assertEqual(len(data), 1)
         self.assertEqual(data[0]["id"], "falha-supabase-01")
 
-        # Verifica se o SELECT foi chamado corretamente na tabela 'anomalies'
         mock_client.table.assert_called_with("anomalies")
         mock_client.table().select.assert_called_with("*")
         print("  [PASS] 21 - SELECT * na tabela 'anomalies' do Supabase verificado com sucesso")
@@ -394,7 +393,6 @@ class TestSugarVisionBackend(unittest.TestCase):
         self.assertTrue(saved_path.exists())
         self.assertEqual(size, len(b"conteudo_assincrono_teste"))
 
-        # Testa remoção assíncrona não-bloqueante
         removido = asyncio.run(storage.delete_image_async(saved_path))
         self.assertTrue(removido)
         self.assertFalse(saved_path.exists())
@@ -405,7 +403,6 @@ class TestSugarVisionBackend(unittest.TestCase):
         ai = AIService()
         m1 = ai.get_or_load_model()
         m2 = ai.get_or_load_model()
-        # Valida que o cache em memória foi alimentado e retorna a mesma referência
         self.assertIs(m1, m2)
         print("  [PASS] 27 - AIService: cache singleton de modelo em memória validado com sucesso")
 
@@ -421,14 +418,14 @@ class TestSugarVisionBackend(unittest.TestCase):
         self.assertEqual(resultado.get("image_name"), test_img.name)
         print("  [PASS] 28 - AIService: process_image_async executado assincronamente com sucesso")
 
-    def test_29_upload_returns_weed_detections_and_bounding_boxes(self):
-        """Valida que o endpoint /upload retorna detecções de ervas daninhas com bounding boxes do modelo best.pt."""
-        amostra_path = Path(__file__).resolve().parent.parent / "cv_engine" / "amostra_erva_daninha.jpg"
+    def test_29_upload_returns_wheat_detections_and_bounding_boxes(self):
+        """Valida que o endpoint /upload retorna detecções de cabeças de trigo com bounding boxes do modelo best.pt."""
+        amostra_path = Path(__file__).resolve().parent.parent / "cv_engine" / "trigo_teste.png"
         if not amostra_path.exists():
             self.skipTest(f"Imagem de amostra não encontrada em: {amostra_path}")
 
         with open(amostra_path, "rb") as f:
-            file_payload = {"file": ("amostra_erva_daninha.jpg", f, "image/jpeg")}
+            file_payload = {"file": ("trigo_teste.png", f, "image/png")}
             response = self.client.post("/upload", files=file_payload)
 
         self.assertEqual(response.status_code, 201)
@@ -438,22 +435,20 @@ class TestSugarVisionBackend(unittest.TestCase):
         self.assertIn("detections", data)
         self.assertIn("summary", data)
 
-        # Registra arquivo para limpeza
         saved_path = Path(data.get("saved_path"))
         self.created_files.append(saved_path)
 
         detections = data["detections"]
         self.assertIsInstance(detections, list)
-        self.assertGreater(len(detections), 0, "O modelo best.pt deve detectar ao menos um foco na amostra")
+        self.assertGreater(len(detections), 0, "O modelo best.pt deve detectar ao menos uma cabeça de trigo na amostra")
 
-        # Verifica se ao menos uma detecção é erva daninha
-        weeds = [d for d in detections if d.get("type") == "erva_daninha"]
-        self.assertGreater(len(weeds), 0, "Deve haver detecções do tipo 'erva_daninha'")
+        # Todas as detecções devem ser do tipo wheat_head (classe única)
+        self.assertTrue(all(d.get("type") == "wheat_head" for d in detections))
 
-        # Valida estrutura da caixa delimitadora (bounding box) da primeira erva daninha
-        first_weed = weeds[0]
-        self.assertIn("box", first_weed)
-        box = first_weed["box"]
+        # Valida estrutura da caixa delimitadora (bounding box) da primeira detecção
+        first_detection = detections[0]
+        self.assertIn("box", first_detection)
+        box = first_detection["box"]
         self.assertIn("x", box)
         self.assertIn("y", box)
         self.assertIn("width", box)
@@ -468,14 +463,13 @@ class TestSugarVisionBackend(unittest.TestCase):
         self.assertGreater(box["height"], 0)
 
         summary = data["summary"]
-        self.assertGreater(summary.get("total_ervas_daninhas", 0), 0)
-        self.assertGreater(summary.get("taxa_infestacao_percent", 0), 0)
-        print(f"  [PASS] 29 - Upload integrado com best.pt retornou {len(weeds)} ervas daninhas com bounding boxes")
+        self.assertGreater(summary.get("total_cabecas_trigo", 0), 0)
+        print(f"  [PASS] 29 - Upload integrado com best.pt retornou {len(detections)} cabeças de trigo com bounding boxes")
 
-    def test_30_weed_bounding_boxes_format_validation(self):
-        """Valida que a função extract_yolo_detections normaliza caixas delimitadoras e calcula severidade."""
+    def test_30_wheat_bounding_boxes_format_validation(self):
+        """Valida que a função extract_yolo_detections normaliza caixas delimitadoras das cabeças de trigo."""
         ai = AIService()
-        amostra_path = Path(__file__).resolve().parent.parent / "cv_engine" / "amostra_erva_daninha.jpg"
+        amostra_path = Path(__file__).resolve().parent.parent / "cv_engine" / "trigo_teste.png"
         if not amostra_path.exists():
             self.skipTest("Imagem de amostra não encontrada")
 
@@ -489,13 +483,14 @@ class TestSugarVisionBackend(unittest.TestCase):
         for det in detections:
             self.assertIn("id", det)
             self.assertIn("label", det)
+            self.assertEqual(det["type"], "wheat_head")
             self.assertIn("confidence", det)
             self.assertIn("severity", det)
             self.assertIn(det["severity"], ["baixa", "media", "alta"])
             self.assertIn("box", det)
             self.assertIn("box_pixels", det)
 
-        print(f"  [PASS] 30 - Formato das bounding boxes e severidades validado para {len(detections)} detecções")
+        print(f"  [PASS] 30 - Formato das bounding boxes validado para {len(detections)} cabeças de trigo")
 
     def test_31_get_images_endpoint(self):
         """Valida que o endpoint GET /api/images e /api/amostras retornam status 200 e lista de amostras do banco."""
@@ -540,5 +535,3 @@ if __name__ == "__main__":
     print("  EXECUTANDO BATERIA DE TESTES - BACKEND SUGARVISION")
     print("=" * 65 + "\n")
     unittest.main(verbosity=0)
-
-
