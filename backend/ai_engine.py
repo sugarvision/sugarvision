@@ -23,6 +23,50 @@ logger = logging.getLogger("sugarvision-ai")
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_MODEL_PATH = BASE_DIR / "best.pt"
 
+# Regra de negócio agronômica (trigo)
+# Área padrão de enquadramento da câmera/drone (m²), quando não informada.
+DEFAULT_AREA_ENQUADRAMENTO_M2 = 1.0
+# Limites de densidade de espigas por m²
+LIMITE_DENSIDADE_BAIXA = 300.0   # abaixo: "Baixa"
+LIMITE_DENSIDADE_MEDIA = 500.0   # abaixo: "Média"; igual ou acima: "Alta densidade"
+# Componentes de rendimento usados na projeção do potencial produtivo
+GRAOS_POR_ESPIGA = 35
+PESO_MIL_GRAOS_G = 40.0
+
+
+def calcular_densidade_estimada(total_espigas: int, area_m2: float) -> float:
+    """Calcula densidade_estimada = total_espigas / area_metros_quadrados (espigas/m²)."""
+    if not area_m2 or area_m2 <= 0:
+        area_m2 = DEFAULT_AREA_ENQUADRAMENTO_M2
+    return round(max(int(total_espigas), 0) / float(area_m2), 2)
+
+
+def classificar_densidade(densidade_estimada: float) -> str:
+    """Classifica a lavoura em "Baixa", "Média" ou "Alta densidade"."""
+    if densidade_estimada < LIMITE_DENSIDADE_BAIXA:
+        return "Baixa"
+    if densidade_estimada < LIMITE_DENSIDADE_MEDIA:
+        return "Média"
+    return "Alta densidade"
+
+
+def projetar_potencial_lavoura(densidade_estimada: float) -> dict[str, float]:
+    """Projeta o potencial produtivo (kg/ha e sacas/ha de 60 kg) a partir da densidade."""
+    kg_ha = round(densidade_estimada * GRAOS_POR_ESPIGA * PESO_MIL_GRAOS_G / 1000.0 * 10.0, 1)
+    return {"produtividade_estimada_kg_ha": kg_ha, "produtividade_estimada_sacas_ha": round(kg_ha / 60.0, 1)}
+
+
+def diagnostico_agronomico(total_espigas: int, area_m2: float) -> dict[str, Any]:
+    """Consolida o diagnóstico agronômico do trigo para o payload da API."""
+    area = area_m2 if area_m2 and area_m2 > 0 else DEFAULT_AREA_ENQUADRAMENTO_M2
+    densidade_estimada = calcular_densidade_estimada(total_espigas, area)
+    return {
+        "area_enquadramento_m2": float(area),
+        "densidade_estimada": densidade_estimada,
+        "classificacao_densidade": classificar_densidade(densidade_estimada),
+        **projetar_potencial_lavoura(densidade_estimada),
+    }
+
 
 def carregar_modelo_yolo(model_path: Path = DEFAULT_MODEL_PATH) -> Any:
     """Tenta carregar o modelo YOLO via ultralytics caso a biblioteca esteja instalada.
@@ -155,6 +199,8 @@ def processar_imagem_ia(
     image_path: Path | str,
     delay_seconds: float = 1.0,
     model_path: Optional[Path] = None,
+    conf_threshold: float = 0.40,
+    area_m2: float = DEFAULT_AREA_ENQUADRAMENTO_M2,
 ) -> dict[str, Any]:
     """Rotina de processamento assíncrono executada pelo BackgroundTasks.
 
@@ -165,6 +211,7 @@ def processar_imagem_ia(
         image_path: Caminho da imagem salva em disco para avaliação.
         delay_seconds: Tempo de espera antes de iniciar o processamento (padrão: 1.0s).
         model_path: Caminho customizado para o modelo .pt (opcional).
+        conf_threshold: Limiar mínimo de confiança para as detecções (padrão Sprint 5: 0.40).
 
     Returns:
         Dicionário contendo os dados da análise e predição.
@@ -215,9 +262,14 @@ def processar_imagem_ia(
     try:
         modelo = carregar_modelo_yolo(caminho_modelo)
         if modelo is not None:
-            logger.info("[IA] Executando predição com Ultralytics YOLO...")
+            logger.info("[IA] Executando predição com Ultralytics YOLO (conf >= %.2f)...", conf_threshold)
             try:
-                preds = modelo.predict(source=str(path_obj), save=False, verbose=False)
+                preds = modelo.predict(
+                    source=str(path_obj),
+                    conf=conf_threshold,
+                    save=False,
+                    verbose=False,
+                )
             except Exception as read_err:
                 logger.warning("[IA] Aviso na leitura da imagem: %s. Operando modo resiliente.", read_err)
                 preds = []
@@ -230,6 +282,8 @@ def processar_imagem_ia(
             resultado["detections_count"] = total_deteccoes
             resultado["detections"] = detections
             resultado["summary"] = summary
+            resultado["densidade_estimada"] = summary["densidade_estimada"]
+            resultado["classificacao_densidade"] = summary["classificacao_densidade"]
         else:
             # Modo resiliente quando ultralytics não está instalado no ambiente de teste/servidor
             logger.info(
@@ -240,6 +294,9 @@ def processar_imagem_ia(
             resultado["engine"] = "mock_pipeline"
             resultado["detections_count"] = 0
             resultado["detections"] = []
+            diagnostico = diagnostico_agronomico(0, area_m2)
+            resultado["densidade_estimada"] = diagnostico["densidade_estimada"]
+            resultado["classificacao_densidade"] = diagnostico["classificacao_densidade"]
             resultado["summary"] = {
                 "total_cabecas_trigo": 0,
                 "confianca_media": 0.0,

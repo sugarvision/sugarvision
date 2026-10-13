@@ -1,0 +1,20 @@
+# SugarVision - Benchmark e Conjunto Oficial de Testes de Trigo (Sprint 6)
+# Origin: Global Wheat Head Detection (GWHD 2021) - David et al. (CC BY 4.0)
+
+path: wheat_test_set
+train: images
+val: images
+test: images
+
+nc: 1
+names:
+  0: wheat
+
+metadata:
+  total_samples: 20
+  total_ground_truth_heads: 1560
+  curation_clusters:
+    - alta_luminosidade (sol a pino / solo claro / alto contraste)
+    - sombra_luz_difusa (luz difusa / céu encoberto)
+    - estagio_vegetativo_verde (espigas jovens camufladas na folhagem)
+    - maturacao_avancada_alta_densidade (espigas secas / douradas / alta aglomeração)
