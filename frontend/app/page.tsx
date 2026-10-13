@@ -31,7 +31,7 @@ const ImageDetectionViewer = dynamic(() => import("./ImageDetectionViewer"), {
   ),
 });
 
-// ── Stat Card (Métricas em m² e % de Infestação Foliar) ──────────────────────
+// ── Stat Card (Métricas da análise de detecção) ──────────────────────────────
 function StatCard({
   label,
   value,
@@ -188,6 +188,55 @@ function StatCard({
   );
 }
 
+function calculateMarkedAreaPercent(detections: WeedDetection[]): number {
+  const clamp = (value: number) => Math.min(100, Math.max(0, value));
+  const boxes = detections
+    .map(({ box }) => ({
+      left: clamp(box.x),
+      right: clamp(box.x + box.width),
+      top: clamp(box.y),
+      bottom: clamp(box.y + box.height),
+    }))
+    .filter((box) => box.right > box.left && box.bottom > box.top);
+  const xEdges = Array.from(new Set(boxes.flatMap((box) => [box.left, box.right]))).sort((a, b) => a - b);
+  let coveredArea = 0;
+
+  for (let index = 0; index < xEdges.length - 1; index += 1) {
+    const left = xEdges[index];
+    const right = xEdges[index + 1];
+    const intervals = boxes
+      .filter((box) => box.left < right && box.right > left)
+      .map((box) => [box.top, box.bottom] as const)
+      .sort((first, second) => first[0] - second[0]);
+
+    if (intervals.length === 0) continue;
+
+    let intervalStart = intervals[0][0];
+    let intervalEnd = intervals[0][1];
+    let coveredHeight = 0;
+
+    for (const [top, bottom] of intervals.slice(1)) {
+      if (top <= intervalEnd) {
+        intervalEnd = Math.max(intervalEnd, bottom);
+      } else {
+        coveredHeight += intervalEnd - intervalStart;
+        intervalStart = top;
+        intervalEnd = bottom;
+      }
+    }
+
+    coveredHeight += intervalEnd - intervalStart;
+    coveredArea += (right - left) * coveredHeight;
+  }
+
+  return Math.min(100, coveredArea / 100);
+}
+
+function calculateMeanConfidence(detections: WeedDetection[]): number | null {
+  if (detections.length === 0) return null;
+  return (detections.reduce((total, detection) => total + detection.confidence, 0) / detections.length) * 100;
+}
+
 interface BackendUploadResponse {
   status: string;
   message: string;
@@ -277,7 +326,7 @@ function HomeContent() {
           setActiveDetections(detections);
           setIsViewingSavedHistory(true);
 
-          toast.info(`Exibindo análise salva: ${data.nome_imagem} (${weedCount} focos detectados)`, {
+          toast.info(`Exibindo análise salva: ${data.nome_imagem} (${weedCount} cabeças detectadas)`, {
             position: "top-right",
             autoClose: 3500,
             theme: "dark",
@@ -351,7 +400,7 @@ function HomeContent() {
               : 0);
 
           toast.success(
-            `Amostra '${filename}' analisada: ${weedCount} focos identificados e salvos no histórico!`,
+            `Amostra '${filename}' analisada: ${weedCount} cabeças identificadas e salvas no histórico!`,
             {
               position: "top-right",
               autoClose: 4500,
@@ -446,7 +495,7 @@ function HomeContent() {
         result.summary?.total_ervas_daninhas ??
         (result.detections ? result.detections.filter((d) => d.type !== "cana_de_acucar").length : 0);
 
-      toast.success(`Análise concluída: ${weedCount} focos de ervas daninhas identificados!`, {
+      toast.success(`Análise concluída: ${weedCount} cabeças de trigo identificadas!`, {
         position: "top-right",
         autoClose: 4000,
         theme: "dark",
@@ -602,7 +651,7 @@ function HomeContent() {
                     Foto de Campo Processada
                   </h2>
                   <p style={{ fontSize: "12px", color: "var(--muted)", margin: "2px 0 0 0" }}>
-                    Detecção e contagem de focos de ervas daninhas
+                    Detecção e contagem de cabeças de trigo
                   </p>
                 </div>
               </div>
@@ -671,16 +720,16 @@ function HomeContent() {
                 </div>
               )}
               <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--sidebar-border)", paddingBottom: "8px" }}>
-                <span style={{ color: "var(--muted)" }}>Ervas Daninhas:</span>
+                <span style={{ color: "var(--muted)" }}>Cabeças de Trigo:</span>
                 <span style={{ fontWeight: 700, color: "#f85149" }}>
-                  {uploadSuccessData.backend.summary?.total_ervas_daninhas ?? (uploadSuccessData.backend.detections ? uploadSuccessData.backend.detections.filter(d => d.type !== 'cana_de_acucar').length : 0)} focos identificados
+                  {uploadSuccessData.backend.summary?.total_ervas_daninhas ?? (uploadSuccessData.backend.detections ? uploadSuccessData.backend.detections.filter(d => d.type !== 'cana_de_acucar').length : 0)} cabeças identificadas
                 </span>
               </div>
-              {uploadSuccessData.backend.summary?.taxa_infestacao_percent !== undefined && (
+              {uploadSuccessData.backend.detections !== undefined && (
                 <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--sidebar-border)", paddingBottom: "8px" }}>
-                  <span style={{ color: "var(--muted)" }}>Taxa de Infestação:</span>
-                  <span style={{ fontWeight: 700, color: uploadSuccessData.backend.summary.taxa_infestacao_percent > 20 ? "#f85149" : "#d29922" }}>
-                    {uploadSuccessData.backend.summary.taxa_infestacao_percent.toFixed(1)}%
+                  <span style={{ color: "var(--muted)" }}>Área marcada pelas caixas:</span>
+                  <span style={{ fontWeight: 700, color: "#58a6ff" }}>
+                    {formatNumberBR(calculateMarkedAreaPercent(uploadSuccessData.backend.detections.filter((d) => d.type !== "cana_de_acucar")), 1)}%
                   </span>
                 </div>
               )}
@@ -773,7 +822,7 @@ function HomeContent() {
                 lineHeight: 1,
               }}
             >
-              Inspeção Visual & Detecção de Ervas Daninhas
+              Inspeção Visual & Detecção de Cabeças de Trigo
             </h1>
             <p
               style={{
@@ -783,7 +832,7 @@ function HomeContent() {
                 lineHeight: 1,
               }}
             >
-              {isViewingSavedHistory ? "Visualizando análise salva no Histórico (Modo Leitura)" : "Visão computacional e identificação de matocompetição em cana-de-açúcar"}
+              {isViewingSavedHistory ? "Visualizando análise salva no Histórico (Modo Leitura)" : "Visão computacional e contagem de cabeças de trigo"}
             </p>
           </div>
 
@@ -850,13 +899,13 @@ function HomeContent() {
         >
           {/* ── 📊 CARDS COM MÉTRICAS ATIVAS ───────────── */}
           {(() => {
-            const hasModelData = Boolean(uploadSuccessData?.backend?.summary);
+            const hasModelData = Boolean(uploadSuccessData);
             const modelSummary = uploadSuccessData?.backend?.summary;
-            const modelDetections = activeDetections;
-
-            const taxaInfestacao = modelSummary?.taxa_infestacao_percent ?? metrics.percentualInfestacao;
-            const totalFocos = modelSummary?.total_ervas_daninhas ?? (modelDetections ? modelDetections.filter(d => d.type !== 'cana_de_acucar').length : metrics.totalFocos);
-            const taxaSaudavel = Math.max(0, 100 - taxaInfestacao);
+            const modelDetections = uploadSuccessData?.backend?.detections ?? activeDetections;
+            const headDetections = modelDetections?.filter((d) => d.type !== "cana_de_acucar");
+            const totalCabecas = modelSummary?.total_ervas_daninhas ?? headDetections?.length ?? 0;
+            const markedAreaPercent = headDetections ? calculateMarkedAreaPercent(headDetections) : null;
+            const meanConfidence = headDetections ? calculateMeanConfidence(headDetections) : null;
 
             return (
               <div
@@ -864,38 +913,38 @@ function HomeContent() {
                 style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}
               >
                 <StatCard
-                  label="Taxa de Infestação"
-                  value={formatNumberBR(taxaInfestacao, 1)}
-                  unit="%"
-                  subtitle={hasModelData ? `Cálculo registrado da amostra` : `${formatNumberBR(metrics.infestacaoM2, 2)} m² de daninhas`}
-                  badge={`${formatNumberBR(taxaInfestacao, 1)}% Matocompetição`}
-                  badgeType={taxaInfestacao > 20 ? "danger" : "warning"}
-                  color={taxaInfestacao > 20 ? "#f85149" : "#d29922"}
+                  label="Área Marcada"
+                  value={markedAreaPercent === null ? "—" : formatNumberBR(markedAreaPercent, 1)}
+                  unit={markedAreaPercent === null ? "" : "%"}
+                  subtitle="Imagem coberta pelas caixas de detecção"
+                  badge={markedAreaPercent === null ? "Após análise" : "Área delimitada"}
+                  badgeType="info"
+                  color="#58a6ff"
                   icon={IconAlert}
-                  percentage={taxaInfestacao}
+                  percentage={markedAreaPercent ?? undefined}
                 />
 
                 <StatCard
-                  label="Cana Saudável"
-                  value={formatNumberBR(taxaSaudavel, 1)}
-                  unit="%"
-                  subtitle={hasModelData ? "Área livre de ervas daninhas" : `${formatNumberBR(metrics.canaSaudavelM2, 2)} m² livres de mato`}
-                  badge="Área Útil"
-                  badgeType="success"
-                  color="var(--accent-green)"
-                  icon={IconLeaf}
-                  percentage={taxaSaudavel}
-                />
-
-                <StatCard
-                  label="Ervas Identificadas"
-                  value={String(totalFocos)}
-                  unit="focos"
-                  subtitle={hasModelData ? `Identificadas e mapeadas` : `Confiança IA: ${formatNumberBR(metrics.mediaConfianca, 0)}%`}
-                  badge={totalFocos > 2 ? "Infestação Moderada" : "Baixa Infestação"}
-                  badgeType={totalFocos > 2 ? "warning" : "success"}
-                  color="#ffa657"
+                  label="Confiança Média"
+                  value={meanConfidence === null ? "—" : formatNumberBR(meanConfidence, 1)}
+                  unit={meanConfidence === null ? "" : "%"}
+                  subtitle={hasModelData ? "Média das cabeças detectadas" : "Disponível após selecionar uma imagem"}
+                  badge={hasModelData ? "Modelo IA" : "Aguardando imagem"}
+                  badgeType="info"
+                  color="#58a6ff"
                   icon={IconChart}
+                  percentage={meanConfidence ?? undefined}
+                />
+
+                <StatCard
+                  label="Cabeças de Trigo"
+                  value={String(totalCabecas)}
+                  unit="cabeças"
+                  subtitle={hasModelData ? "Identificadas na imagem" : "Selecione uma imagem para analisar"}
+                  badge={totalCabecas > 0 ? "Detectadas" : "Nenhuma detecção"}
+                  badgeType={totalCabecas > 0 ? "success" : "neutral"}
+                  color="#ffa657"
+                  icon={IconLeaf}
                 />
               </div>
             );
@@ -903,6 +952,7 @@ function HomeContent() {
 
           {/* ── Box da Imagem Central com Caixas Delimitadoras ── */}
           <div
+            className="detection-panel"
             style={{
               flex: 1,
               minHeight: "420px",
@@ -911,13 +961,26 @@ function HomeContent() {
               background: "var(--card-bg)",
               overflow: "hidden",
               position: "relative",
+              display: "flex",
             }}
           >
-            <ImageDetectionViewer
-              key={uploadSuccessData?.localPreview || (amostraQuery ? `amostra-${amostraQuery}-${timestampQuery || ''}` : "default")}
-              imageSrc={uploadSuccessData?.localPreview || (amostraQuery ? `http://127.0.0.1:8000/temp_images/${amostraQuery}` : "/cana_teste.jpg")}
-              detections={activeDetections}
-            />
+            <div className="detection-image">
+              <ImageDetectionViewer
+                key={uploadSuccessData?.localPreview || (amostraQuery ? `amostra-${amostraQuery}-${timestampQuery || ''}` : "default")}
+                imageSrc={uploadSuccessData?.localPreview || (amostraQuery ? `http://127.0.0.1:8000/temp_images/${amostraQuery}` : undefined)}
+                detections={activeDetections}
+              />
+            </div>
+            <aside className="detection-legend" aria-label="Legenda das detecções">
+              <h2>Legenda</h2>
+              <div className="detection-legend-item">
+                <span className="detection-legend-swatch" aria-hidden="true" />
+                <span>Cabeças de trigo</span>
+              </div>
+              <p className="ai-disclaimer">
+                A IA pode cometer erros. Revise as detecções antes de tomar decisões.
+              </p>
+            </aside>
           </div>
 
           {/* ── Faixa de Informações Agronômicas da Amostra ───────────── */}
@@ -944,8 +1007,8 @@ function HomeContent() {
               },
               {
                 icon: "🌿",
-                title: "Recomendação Técnica",
-                desc: `Aplicação seletiva / catação nos ${formatNumberBR(metrics.infestacaoM2, 2)} m² afetados`,
+                title: "Alvo da Análise",
+                desc: "Cabeças de trigo",
               },
             ].map((item) => (
               <div
@@ -981,6 +1044,7 @@ function HomeContent() {
               </div>
             ))}
           </div>
+
         </div>
       </main>
 

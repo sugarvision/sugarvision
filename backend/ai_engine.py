@@ -97,39 +97,15 @@ def carregar_modelo_yolo(model_path: Path = DEFAULT_MODEL_PATH) -> Any:
         return None
 
 
-def extract_yolo_detections(
-    preds: Any,
-    model: Any = None,
-    area_m2: float = DEFAULT_AREA_ENQUADRAMENTO_M2,
-) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """Extrai detecções normalizadas em porcentagem, rótulos e severidade para o frontend."""
+def extract_yolo_detections(preds: Any, model: Any = None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Extrai detecções de cabeças de trigo (classe única) para o frontend."""
     if not preds or len(preds) == 0:
-        return [], {
-            **diagnostico_agronomico(0, area_m2),
-            "total_espigas": 0,
-            "falhas_identificadas": 0,
-            "total_detecoes": 0,
-            "total_ervas_daninhas": 0,
-            "total_cana": 0,
-            "taxa_infestacao_percent": 0.0,
-            "distribuicao_severidade_ervas": {"baixa": 0, "media": 0, "alta": 0},
-            "status_analise": "concluida",
-        }
+        return [], {"total_cabecas_trigo": 0, "confianca_media": 0.0, "status_analise": "concluida"}
 
     first = preds[0]
     boxes = getattr(first, "boxes", None)
     if boxes is None:
-        return [], {
-            **diagnostico_agronomico(0, area_m2),
-            "total_espigas": 0,
-            "falhas_identificadas": 0,
-            "total_detecoes": 0,
-            "total_ervas_daninhas": 0,
-            "total_cana": 0,
-            "taxa_infestacao_percent": 0.0,
-            "distribuicao_severidade_ervas": {"baixa": 0, "media": 0, "alta": 0},
-            "status_analise": "concluida",
-        }
+        return [], {"total_cabecas_trigo": 0, "confianca_media": 0.0, "status_analise": "concluida"}
 
     img_h, img_w = (1000.0, 1000.0)
     if hasattr(first, "orig_shape") and first.orig_shape is not None and len(first.orig_shape) >= 2:
@@ -140,22 +116,16 @@ def extract_yolo_detections(
 
     names = getattr(model, "names", {}) if model else {}
     if not isinstance(names, dict):
-        names = {0: "sugarcane", 1: "weed"}
+        names = {0: "wheat"}
 
     detections = []
-    count_weeds = 0
-    count_sugarcane = 0
-    count_wheat = 0
-    severity_counts = {"baixa": 0, "media": 0, "alta": 0}
+    confidences = []
 
     for idx, box in enumerate(boxes):
         try:
             if hasattr(box, "xyxy") and len(box.xyxy) > 0:
                 xy = box.xyxy[0]
-                if hasattr(xy, "cpu"):
-                    xy = xy.cpu().numpy()
-                elif hasattr(xy, "tolist"):
-                    xy = xy.tolist()
+                xy = xy.cpu().numpy() if hasattr(xy, "cpu") else (xy.tolist() if hasattr(xy, "tolist") else xy)
                 x1, y1, x2, y2 = [float(v) for v in xy]
             else:
                 x1, y1, x2, y2 = 50.0, 50.0, 150.0, 150.0
@@ -179,40 +149,19 @@ def extract_yolo_detections(
         raw_name = names.get(cls_id, f"classe_{cls_id}") if isinstance(names, dict) else "wheat"
         raw_str = str(raw_name).lower()
 
-        if "wheat" in raw_str or "trigo" in raw_str or (cls_id == 0 and "wheat" in str(names.get(0, "")).lower()):
-            det_type = "wheat"
-            count_wheat += 1
-            item_id = f"wheat_{count_wheat}"
-            label = f"Espiga de Trigo #{count_wheat}"
-        elif "weed" in raw_str or "erva" in raw_str or cls_id == 1:
-            det_type = "erva_daninha"
-            count_weeds += 1
-            item_id = f"weed_{count_weeds}"
-            label = f"Erva Daninha #{count_weeds}"
-        elif "sugarcane" in raw_str or "cana" in raw_str:
-            det_type = "cana_de_acucar"
-            count_sugarcane += 1
-            item_id = f"cane_{count_sugarcane}"
-            label = f"Cana-de-Açúcar #{count_sugarcane}"
-        else:
-            det_type = "erva_daninha"
-            count_weeds += 1
-            item_id = f"det_{idx + 1}"
-            label = f"{raw_name} #{idx + 1}"
+        if raw_str not in ("wheat", "wheat_head", "head"):
+            logger.warning(
+                "Classe inesperada '%s' (cls_id=%d) retornada pelo modelo — "
+                "esperado apenas 'wheat'. Verifique se o best.pt é o modelo de trigo.",
+                raw_name, cls_id,
+            )
+
+        item_id = f"wheat_{idx + 1}"
+        label = f"Cabeça de Trigo #{idx + 1}"
 
         w_px = max(x2 - x1, 1.0)
         h_px = max(y2 - y1, 1.0)
-        area_pct = ((w_px * h_px) / max(img_w * img_h, 1.0)) * 100.0
-
-        if area_pct < 3.0:
-            severity = "baixa"
-        elif area_pct < 10.0:
-            severity = "media"
-        else:
-            severity = "alta"
-
-        if det_type == "erva_daninha":
-            severity_counts[severity] += 1
+        confidences.append(conf)
 
         box_pct = {
             "x": round((x1 / max(img_w, 1.0)) * 100.0, 2),
@@ -221,40 +170,26 @@ def extract_yolo_detections(
             "height": round((h_px / max(img_h, 1.0)) * 100.0, 2),
         }
 
-        det_info = {
+        detections.append({
             "id": item_id,
             "label": label,
-            "type": det_type,
-            "severity": severity,
+            "type": "wheat_head",
             "confidence": round(conf, 4),
             "box": box_pct,
             "box_pixels": {
-                "x1": round(x1, 2),
-                "y1": round(y1, 2),
-                "x2": round(x2, 2),
-                "y2": round(y2, 2),
-                "width": round(w_px, 2),
-                "height": round(h_px, 2),
+                "x1": round(x1, 2), "y1": round(y1, 2),
+                "x2": round(x2, 2), "y2": round(y2, 2),
+                "width": round(w_px, 2), "height": round(h_px, 2),
             },
-        }
-        detections.append(det_info)
+        })
 
     total_detections = len(boxes)
-    taxa_infestacao = round((count_weeds / total_detections) * 100.0, 1) if total_detections > 0 else 0.0
-    # densidade_estimada = len(boxes) / area (espigas por m²)
-    diagnostico = diagnostico_agronomico(total_detections, area_m2)
+    confianca_media = round(sum(confidences) / total_detections, 4) if total_detections > 0 else 0.0
 
     summary = {
-        "falhas_identificadas": total_detections,
-        "total_detecoes": total_detections,
-        "total_ervas_daninhas": count_weeds,
-        "total_cana": count_sugarcane,
-        "total_trigo": count_wheat,
-        "total_espigas": total_detections,
-        # Chave legada mantida para compatibilidade com o frontend (fluxo cana/ervas)
-        "taxa_infestacao_percent": taxa_infestacao,
-        **diagnostico,
-        "distribuicao_severidade_ervas": severity_counts,
+        # Escopo do T01. Densidade/produtividade/zonas chegam via T02-T04.
+        "total_cabecas_trigo": total_detections,
+        "confianca_media": confianca_media,
         "status_analise": "concluida",
     }
     return detections, summary
@@ -339,8 +274,8 @@ def processar_imagem_ia(
                 logger.warning("[IA] Aviso na leitura da imagem: %s. Operando modo resiliente.", read_err)
                 preds = []
 
-            detections, summary = extract_yolo_detections(preds, modelo, area_m2)
-            total_deteccoes = summary["total_detecoes"]
+            detections, summary = extract_yolo_detections(preds, modelo)
+            total_deteccoes = summary["total_cabecas_trigo"]
 
             resultado["status"] = "completed"
             resultado["engine"] = "ultralytics"
@@ -363,13 +298,8 @@ def processar_imagem_ia(
             resultado["densidade_estimada"] = diagnostico["densidade_estimada"]
             resultado["classificacao_densidade"] = diagnostico["classificacao_densidade"]
             resultado["summary"] = {
-                "falhas_identificadas": 0,
-                "total_detecoes": 0,
-                "total_ervas_daninhas": 0,
-                "total_cana": 0,
-                "total_espigas": 0,
-                "taxa_infestacao_percent": 0.0,
-                **diagnostico,
+                "total_cabecas_trigo": 0,
+                "confianca_media": 0.0,
                 "modelo": caminho_modelo.name,
                 "tamanho_modelo_bytes": caminho_modelo.stat().st_size,
                 "tamanho_imagem_bytes": path_obj.stat().st_size,

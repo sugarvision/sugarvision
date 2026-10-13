@@ -70,8 +70,8 @@ class AIService:
             logger.warning("Falha na inferência síncrona da IA: %s", exc)
             preds = []
 
-        detections, summary = extract_yolo_detections(preds, model, area_m2)
-        return summary["total_detecoes"], detections, summary
+        detections, summary = extract_yolo_detections(preds, model)
+        return summary["total_cabecas_trigo"], detections, summary
 
     async def detect_image_async(
         self,

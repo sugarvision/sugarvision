@@ -1,10 +1,8 @@
 """Motor de Visão Computacional para Análise Agrícola - SugarVision.
 
-Sprint 4: O Motor de Análise (A Visão Computacional)
-Carrega o modelo YOLO treinado (Ultralytics), realiza inferência para detecção
-de ervas daninhas (weed) e plantas de cana-de-açúcar (sugarcane), extrai caixas
-delimitadoras e polígonos das infestações e os transforma em coordenadas reais
-georreferenciadas formatadas em JSON.
+Carrega o modelo YOLO treinado (Ultralytics) para detecção de cabeças de
+trigo (classe única: wheat), extrai caixas delimitadoras e as transforma
+em coordenadas reais georreferenciadas formatadas em JSON.
 """
 # Importação no topo
 import sys
@@ -35,14 +33,15 @@ logger = logging.getLogger("SugarVision-Analyzer")
 
 
 class SugarVisionAnalyzer:
-    """Motor de análise com YOLO para detecção de ervas daninhas e cana-de-açúcar.
+    """Motor de análise com YOLO para detecção de cabeças de trigo.
 
-    Carrega os pesos da rede neural (best.pt treinado no dataset Roboflow),
-    executa a inferência sobre as fotos do canavial, extrai caixas/polígonos
-    e gera coordenadas reais formatadas em JSON.
+    Carrega os pesos da rede neural (best.pt treinado no dataset Global
+    Wheat Head 2021), executa a inferência sobre fotos de lavoura de
+    trigo, extrai caixas e gera coordenadas reais formatadas em JSON.
     """
 
     DEFAULT_GSD = 0.03  # Ground Sample Distance estimado: 0.03 metros (3 cm) por pixel
+    EXPECTED_CLASS_NAMES = {"wheat", "wheat_head", "head"}
 
     def __init__(
         self,
@@ -69,7 +68,14 @@ class SugarVisionAnalyzer:
         logger.info("Modelo YOLO inicializado com sucesso! Classes: %s", self.model.names)
 
     def _resolve_model_path(self, model_path: Optional[Union[str, Path]]) -> Path:
-        """Resolve o caminho do modelo, priorizando cv_engine/best.pt."""
+        """Resolve o caminho do modelo, priorizando cv_engine/best.pt.
+
+        Levanta FileNotFoundError explicitamente se nenhum modelo treinado
+        for encontrado — em vez de usar silenciosamente um fallback para
+        yolov8n.pt (modelo COCO genérico). Um fallback silencioso faria o
+        sistema continuar "funcionando" com detecções completamente
+        inválidas para o domínio agrícola, sem qualquer sinal de erro.
+        """
         base_dir = Path(__file__).resolve().parent
 
         if model_path:
@@ -78,7 +84,9 @@ class SugarVisionAnalyzer:
                 return p
             if (base_dir / model_path).exists():
                 return base_dir / model_path
-            return p
+            raise FileNotFoundError(
+                f"Modelo especificado explicitamente não encontrado: {model_path}"
+            )
 
         # 1. Verifica best.pt na pasta cv_engine
         custom_best = base_dir / "best.pt"
@@ -90,8 +98,14 @@ class SugarVisionAnalyzer:
         if backend_best.exists():
             return backend_best
 
-        # 3. Fallback para yolov8n.pt
-        return Path("yolov8n.pt")
+        # 3. Nenhum modelo encontrado — falha explícita, nunca silenciosa
+        raise FileNotFoundError(
+            "Nenhum best.pt encontrado em cv_engine/ ou backend/. "
+            "O sistema não pode operar sem o modelo de trigo treinado — "
+            "um fallback para um modelo genérico produziria detecções "
+            "inválidas sem qualquer aviso. Verifique se o arquivo foi "
+            "colocado corretamente (ver T01, checklist de arquivos)."
+        )
 
     def load_image(
         self, image_input: Union[str, Path, np.ndarray]
@@ -174,31 +188,39 @@ class SugarVisionAnalyzer:
         return gps_points
 
     def _classify_detection_type(self, class_name: str) -> Tuple[str, str]:
-        """Mapeia o nome da classe YOLO para o tipo semântico e rótulo amigável.
+        """Mapeia a classe do modelo para o tipo semântico e rótulo amigável.
+
+        O modelo de trigo é single-class (apenas 'wheat'). Uma classe
+        inesperada é logada como alerta em vez de ser silenciosamente
+        tratada como trigo — isso evita contaminar métricas de
+        densidade/produtividade com detecções de um modelo errado
+        (ex: alguém esqueceu de trocar o best.pt antigo de cana/erva).
 
         Returns:
             Tupla (tipo_semantico, nome_exibicao)
         """
         c_lower = class_name.lower().strip()
-        if "weed" in c_lower or "erva" in c_lower:
-            return "erva_daninha", "Foco de Erva Daninha"
-        elif "sugarcane" in c_lower or "cana" in c_lower:
-            return "cana_de_acucar", "Cana-de-Açúcar"
-        elif "falha" in c_lower or "gap" in c_lower:
-            return "falha_plantio", "Falha de Plantio"
-        else:
-            return "erva_daninha", class_name.title()
+        if c_lower in self.EXPECTED_CLASS_NAMES:
+            return "wheat_head", "Cabeça de Trigo"
+
+        logger.warning(
+            "Classe inesperada '%s' retornada pelo modelo (esperado: %s). "
+            "Verifique se o best.pt carregado é realmente o modelo de trigo.",
+            class_name,
+            self.EXPECTED_CLASS_NAMES,
+        )
+        return "wheat_head", class_name.title()
 
     def _estimate_severity(self, area_m2: float, det_type: str) -> str:
-        """Determina a severidade do foco com base na área ocupada em m²."""
-        if det_type != "erva_daninha":
-            return "baixa"
-        if area_m2 < 1.0:
-            return "baixa"
-        elif area_m2 < 3.5:
-            return "media"
-        else:
-            return "alta"
+        """Severidade por detecção individual — mantida por compatibilidade.
+
+        Para o domínio de trigo, severidade por detecção isolada não tem
+        sentido agronômico (uma cabeça de trigo não é uma ameaça). O
+        conceito relevante é densidade de espigas POR ZONA do talhão,
+        implementado em T04. Retorna valor neutro até lá para não
+        quebrar os contratos de dados existentes no frontend.
+        """
+        return "baixa"  # TODO(T04): substituir por classificação de zona por densidade
 
     def detect(
         self,
@@ -206,7 +228,7 @@ class SugarVisionAnalyzer:
         geo_reference: Optional[Dict[str, Any]] = None,
         gsd_meters_per_pixel: Optional[float] = None,
     ) -> Dict[str, Any]:
-        """Abre a foto, executa a inferência YOLO e extrai caixas/polígonos em coordenadas reais.
+        """Abre a foto, executa a inferência YOLO e extrai caixas em coordenadas reais.
 
         Args:
             image_input: Caminho da imagem ou matriz de imagem.
@@ -243,8 +265,7 @@ class SugarVisionAnalyzer:
         has_masks = result.masks is not None and len(result.masks) > 0
         num_detections = len(result.masks) if has_masks else (len(result.boxes) if has_boxes else 0)
 
-        count_weeds = 0
-        count_sugarcane = 0
+        count_wheat = 0
 
         for idx in range(num_detections):
             if has_boxes:
@@ -258,24 +279,16 @@ class SugarVisionAnalyzer:
                 h_px = max(y2 - y1, 0.0)
             else:
                 conf = 1.0
-                cls_id = 1
-                raw_class_name = "weed"
+                cls_id = 0
+                raw_class_name = "wheat"
                 x1, y1, x2, y2 = 0.0, 0.0, 0.0, 0.0
                 w_px, h_px = 0.0, 0.0
 
             det_type, display_name = self._classify_detection_type(raw_class_name)
 
-            if det_type == "erva_daninha":
-                count_weeds += 1
-                item_id = f"weed_{count_weeds}"
-                item_name = f"{display_name} #{count_weeds}"
-            elif det_type == "cana_de_acucar":
-                count_sugarcane += 1
-                item_id = f"cane_{count_sugarcane}"
-                item_name = f"{display_name} #{count_sugarcane}"
-            else:
-                item_id = f"det_{idx + 1}"
-                item_name = f"{display_name} #{idx + 1}"
+            count_wheat += 1
+            item_id = f"wheat_{count_wheat}"
+            item_name = f"{display_name} #{count_wheat}"
 
             # Extração de polígonos
             if has_masks:
@@ -329,23 +342,12 @@ class SugarVisionAnalyzer:
             }
             detections.append(det_info)
 
-        # Métricas de infestação
-        total_weed_area_m2 = sum(
-            d["customAreaM2"] for d in detections if d["type"] == "erva_daninha"
-        )
-        total_weed_area_ha = round(total_weed_area_m2 / 10000.0, 6)
         total_detections = len(detections)
-
-        taxa_infestacao = (
-            round((count_weeds / total_detections) * 100, 2)
+        confianca_media = (
+            round(sum(d["confidence"] for d in detections) / total_detections, 4)
             if total_detections > 0
             else 0.0
         )
-
-        weed_severity = {"baixa": 0, "media": 0, "alta": 0}
-        for d in detections:
-            if d["type"] == "erva_daninha":
-                weed_severity[d["severity"]] += 1
 
         output: Dict[str, Any] = {
             "status": "success",
@@ -358,17 +360,14 @@ class SugarVisionAnalyzer:
                 "gsd_meters_per_pixel": gsd,
             },
             "summary": {
-                "total_detecoes": total_detections,
-                "total_ervas_daninhas": count_weeds,
-                "total_cana": count_sugarcane,
-                "taxa_infestacao_percent": taxa_infestacao,
-                "area_infestada_m2": round(total_weed_area_m2, 2),
-                "area_infestada_ha": total_weed_area_ha,
-                "distribuicao_severidade_ervas": weed_severity,
+                # Escopo do T01: contagem bruta + confiança média.
+                # Densidade (T02), produtividade estimada (T03) e zonas
+                # de densidade (T04) são adicionadas aqui por outras
+                # tasks do backlog — não implementar esses campos agora.
+                "total_cabecas_trigo": total_detections,
+                "confianca_media": confianca_media,
             },
             "deteccoes": detections,
-            # Mantém compatibilidade com a chave 'falhas' caso o frontend/código anterior acesse
-            "falhas": [d for d in detections if d["type"] in ["erva_daninha", "falha_plantio"]],
         }
 
         return output
@@ -391,35 +390,18 @@ class SugarVisionAnalyzer:
         detections_data: Dict[str, Any],
         output_path: Optional[Union[str, Path]] = None,
     ) -> np.ndarray:
-        """Gera imagem anotada com caixas e polígonos coloridos por tipo e severidade.
-
-        Ervas daninhas: Laranja / Vermelho (Alerta)
-        Cana-de-açúcar: Verde
-        """
+        """Gera imagem anotada com caixas e polígonos das cabeças de trigo detectadas."""
         image, _, _ = self.load_image(image_input)
         annotated = image.copy()
 
         color_map = {
-            "erva_daninha": {
-                "baixa": (0, 165, 255),   # Laranja
-                "media": (0, 100, 255),   # Laranja escuro / Âmbar
-                "alta": (0, 0, 255),      # Vermelho Alerta
-            },
-            "cana_de_acucar": (0, 255, 0),  # Verde
-            "falha_plantio": (255, 0, 0),   # Azul
+            "wheat_head": (0, 200, 0),  # Verde — cabeça de trigo identificada
         }
 
-        items = detections_data.get("deteccoes", detections_data.get("falhas", []))
+        items = detections_data.get("deteccoes", [])
 
         for item in items:
-            det_type = item.get("type", "erva_daninha")
-            if det_type == "erva_daninha":
-                severity = item.get("severity", "media")
-                color = color_map["erva_daninha"].get(severity, (0, 0, 255))
-            elif det_type == "cana_de_acucar":
-                color = color_map["cana_de_acucar"]
-            else:
-                color = color_map["falha_plantio"]
+            color = color_map.get(item.get("type", "wheat_head"), (0, 200, 0))
 
             poly_pts = np.array(item["polygon_pixels"], dtype=np.int32)
 
@@ -434,8 +416,7 @@ class SugarVisionAnalyzer:
             # Rótulo de texto
             box = item["box_pixels"]
             conf = item.get("confidence", 1.0)
-            tipo_label = "Erva" if det_type == "erva_daninha" else ("Cana" if det_type == "cana_de_acucar" else "Falha")
-            label = f"{tipo_label} #{item['id'].split('_')[-1]} ({conf*100:.0f}%)"
+            label = f"Trigo #{item['id'].split('_')[-1]} ({conf*100:.0f}%)"
             lx, ly = int(box["x1"]), max(int(box["y1"]) - 6, 14)
 
             cv2.putText(
@@ -490,7 +471,7 @@ class SugarVisionAnalyzer:
 PlantingGapAnalyzer = SugarVisionAnalyzer
 
 
-def analyze_sugarcane_image(
+def analyze_wheat_image(
     image_path: Union[str, Path],
     model_path: Optional[Union[str, Path]] = None,
     output_json_path: Optional[Union[str, Path]] = None,
@@ -528,11 +509,15 @@ def analyze_sugarcane_image(
     return result
 
 
+# Alias temporário — manter até todos os chamadores migrarem (ver T01 checklist)
+analyze_sugarcane_image = analyze_wheat_image
+
+
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="SugarVision - Motor de Análise de Ervas Daninhas e Cana com YOLO"
+        description="SugarVision - Motor de Análise de Cabeças de Trigo com YOLO"
     )
     parser.add_argument(
         "--image",
@@ -570,21 +555,17 @@ if __name__ == "__main__":
     target_img = args.image
     if not target_img:
         dir_atual = Path(__file__).resolve().parent
-        if (dir_atual / "amostra_erva_daninha.jpg").exists():
-            target_img = str(dir_atual / "amostra_erva_daninha.jpg")
-        elif (dir_atual / "cana_teste1.jpg").exists():
-            target_img = str(dir_atual / "cana_teste1.jpg")
-        elif (dir_atual / "cana_teste.jpg").exists():
-            target_img = str(dir_atual / "cana_teste.jpg")
+        if (dir_atual / "amostra_trigo.jpg").exists():
+            target_img = str(dir_atual / "amostra_trigo.jpg")
         else:
             raise FileNotFoundError("Nenhuma imagem encontrada em cv_engine/ para teste.")
 
     print(f"\n=======================================================")
-    print(f"🌿 SugarVision - Motor de Detecção de Ervas Daninhas")
+    print(f"🌾 SugarVision - Motor de Detecção de Cabeças de Trigo")
     print(f"📷 Imagem selecionada: {target_img}")
     print(f"=======================================================\n")
 
-    resultado = analyze_sugarcane_image(
+    resultado = analyze_wheat_image(
         image_path=target_img,
         model_path=args.model,
         output_json_path=args.output_json,
@@ -594,12 +575,8 @@ if __name__ == "__main__":
 
     resumo = resultado["summary"]
     print("\n📊 Resumo da Análise:")
-    print(f"- Total de Detecções:        {resumo['total_detecoes']}")
-    print(f"- Focos de Ervas Daninhas:   {resumo['total_ervas_daninhas']}")
-    print(f"- Plantas de Cana:           {resumo['total_cana']}")
-    print(f"- Taxa de Infestação:        {resumo['taxa_infestacao_percent']}%")
-    print(f"- Área Estimada de Ervas:    {resumo['area_infestada_m2']} m² ({resumo['area_infestada_ha']} ha)")
-    print(f"- Severidade das Ervas:      {resumo['distribuicao_severidade_ervas']}")
+    print(f"- Total de Cabeças de Trigo: {resumo['total_cabecas_trigo']}")
+    print(f"- Confiança Média:           {resumo['confianca_media']*100:.1f}%")
     print(f"\n📁 Arquivos Gerados:")
     print(f"  ✓ JSON estruturado: {Path(args.output_json).resolve()}")
     print(f"  ✓ Imagem anotada:   {Path(args.output_img).resolve()}\n")

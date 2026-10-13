@@ -17,8 +17,6 @@ interface AnaliseHistorico {
   cidade: string;
   variedade: string;
   areaAmostraM2: number;
-  areaInfestacaoM2: number;
-  percentualInfestacao: number;
   focosDetectados: number;
   status: "Concluído" | "Em Processamento" | "Atenção";
   image_url?: string;
@@ -92,9 +90,7 @@ export default function HistoricoPage() {
 
   // Métricas calculadas dinamicamente
   const totalAreaM2 = analises.reduce((acc, curr) => acc + (curr.areaAmostraM2 || 0), 0);
-  const totalInfestacaoM2 = analises.reduce((acc, curr) => acc + (curr.areaInfestacaoM2 || 0), 0);
-  const mediaInfestacao = totalAreaM2 > 0 ? (totalInfestacaoM2 / totalAreaM2) * 100 : 0;
-  const totalFocos = analises.reduce((acc, curr) => acc + (curr.focosDetectados || 0), 0);
+  const totalCabecas = analises.reduce((acc, curr) => acc + (curr.focosDetectados || 0), 0);
 
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
@@ -147,7 +143,7 @@ export default function HistoricoPage() {
                 lineHeight: 1,
               }}
             >
-              Registro consolidado persistente no Supabase de inspeções e detecção de ervas daninhas
+              Registro consolidado de capturas e cabeças de trigo detectadas
             </p>
           </div>
 
@@ -252,11 +248,11 @@ export default function HistoricoPage() {
               }}
             >
               <div style={{ fontSize: "11px", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700 }}>
-                Média de Infestação Foliar
+                Área Total Amostrada
               </div>
-              <div style={{ fontSize: "22px", fontWeight: 800, color: "#f85149", marginTop: "4px" }}>
-                {formatNumberBR(mediaInfestacao, 1)}{" "}
-                <span style={{ fontSize: "13px", color: "var(--muted)", fontWeight: 500 }}>% da área</span>
+              <div style={{ fontSize: "22px", fontWeight: 800, color: "#58a6ff", marginTop: "4px" }}>
+                {formatNumberBR(totalAreaM2, 1)}{" "}
+                <span style={{ fontSize: "13px", color: "var(--muted)", fontWeight: 500 }}>m²</span>
               </div>
             </div>
 
@@ -270,11 +266,11 @@ export default function HistoricoPage() {
               }}
             >
               <div style={{ fontSize: "11px", color: "var(--muted)", textTransform: "uppercase", fontWeight: 700 }}>
-                Focos Identificados
+                Cabeças de Trigo Detectadas
               </div>
               <div style={{ fontSize: "22px", fontWeight: 800, color: "#ffa657", marginTop: "4px" }}>
-                {totalFocos}{" "}
-                <span style={{ fontSize: "13px", color: "var(--muted)", fontWeight: 500 }}>plantas daninhas</span>
+                {totalCabecas}{" "}
+                <span style={{ fontSize: "13px", color: "var(--muted)", fontWeight: 500 }}>cabeças</span>
               </div>
             </div>
           </div>
@@ -383,7 +379,7 @@ export default function HistoricoPage() {
                     <th style={{ padding: "14px 18px", fontWeight: 700 }}>Data da Captura</th>
                     <th style={{ padding: "14px 18px", fontWeight: 700 }}>Nome da Foto</th>
                     <th style={{ padding: "14px 18px", fontWeight: 700 }}>Área da Amostra</th>
-                    <th style={{ padding: "14px 18px", fontWeight: 700 }}>Focos / Status</th>
+                    <th style={{ padding: "14px 18px", fontWeight: 700 }}>Cabeças / Status</th>
                     <th style={{ padding: "14px 18px", fontWeight: 700, textAlign: "right" }}>Ações</th>
                   </tr>
                 </thead>
@@ -485,10 +481,7 @@ export default function HistoricoPage() {
                               <span style={{ fontSize: "12px", color: "var(--muted)", fontWeight: 500 }}>m²</span>
                             </div>
                             <div style={{ fontSize: "11.5px", color: "var(--muted)" }}>
-                              {formatNumberBR(item.areaInfestacaoM2 || 0, 2)} m² afetados
-                              <span style={{ color: "#f85149", marginLeft: "6px" }}>
-                                ({formatNumberBR(item.percentualInfestacao || 0, 1)}% daninhas)
-                              </span>
+                              Área aproximada do enquadramento
                             </div>
                           </div>
                         </td>
@@ -522,7 +515,7 @@ export default function HistoricoPage() {
                               {item.status}
                             </span>
                             <span style={{ fontSize: "11.5px", color: "#ffa657", fontWeight: 600 }}>
-                              {item.focosDetectados} focos de ervas
+                              {item.focosDetectados} cabeças de trigo
                             </span>
                           </div>
                         </td>
