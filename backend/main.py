@@ -361,6 +361,7 @@ async def upload_image(
         return {
             "status": "success",
             "message": "Imagem enviada e processada com sucesso.",
+            "ai_status": "enqueued",
             "filename": target_path.name,
             "original_filename": file.filename,
             "content_type": file.content_type,

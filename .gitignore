@@ -236,3 +236,10 @@ temp_images/
 cv_engine/resultado_anotado.jpg
 cv_engine/resultado_analise.json
 
+# Datasets & image databases
+Global Wheat 2021.v1i.yolov8/
+backend/data/
+**/gwhd_val/
+*.zip
+
+

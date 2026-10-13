@@ -93,6 +93,7 @@ def extract_yolo_detections(preds: Any, model: Any = None) -> tuple[list[dict[st
     detections = []
     count_weeds = 0
     count_sugarcane = 0
+    count_wheat = 0
     severity_counts = {"baixa": 0, "media": 0, "alta": 0}
 
     for idx, box in enumerate(boxes):
@@ -117,16 +118,21 @@ def extract_yolo_detections(preds: Any, model: Any = None) -> tuple[list[dict[st
                 cl = box.cls[0]
                 cls_id = int(cl.cpu().item() if hasattr(cl, "cpu") else cl)
             else:
-                cls_id = 1
+                cls_id = 0
         except Exception:
             x1, y1, x2, y2 = 50.0, 50.0, 150.0, 150.0
             conf = 0.90
-            cls_id = 1
+            cls_id = 0
 
-        raw_name = names.get(cls_id, f"classe_{cls_id}") if isinstance(names, dict) else "weed"
+        raw_name = names.get(cls_id, f"classe_{cls_id}") if isinstance(names, dict) else "wheat"
         raw_str = str(raw_name).lower()
 
-        if "weed" in raw_str or "erva" in raw_str or cls_id == 1:
+        if "wheat" in raw_str or "trigo" in raw_str or (cls_id == 0 and "wheat" in str(names.get(0, "")).lower()):
+            det_type = "wheat"
+            count_wheat += 1
+            item_id = f"wheat_{count_wheat}"
+            label = f"Espiga de Trigo #{count_wheat}"
+        elif "weed" in raw_str or "erva" in raw_str or cls_id == 1:
             det_type = "erva_daninha"
             count_weeds += 1
             item_id = f"weed_{count_weeds}"
@@ -189,6 +195,8 @@ def extract_yolo_detections(preds: Any, model: Any = None) -> tuple[list[dict[st
         "total_detecoes": total_detections,
         "total_ervas_daninhas": count_weeds,
         "total_cana": count_sugarcane,
+        "total_trigo": count_wheat,
+        "total_espigas": count_wheat,
         "taxa_infestacao_percent": taxa_infestacao,
         "distribuicao_severidade_ervas": severity_counts,
         "status_analise": "concluida",
@@ -200,6 +208,7 @@ def processar_imagem_ia(
     image_path: Path | str,
     delay_seconds: float = 1.0,
     model_path: Optional[Path] = None,
+    conf_threshold: float = 0.40,
 ) -> dict[str, Any]:
     """Rotina de processamento assíncrono executada pelo BackgroundTasks.
 
@@ -210,6 +219,7 @@ def processar_imagem_ia(
         image_path: Caminho da imagem salva em disco para avaliação.
         delay_seconds: Tempo de espera antes de iniciar o processamento (padrão: 1.0s).
         model_path: Caminho customizado para o modelo .pt (opcional).
+        conf_threshold: Limiar mínimo de confiança para as detecções (padrão Sprint 5: 0.40).
 
     Returns:
         Dicionário contendo os dados da análise e predição.
@@ -260,9 +270,14 @@ def processar_imagem_ia(
     try:
         modelo = carregar_modelo_yolo(caminho_modelo)
         if modelo is not None:
-            logger.info("[IA] Executando predição com Ultralytics YOLO...")
+            logger.info("[IA] Executando predição com Ultralytics YOLO (conf >= %.2f)...", conf_threshold)
             try:
-                preds = modelo.predict(source=str(path_obj), save=False, verbose=False)
+                preds = modelo.predict(
+                    source=str(path_obj),
+                    conf=conf_threshold,
+                    save=False,
+                    verbose=False,
+                )
             except Exception as read_err:
                 logger.warning("[IA] Aviso na leitura da imagem: %s. Operando modo resiliente.", read_err)
                 preds = []

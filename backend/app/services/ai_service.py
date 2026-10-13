@@ -56,10 +56,15 @@ class AIService:
             logger.error("Erro ao instanciar modelo YOLO: %s", exc)
             return None
 
-    def _run_inference_sync(self, model: Any, image_path: Path) -> tuple[int, list[dict[str, Any]], dict[str, Any]]:
+    def _run_inference_sync(
+        self,
+        model: Any,
+        image_path: Path,
+        conf_threshold: float = 0.40,
+    ) -> tuple[int, list[dict[str, Any]], dict[str, Any]]:
         """Executa a predição síncrona do YOLO (chamada dentro de worker thread)."""
         try:
-            preds = model.predict(source=str(image_path), save=False, verbose=False)
+            preds = model.predict(source=str(image_path), conf=conf_threshold, save=False, verbose=False)
         except Exception as exc:
             logger.warning("Falha na inferência síncrona da IA: %s", exc)
             preds = []
@@ -71,15 +76,22 @@ class AIService:
         self,
         image_path: Path | str,
         model_path: Optional[Path] = None,
+        conf_threshold: float = 0.40,
     ) -> dict[str, Any]:
         """Executa a predição imediata sem delay para resposta síncrona/direta da API."""
-        return await self.process_image_async(image_path, delay_seconds=0.0, model_path=model_path)
+        return await self.process_image_async(
+            image_path,
+            delay_seconds=0.0,
+            model_path=model_path,
+            conf_threshold=conf_threshold,
+        )
 
     async def process_image_async(
         self,
         image_path: Path | str,
         delay_seconds: float = 1.0,
         model_path: Optional[Path] = None,
+        conf_threshold: float = 0.40,
     ) -> dict[str, Any]:
         """Rotina assíncrona de inferência que não trava o Event Loop.
 
@@ -132,10 +144,10 @@ class AIService:
             modelo = self.get_or_load_model(caminho_modelo)
 
             if modelo is not None:
-                logger.info("[IA] Executando predição assíncrona com Ultralytics YOLO...")
+                logger.info("[IA] Executando predição assíncrona com Ultralytics YOLO (conf >= %.2f)...", conf_threshold)
                 # Executa predição em threadpool para não travar o loop do FastAPI
                 total_deteccoes, detections, summary = await asyncio.to_thread(
-                    self._run_inference_sync, modelo, path_obj
+                    self._run_inference_sync, modelo, path_obj, conf_threshold
                 )
 
                 resultado["status"] = "completed"

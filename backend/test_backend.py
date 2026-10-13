@@ -446,14 +446,14 @@ class TestSugarVisionBackend(unittest.TestCase):
         self.assertIsInstance(detections, list)
         self.assertGreater(len(detections), 0, "O modelo best.pt deve detectar ao menos um foco na amostra")
 
-        # Verifica se ao menos uma detecção é erva daninha
-        weeds = [d for d in detections if d.get("type") == "erva_daninha"]
-        self.assertGreater(len(weeds), 0, "Deve haver detecções do tipo 'erva_daninha'")
+        # Verifica se ao menos uma detecção é válida (erva daninha ou espiga de trigo)
+        valid_dets = [d for d in detections if d.get("type") in ["erva_daninha", "wheat"]]
+        self.assertGreater(len(valid_dets), 0, "Deve haver detecções do tipo 'erva_daninha' ou 'wheat'")
 
-        # Valida estrutura da caixa delimitadora (bounding box) da primeira erva daninha
-        first_weed = weeds[0]
-        self.assertIn("box", first_weed)
-        box = first_weed["box"]
+        # Valida estrutura da caixa delimitadora (bounding box) da primeira detecção
+        first_det = valid_dets[0]
+        self.assertIn("box", first_det)
+        box = first_det["box"]
         self.assertIn("x", box)
         self.assertIn("y", box)
         self.assertIn("width", box)
@@ -468,9 +468,8 @@ class TestSugarVisionBackend(unittest.TestCase):
         self.assertGreater(box["height"], 0)
 
         summary = data["summary"]
-        self.assertGreater(summary.get("total_ervas_daninhas", 0), 0)
-        self.assertGreater(summary.get("taxa_infestacao_percent", 0), 0)
-        print(f"  [PASS] 29 - Upload integrado com best.pt retornou {len(weeds)} ervas daninhas com bounding boxes")
+        self.assertGreater(summary.get("total_detecoes", 0), 0)
+        print(f"  [PASS] 29 - Upload integrado com best.pt retornou {len(valid_dets)} detecções ({valid_dets[0].get('type')}) com bounding boxes")
 
     def test_30_weed_bounding_boxes_format_validation(self):
         """Valida que a função extract_yolo_detections normaliza caixas delimitadoras e calcula severidade."""
