@@ -231,6 +231,9 @@ temp_images/
 # Machine learning models & weights
 *.pt
 *.onnx
+*.bak
+*.pt.bak
+
 
 # CV engine temporary run outputs
 cv_engine/resultado_anotado.jpg

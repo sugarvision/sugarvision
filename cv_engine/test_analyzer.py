@@ -12,14 +12,14 @@ class TestSugarVisionAnalyzer(unittest.TestCase):
     """Bateria de testes para o motor de visão computacional SugarVision."""
 
     def test_analyzer_initialization_with_best_model(self):
-        """Verifica se o analisador carrega o best.pt com as classes corretas."""
+        """Verifica se o analisador carrega o modelo oficial (backend/best.pt) com a classe wheat."""
         analyzer = SugarVisionAnalyzer(conf_threshold=0.25)
         self.assertIsNotNone(analyzer.model)
         self.assertEqual(analyzer.conf_threshold, 0.25)
-        # Verifica se as classes do modelo treinado são sugarcane e weed
+        # Verifica se a classe do modelo oficial de trigo é wheat
         classes = analyzer.model.names
-        self.assertIn(1, classes)
-        self.assertEqual(classes[1], "weed")
+        self.assertIn(0, classes)
+        self.assertEqual(classes[0], "wheat")
 
     def test_load_existing_image(self):
         """Verifica o carregamento de imagens locais."""

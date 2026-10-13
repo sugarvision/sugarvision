@@ -22,7 +22,8 @@ logger = logging.getLogger("sugarvision-ai")
 
 # Diretórios e caminhos padrão
 BASE_DIR = Path(__file__).resolve().parent
-DEFAULT_MODEL_PATH = BASE_DIR / "best.pt"
+BACKEND_MODEL_PATH = BASE_DIR.parent / "backend" / "best.pt"
+DEFAULT_MODEL_PATH = BACKEND_MODEL_PATH if BACKEND_MODEL_PATH.exists() else (BASE_DIR / "best.pt")
 
 
 def carregar_modelo_yolo(model_path: Path = DEFAULT_MODEL_PATH) -> Any:
@@ -35,8 +36,11 @@ def carregar_modelo_yolo(model_path: Path = DEFAULT_MODEL_PATH) -> Any:
         Instância do modelo YOLO ou None caso ultralytics não esteja disponível.
     """
     if not model_path.exists():
-        logger.warning("Arquivo de modelo não encontrado no caminho: %s", model_path)
-        return None
+        if BACKEND_MODEL_PATH.exists():
+            model_path = BACKEND_MODEL_PATH
+        else:
+            logger.warning("Arquivo de modelo não encontrado no caminho: %s", model_path)
+            return None
 
     try:
         from ultralytics import YOLO
