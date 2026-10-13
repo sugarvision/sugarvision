@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, List, Optional
 
 from pydantic import BaseModel
-from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, UploadFile, status
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, Query, Response, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from ai_engine import DEFAULT_MODEL_PATH, processar_imagem_ia
@@ -61,6 +61,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Total-Count", "X-Page", "X-Page-Size"],
 )
 
 
@@ -139,10 +140,21 @@ async def delete_image(
 
 @app.get("/api/historico", response_model=List[dict[str, Any]])
 async def get_history(
+    response: Response,
+    page: int = Query(1, ge=1, description="Número da página (começa em 1)"),
+    page_size: int = Query(50, ge=1, le=200, description="Itens por página (máx. 200)"),
     history_service: HistoryService = Depends(get_history_service),
 ) -> List[dict[str, Any]]:
-    """Retorna todas as análises cadastradas no histórico."""
-    return await history_service.get_all_analyses_async()
+    """Retorna o histórico paginado, da análise mais recente para a mais antiga.
+
+    Cada item traz data, nome da amostra, total de espigas e coordenadas. O total geral
+    de registros vai no cabeçalho X-Total-Count.
+    """
+    items, total = await history_service.get_analyses_page_async(page, page_size)
+    response.headers["X-Total-Count"] = str(total)
+    response.headers["X-Page"] = str(page)
+    response.headers["X-Page-Size"] = str(page_size)
+    return items
 
 @app.get("/api/historico/{analysis_id}")
 async def get_single_history(analysis_id: str) -> dict[str, Any]:

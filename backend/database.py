@@ -11,6 +11,8 @@ from functools import lru_cache
 import logging
 import os
 from pathlib import Path
+import threading
+import time
 from typing import Any, Generator, List, Optional
 import urllib.parse
 import uuid
@@ -100,9 +102,48 @@ def get_pg_connection_string() -> str:
     return f"postgresql://{user}:{pwd}@{host}:{port}/{dbname}"
 
 
+_PG_POOL: Any = None
+_PG_POOL_LOCK = threading.Lock()
+_PG_POOL_IDLE_PING_SECONDS = 20.0
+_conn_last_used: dict[int, float] = {}
+
+
+def _get_pg_pool(psycopg2_module: Any) -> Any:
+    """Cria (uma única vez) o pool de conexões PostgreSQL reutilizáveis."""
+    global _PG_POOL
+    if _PG_POOL is None:
+        with _PG_POOL_LOCK:
+            if _PG_POOL is None:
+                from psycopg2.pool import ThreadedConnectionPool
+
+                _PG_POOL = ThreadedConnectionPool(
+                    1, 5, get_pg_connection_string(), connect_timeout=5
+                )
+    return _PG_POOL
+
+
+def _is_conn_healthy(conn: Any) -> bool:
+    """Verifica se a conexão do pool ainda está viva (ping apenas se ficou ociosa)."""
+    if conn.closed:
+        return False
+    idle = time.monotonic() - _conn_last_used.get(id(conn), 0.0)
+    if idle < _PG_POOL_IDLE_PING_SECONDS:
+        return True
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1")
+        conn.rollback()
+        return True
+    except Exception:
+        return False
+
+
 @contextmanager
-def get_db_connection() -> Generator[Any, None, None]:
-    """Context manager para conexões seguras com PostgreSQL usando psycopg2."""
+def get_db_connection(autocommit: bool = False) -> Generator[Any, None, None]:
+    """Context manager para conexões seguras com PostgreSQL usando psycopg2 (com pool).
+
+    Com autocommit=True (consultas de leitura) evita os round-trips extras de BEGIN/ROLLBACK.
+    """
     try:
         import psycopg2
         import psycopg2.extras
@@ -110,18 +151,31 @@ def get_db_connection() -> Generator[Any, None, None]:
         logger.error("psycopg2 não está instalado no ambiente: %s", imp_err)
         raise ConnectionError("psycopg2 não instalado.") from imp_err
 
-    conn_str = get_pg_connection_string()
+    pool = None
     conn = None
+    broken = False
     try:
-        conn = psycopg2.connect(conn_str, connect_timeout=5)
+        pool = _get_pg_pool(psycopg2)
+        conn = pool.getconn()
+        if not _is_conn_healthy(conn):
+            pool.putconn(conn, close=True)
+            conn = pool.getconn()
+        conn.autocommit = autocommit
         yield conn
     except Exception as exc:
+        broken = conn is None or bool(getattr(conn, "closed", 1))
         logger.warning("Falha na conexão PostgreSQL direta: %s", exc)
         raise exc
     finally:
-        if conn is not None:
+        if conn is not None and pool is not None:
             try:
-                conn.close()
+                if not conn.closed:
+                    if conn.autocommit:
+                        conn.autocommit = False  # sem round-trip: não há transação aberta
+                    else:
+                        conn.rollback()  # encerra transação aberta antes de devolver ao pool
+                    _conn_last_used[id(conn)] = time.monotonic()
+                pool.putconn(conn, close=broken or bool(conn.closed))
             except Exception:
                 pass
 
@@ -508,24 +562,69 @@ def _save_local_analyses(data: List[dict[str, Any]]) -> None:
         logger.error("Erro ao salvar histórico local: %s", e)
 
 
-def get_all_analyses() -> List[dict[str, Any]]:
+def _ordenar_mais_recentes(items: List[dict[str, Any]]) -> List[dict[str, Any]]:
+    """Ordena as análises da mais recente para a mais antiga (campo created_at ISO)."""
+    return sorted(items, key=lambda a: str(a.get("created_at") or ""), reverse=True)
+
+
+def _enriquecer_analise(item: dict[str, Any]) -> dict[str, Any]:
+    """Garante no retorno: data, nome da amostra, total de espigas, densidade e coordenadas."""
+    summary = item.get("summary") if isinstance(item.get("summary"), dict) else {}
+    total = summary.get("total_espigas")
+    if total is None:
+        total = item.get("total_espigas")
+    if total is None:
+        total = item.get("focos_detectados") or item.get("focosDetectados") or 0
+    lat = item.get("latitude") if item.get("latitude") is not None else summary.get("latitude")
+    lon = item.get("longitude") if item.get("longitude") is not None else summary.get("longitude")
+    item["data"] = item.get("created_at")
+    item["nome_amostra"] = item.get("nome_imagem") or item.get("nomeImagem")
+    item["total_espigas"] = int(total)
+    item["densidade_estimada"] = summary.get("densidade_estimada", item.get("densidade_estimada"))
+    item["latitude"] = float(lat) if lat is not None else None
+    item["longitude"] = float(lon) if lon is not None else None
+    return item
+
+
+def get_analyses_page(limit: int, offset: int = 0) -> tuple[List[dict[str, Any]], int]:
+    """Retorna (itens_da_página, total) do histórico, do mais recente para o mais antigo."""
+    total_holder: list[int] = []
+    items = get_all_analyses(limit=limit, offset=offset, _total_out=total_holder)
+    if total_holder:
+        return items, total_holder[0]
+    # Contingência local (Supabase indisponível): total vem do arquivo local
+    return items, len(_load_local_analyses())
+
+
+def get_all_analyses(
+    limit: Optional[int] = None, offset: int = 0, _total_out: Optional[list] = None
+) -> List[dict[str, Any]]:
     """Consulta histórico no Supabase. Se falhar, busca do arquivo local seguro."""
     try:
         import psycopg2.extras
-        with get_db_connection() as conn:
+        with get_db_connection(autocommit=True) as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+                total_col = ", COUNT(*) OVER() AS _total" if _total_out is not None else ""
                 cur.execute(
-                    """
+                    f"""
                     SELECT 
                         id, image_id, nome_imagem, image_url, tamanho_arquivo, formato,
                         talhao_id, talhao_nome, cidade, variedade,
                         area_amostra_m2, area_infestacao_m2, percentual_infestacao,
                         focos_detectados, status, detections_json, summary_json, created_at
+                        {total_col}
                     FROM analyses
                     ORDER BY created_at DESC
-                    """
+                    """ + (" LIMIT %s OFFSET %s" if limit is not None else ""),
+                    (int(limit), int(offset)) if limit is not None else None,
                 )
                 rows = cur.fetchall()
+                if _total_out is not None:
+                    if rows:
+                        _total_out.append(int(rows[0]["_total"]))
+                    else:  # página além do fim: total real precisa de COUNT
+                        cur.execute("SELECT COUNT(*) AS total FROM analyses")
+                        _total_out.append(int(cur.fetchone()["total"]))
                 results = []
                 for r in rows:
                     created_dt = r.get("created_at")
@@ -575,10 +674,11 @@ def get_all_analyses() -> List[dict[str, Any]]:
                         "horaCaptura": hora_str,
                         "created_at": created_dt.isoformat() if created_dt else None,
                     })
-                return results
+                return [_enriquecer_analise(r) for r in results]
     except Exception as exc:
         logger.warning("Supabase offline ou tabela inexistente (%s). Usando contingência local.", exc)
-        return _load_local_analyses()
+        local = [_enriquecer_analise(a) for a in _ordenar_mais_recentes(_load_local_analyses())]
+        return local[offset:offset + limit] if limit is not None else local
 
 
 def insert_analysis(data: dict[str, Any]) -> dict[str, Any]:
@@ -598,7 +698,12 @@ def insert_analysis(data: dict[str, Any]) -> dict[str, Any]:
     focos_detectados = int(data.get("focos_detectados") or data.get("focosDetectados") or 0)
     status = data.get("status") or "Concluído"
     detections_json = data.get("detections_json") or json.dumps(data.get("detections", []))
-    summary_json = data.get("summary_json") or json.dumps(data.get("summary", {}))
+    _summary_dict = data.get("summary") if isinstance(data.get("summary"), dict) else {}
+    _summary_dict = dict(_summary_dict)
+    for _coord in ("latitude", "longitude"):
+        if data.get(_coord) is not None and _summary_dict.get(_coord) is None:
+            _summary_dict[_coord] = float(data[_coord])
+    summary_json = data.get("summary_json") or json.dumps(_summary_dict)
     image_id = data.get("image_id")
     now_iso = datetime.now().isoformat()
 

@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from app.core.config import DEFAULT_MODEL_PATH
-from ai_engine import extract_yolo_detections
+from ai_engine import DEFAULT_AREA_ENQUADRAMENTO_M2, diagnostico_agronomico, extract_yolo_detections
 
 logger = logging.getLogger("sugarvision-ai")
 
@@ -61,6 +61,7 @@ class AIService:
         model: Any,
         image_path: Path,
         conf_threshold: float = 0.40,
+        area_m2: float = DEFAULT_AREA_ENQUADRAMENTO_M2,
     ) -> tuple[int, list[dict[str, Any]], dict[str, Any]]:
         """Executa a predição síncrona do YOLO (chamada dentro de worker thread)."""
         try:
@@ -69,7 +70,7 @@ class AIService:
             logger.warning("Falha na inferência síncrona da IA: %s", exc)
             preds = []
 
-        detections, summary = extract_yolo_detections(preds, model)
+        detections, summary = extract_yolo_detections(preds, model, area_m2)
         return summary["total_detecoes"], detections, summary
 
     async def detect_image_async(
@@ -77,6 +78,7 @@ class AIService:
         image_path: Path | str,
         model_path: Optional[Path] = None,
         conf_threshold: float = 0.40,
+        area_m2: float = DEFAULT_AREA_ENQUADRAMENTO_M2,
     ) -> dict[str, Any]:
         """Executa a predição imediata sem delay para resposta síncrona/direta da API."""
         return await self.process_image_async(
@@ -84,6 +86,7 @@ class AIService:
             delay_seconds=0.0,
             model_path=model_path,
             conf_threshold=conf_threshold,
+            area_m2=area_m2,
         )
 
     async def process_image_async(
@@ -92,6 +95,7 @@ class AIService:
         delay_seconds: float = 1.0,
         model_path: Optional[Path] = None,
         conf_threshold: float = 0.40,
+        area_m2: float = DEFAULT_AREA_ENQUADRAMENTO_M2,
     ) -> dict[str, Any]:
         """Rotina assíncrona de inferência que não trava o Event Loop.
 
@@ -147,7 +151,7 @@ class AIService:
                 logger.info("[IA] Executando predição assíncrona com Ultralytics YOLO (conf >= %.2f)...", conf_threshold)
                 # Executa predição em threadpool para não travar o loop do FastAPI
                 total_deteccoes, detections, summary = await asyncio.to_thread(
-                    self._run_inference_sync, modelo, path_obj, conf_threshold
+                    self._run_inference_sync, modelo, path_obj, conf_threshold, area_m2
                 )
 
                 resultado["status"] = "completed"
@@ -155,6 +159,8 @@ class AIService:
                 resultado["detections_count"] = total_deteccoes
                 resultado["detections"] = detections
                 resultado["summary"] = summary
+                resultado["densidade_estimada"] = summary["densidade_estimada"]
+                resultado["classificacao_densidade"] = summary["classificacao_densidade"]
             else:
                 # Pipeline seguro de contingência quando ultralytics não estiver instalado
                 logger.info(
@@ -165,12 +171,17 @@ class AIService:
                 resultado["engine"] = "mock_pipeline"
                 resultado["detections_count"] = 0
                 resultado["detections"] = []
+                diagnostico = diagnostico_agronomico(0, area_m2)
+                resultado["densidade_estimada"] = diagnostico["densidade_estimada"]
+                resultado["classificacao_densidade"] = diagnostico["classificacao_densidade"]
                 resultado["summary"] = {
                     "falhas_identificadas": 0,
                     "total_detecoes": 0,
                     "total_ervas_daninhas": 0,
                     "total_cana": 0,
+                    "total_espigas": 0,
                     "taxa_infestacao_percent": 0.0,
+                    **diagnostico,
                     "modelo": caminho_modelo.name,
                     "tamanho_modelo_bytes": caminho_modelo.stat().st_size,
                     "tamanho_imagem_bytes": path_obj.stat().st_size,
