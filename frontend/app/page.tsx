@@ -857,6 +857,30 @@ function HomeContent() {
           )}
 
           <button
+            id="btn-imprimir-laudo"
+            type="button"
+            onClick={() => window.print()}
+            className="no-print"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "9px 16px",
+              borderRadius: "8px",
+              background: "var(--surface)",
+              border: "1px solid var(--card-border)",
+              cursor: "pointer",
+              color: "var(--foreground)",
+              fontSize: "13.5px",
+              fontWeight: 600,
+              transition: "all 0.2s ease",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Imprimir Laudo
+          </button>
+
+          <button
             id="btn-nova-captura"
             onClick={handleOpenFileDialog}
             disabled={uploadLoading}
