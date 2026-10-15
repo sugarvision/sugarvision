@@ -1,5 +1,1180 @@
 [
   {
+    "image_id": "38216334-c214-439d-b3d5-df4076815236",
+    "nome_imagem": "d602b35796d467379242ecd661e190c869481665689dd74700d892eda9b46f5b_pngrfec6235f48b72f38931bec1c386fd75fb.jpg",
+    "image_url": "http://127.0.0.1:8000/temp_images/d602b35796d467379242ecd661e190c869481665689dd74700d892eda9b46f5b_pngrfec6235f48b72f38931bec1c386fd75fb.jpg",
+    "tamanho_arquivo": "128.3 KB",
+    "formato": "JPG",
+    "talhao_id": "talhao-01",
+    "talhao_nome": "Amostra d602b35796d467379242ecd661e190c869481665689dd74700d892eda9b46f5b_pngrfec6235f48b72f38931bec1c386fd75fb",
+    "cidade": "Rio Claro - SP",
+    "variedade": "CTC-9001 (Plena Safra)",
+    "area_amostra_m2": 2.5,
+    "area_infestacao_m2": 2.0,
+    "percentual_infestacao": 80.0,
+    "focos_detectados": 57,
+    "status": "Atenção",
+    "detections": [
+      {
+        "id": "wheat_1",
+        "label": "Cabeça de Trigo #1",
+        "type": "wheat_head",
+        "confidence": 0.7858,
+        "box": {
+          "x": 33.65,
+          "y": 8.87,
+          "width": 8.75,
+          "height": 8.35
+        },
+        "box_pixels": {
+          "x1": 215.35,
+          "y1": 56.78,
+          "x2": 271.32,
+          "y2": 110.22,
+          "width": 55.97,
+          "height": 53.45
+        }
+      },
+      {
+        "id": "wheat_2",
+        "label": "Cabeça de Trigo #2",
+        "type": "wheat_head",
+        "confidence": 0.7252,
+        "box": {
+          "x": 27.23,
+          "y": 39.46,
+          "width": 7.05,
+          "height": 4.81
+        },
+        "box_pixels": {
+          "x1": 174.25,
+          "y1": 252.54,
+          "x2": 219.39,
+          "y2": 283.3,
+          "width": 45.13,
+          "height": 30.76
+        }
+      },
+      {
+        "id": "wheat_3",
+        "label": "Cabeça de Trigo #3",
+        "type": "wheat_head",
+        "confidence": 0.7227,
+        "box": {
+          "x": 74.8,
+          "y": 89.6,
+          "width": 7.81,
+          "height": 7.14
+        },
+        "box_pixels": {
+          "x1": 478.73,
+          "y1": 573.45,
+          "x2": 528.72,
+          "y2": 619.12,
+          "width": 49.99,
+          "height": 45.67
+        }
+      },
+      {
+        "id": "wheat_4",
+        "label": "Cabeça de Trigo #4",
+        "type": "wheat_head",
+        "confidence": 0.7211,
+        "box": {
+          "x": 59.93,
+          "y": 26.94,
+          "width": 6.48,
+          "height": 9.87
+        },
+        "box_pixels": {
+          "x1": 383.54,
+          "y1": 172.43,
+          "x2": 425.03,
+          "y2": 235.57,
+          "width": 41.48,
+          "height": 63.14
+        }
+      },
+      {
+        "id": "wheat_5",
+        "label": "Cabeça de Trigo #5",
+        "type": "wheat_head",
+        "confidence": 0.7023,
+        "box": {
+          "x": 17.08,
+          "y": 87.2,
+          "width": 5.37,
+          "height": 11.79
+        },
+        "box_pixels": {
+          "x1": 109.29,
+          "y1": 558.09,
+          "x2": 143.66,
+          "y2": 633.52,
+          "width": 34.37,
+          "height": 75.44
+        }
+      },
+      {
+        "id": "wheat_6",
+        "label": "Cabeça de Trigo #6",
+        "type": "wheat_head",
+        "confidence": 0.7019,
+        "box": {
+          "x": 52.4,
+          "y": 86.68,
+          "width": 7.76,
+          "height": 5.52
+        },
+        "box_pixels": {
+          "x1": 335.37,
+          "y1": 554.77,
+          "x2": 385.04,
+          "y2": 590.09,
+          "width": 49.68,
+          "height": 35.32
+        }
+      },
+      {
+        "id": "wheat_7",
+        "label": "Cabeça de Trigo #7",
+        "type": "wheat_head",
+        "confidence": 0.6991,
+        "box": {
+          "x": 36.67,
+          "y": 68.58,
+          "width": 7.67,
+          "height": 9.59
+        },
+        "box_pixels": {
+          "x1": 234.7,
+          "y1": 438.9,
+          "x2": 283.79,
+          "y2": 500.3,
+          "width": 49.09,
+          "height": 61.4
+        }
+      },
+      {
+        "id": "wheat_8",
+        "label": "Cabeça de Trigo #8",
+        "type": "wheat_head",
+        "confidence": 0.6979,
+        "box": {
+          "x": 82.61,
+          "y": 33.64,
+          "width": 4.9,
+          "height": 12.25
+        },
+        "box_pixels": {
+          "x1": 528.71,
+          "y1": 215.28,
+          "x2": 560.07,
+          "y2": 293.67,
+          "width": 31.36,
+          "height": 78.4
+        }
+      },
+      {
+        "id": "wheat_9",
+        "label": "Cabeça de Trigo #9",
+        "type": "wheat_head",
+        "confidence": 0.6872,
+        "box": {
+          "x": 47.35,
+          "y": 89.44,
+          "width": 7.16,
+          "height": 6.53
+        },
+        "box_pixels": {
+          "x1": 303.04,
+          "y1": 572.44,
+          "x2": 348.86,
+          "y2": 614.26,
+          "width": 45.81,
+          "height": 41.81
+        }
+      },
+      {
+        "id": "wheat_10",
+        "label": "Cabeça de Trigo #10",
+        "type": "wheat_head",
+        "confidence": 0.6853,
+        "box": {
+          "x": 90.86,
+          "y": 73.33,
+          "width": 9.12,
+          "height": 8.45
+        },
+        "box_pixels": {
+          "x1": 581.47,
+          "y1": 469.31,
+          "x2": 639.84,
+          "y2": 523.36,
+          "width": 58.37,
+          "height": 54.05
+        }
+      },
+      {
+        "id": "wheat_11",
+        "label": "Cabeça de Trigo #11",
+        "type": "wheat_head",
+        "confidence": 0.6811,
+        "box": {
+          "x": 49.0,
+          "y": 0.29,
+          "width": 4.65,
+          "height": 11.45
+        },
+        "box_pixels": {
+          "x1": 313.61,
+          "y1": 1.83,
+          "x2": 343.37,
+          "y2": 75.11,
+          "width": 29.76,
+          "height": 73.29
+        }
+      },
+      {
+        "id": "wheat_12",
+        "label": "Cabeça de Trigo #12",
+        "type": "wheat_head",
+        "confidence": 0.6789,
+        "box": {
+          "x": 20.16,
+          "y": 18.63,
+          "width": 5.52,
+          "height": 7.72
+        },
+        "box_pixels": {
+          "x1": 129.05,
+          "y1": 119.25,
+          "x2": 164.35,
+          "y2": 168.67,
+          "width": 35.3,
+          "height": 49.42
+        }
+      },
+      {
+        "id": "wheat_13",
+        "label": "Cabeça de Trigo #13",
+        "type": "wheat_head",
+        "confidence": 0.6696,
+        "box": {
+          "x": 18.32,
+          "y": 34.83,
+          "width": 4.28,
+          "height": 6.5
+        },
+        "box_pixels": {
+          "x1": 117.27,
+          "y1": 222.92,
+          "x2": 144.68,
+          "y2": 264.52,
+          "width": 27.41,
+          "height": 41.59
+        }
+      },
+      {
+        "id": "wheat_14",
+        "label": "Cabeça de Trigo #14",
+        "type": "wheat_head",
+        "confidence": 0.6629,
+        "box": {
+          "x": 49.85,
+          "y": 24.85,
+          "width": 4.99,
+          "height": 7.33
+        },
+        "box_pixels": {
+          "x1": 319.04,
+          "y1": 159.05,
+          "x2": 350.98,
+          "y2": 205.97,
+          "width": 31.94,
+          "height": 46.92
+        }
+      },
+      {
+        "id": "wheat_15",
+        "label": "Cabeça de Trigo #15",
+        "type": "wheat_head",
+        "confidence": 0.6614,
+        "box": {
+          "x": 3.0,
+          "y": 29.62,
+          "width": 6.9,
+          "height": 10.5
+        },
+        "box_pixels": {
+          "x1": 19.23,
+          "y1": 189.58,
+          "x2": 63.42,
+          "y2": 256.75,
+          "width": 44.19,
+          "height": 67.17
+        }
+      },
+      {
+        "id": "wheat_16",
+        "label": "Cabeça de Trigo #16",
+        "type": "wheat_head",
+        "confidence": 0.6597,
+        "box": {
+          "x": 1.37,
+          "y": 17.42,
+          "width": 7.89,
+          "height": 5.16
+        },
+        "box_pixels": {
+          "x1": 8.77,
+          "y1": 111.49,
+          "x2": 59.29,
+          "y2": 144.48,
+          "width": 50.52,
+          "height": 32.99
+        }
+      },
+      {
+        "id": "wheat_17",
+        "label": "Cabeça de Trigo #17",
+        "type": "wheat_head",
+        "confidence": 0.6586,
+        "box": {
+          "x": 71.65,
+          "y": 6.7,
+          "width": 5.33,
+          "height": 11.11
+        },
+        "box_pixels": {
+          "x1": 458.55,
+          "y1": 42.89,
+          "x2": 492.68,
+          "y2": 114.02,
+          "width": 34.13,
+          "height": 71.13
+        }
+      },
+      {
+        "id": "wheat_18",
+        "label": "Cabeça de Trigo #18",
+        "type": "wheat_head",
+        "confidence": 0.6566,
+        "box": {
+          "x": 18.94,
+          "y": 10.05,
+          "width": 5.59,
+          "height": 7.95
+        },
+        "box_pixels": {
+          "x1": 121.24,
+          "y1": 64.35,
+          "x2": 157.03,
+          "y2": 115.21,
+          "width": 35.79,
+          "height": 50.86
+        }
+      },
+      {
+        "id": "wheat_19",
+        "label": "Cabeça de Trigo #19",
+        "type": "wheat_head",
+        "confidence": 0.6553,
+        "box": {
+          "x": 77.57,
+          "y": 80.11,
+          "width": 7.22,
+          "height": 8.26
+        },
+        "box_pixels": {
+          "x1": 496.43,
+          "y1": 512.68,
+          "x2": 542.63,
+          "y2": 565.52,
+          "width": 46.2,
+          "height": 52.85
+        }
+      },
+      {
+        "id": "wheat_20",
+        "label": "Cabeça de Trigo #20",
+        "type": "wheat_head",
+        "confidence": 0.6474,
+        "box": {
+          "x": 53.25,
+          "y": 21.39,
+          "width": 9.85,
+          "height": 5.72
+        },
+        "box_pixels": {
+          "x1": 340.82,
+          "y1": 136.91,
+          "x2": 403.86,
+          "y2": 173.55,
+          "width": 63.05,
+          "height": 36.64
+        }
+      },
+      {
+        "id": "wheat_21",
+        "label": "Cabeça de Trigo #21",
+        "type": "wheat_head",
+        "confidence": 0.6317,
+        "box": {
+          "x": 52.44,
+          "y": 38.96,
+          "width": 2.84,
+          "height": 5.16
+        },
+        "box_pixels": {
+          "x1": 335.6,
+          "y1": 249.34,
+          "x2": 353.78,
+          "y2": 282.34,
+          "width": 18.18,
+          "height": 33.0
+        }
+      },
+      {
+        "id": "wheat_22",
+        "label": "Cabeça de Trigo #22",
+        "type": "wheat_head",
+        "confidence": 0.631,
+        "box": {
+          "x": 29.56,
+          "y": 76.48,
+          "width": 8.13,
+          "height": 4.26
+        },
+        "box_pixels": {
+          "x1": 189.15,
+          "y1": 489.48,
+          "x2": 241.18,
+          "y2": 516.74,
+          "width": 52.03,
+          "height": 27.26
+        }
+      },
+      {
+        "id": "wheat_23",
+        "label": "Cabeça de Trigo #23",
+        "type": "wheat_head",
+        "confidence": 0.6269,
+        "box": {
+          "x": 20.53,
+          "y": 26.66,
+          "width": 5.31,
+          "height": 6.16
+        },
+        "box_pixels": {
+          "x1": 131.41,
+          "y1": 170.66,
+          "x2": 165.38,
+          "y2": 210.1,
+          "width": 33.97,
+          "height": 39.44
+        }
+      },
+      {
+        "id": "wheat_24",
+        "label": "Cabeça de Trigo #24",
+        "type": "wheat_head",
+        "confidence": 0.6181,
+        "box": {
+          "x": 77.1,
+          "y": 70.65,
+          "width": 4.73,
+          "height": 2.91
+        },
+        "box_pixels": {
+          "x1": 493.46,
+          "y1": 452.19,
+          "x2": 523.73,
+          "y2": 470.79,
+          "width": 30.28,
+          "height": 18.6
+        }
+      },
+      {
+        "id": "wheat_25",
+        "label": "Cabeça de Trigo #25",
+        "type": "wheat_head",
+        "confidence": 0.615,
+        "box": {
+          "x": 77.96,
+          "y": 13.45,
+          "width": 6.56,
+          "height": 5.22
+        },
+        "box_pixels": {
+          "x1": 498.96,
+          "y1": 86.09,
+          "x2": 540.95,
+          "y2": 119.48,
+          "width": 41.99,
+          "height": 33.38
+        }
+      },
+      {
+        "id": "wheat_26",
+        "label": "Cabeça de Trigo #26",
+        "type": "wheat_head",
+        "confidence": 0.602,
+        "box": {
+          "x": 44.35,
+          "y": 38.32,
+          "width": 6.29,
+          "height": 7.03
+        },
+        "box_pixels": {
+          "x1": 283.82,
+          "y1": 245.23,
+          "x2": 324.04,
+          "y2": 290.23,
+          "width": 40.23,
+          "height": 44.99
+        }
+      },
+      {
+        "id": "wheat_27",
+        "label": "Cabeça de Trigo #27",
+        "type": "wheat_head",
+        "confidence": 0.5865,
+        "box": {
+          "x": 66.74,
+          "y": 67.61,
+          "width": 9.05,
+          "height": 8.22
+        },
+        "box_pixels": {
+          "x1": 427.14,
+          "y1": 432.72,
+          "x2": 485.08,
+          "y2": 485.31,
+          "width": 57.94,
+          "height": 52.59
+        }
+      },
+      {
+        "id": "wheat_28",
+        "label": "Cabeça de Trigo #28",
+        "type": "wheat_head",
+        "confidence": 0.5805,
+        "box": {
+          "x": 58.46,
+          "y": 7.7,
+          "width": 9.5,
+          "height": 8.71
+        },
+        "box_pixels": {
+          "x1": 374.13,
+          "y1": 49.25,
+          "x2": 434.93,
+          "y2": 105.01,
+          "width": 60.81,
+          "height": 55.75
+        }
+      },
+      {
+        "id": "wheat_29",
+        "label": "Cabeça de Trigo #29",
+        "type": "wheat_head",
+        "confidence": 0.5696,
+        "box": {
+          "x": 52.31,
+          "y": 2.6,
+          "width": 3.79,
+          "height": 10.49
+        },
+        "box_pixels": {
+          "x1": 334.8,
+          "y1": 16.66,
+          "x2": 359.08,
+          "y2": 83.81,
+          "width": 24.28,
+          "height": 67.15
+        }
+      },
+      {
+        "id": "wheat_30",
+        "label": "Cabeça de Trigo #30",
+        "type": "wheat_head",
+        "confidence": 0.5485,
+        "box": {
+          "x": 70.48,
+          "y": 20.05,
+          "width": 10.12,
+          "height": 4.54
+        },
+        "box_pixels": {
+          "x1": 451.07,
+          "y1": 128.31,
+          "x2": 515.83,
+          "y2": 157.39,
+          "width": 64.76,
+          "height": 29.08
+        }
+      },
+      {
+        "id": "wheat_31",
+        "label": "Cabeça de Trigo #31",
+        "type": "wheat_head",
+        "confidence": 0.5462,
+        "box": {
+          "x": 39.74,
+          "y": 27.68,
+          "width": 12.06,
+          "height": 9.24
+        },
+        "box_pixels": {
+          "x1": 254.34,
+          "y1": 177.17,
+          "x2": 331.54,
+          "y2": 236.3,
+          "width": 77.2,
+          "height": 59.12
+        }
+      },
+      {
+        "id": "wheat_32",
+        "label": "Cabeça de Trigo #32",
+        "type": "wheat_head",
+        "confidence": 0.5441,
+        "box": {
+          "x": 78.54,
+          "y": 32.97,
+          "width": 3.73,
+          "height": 5.71
+        },
+        "box_pixels": {
+          "x1": 502.67,
+          "y1": 210.98,
+          "x2": 526.55,
+          "y2": 247.52,
+          "width": 23.88,
+          "height": 36.54
+        }
+      },
+      {
+        "id": "wheat_33",
+        "label": "Cabeça de Trigo #33",
+        "type": "wheat_head",
+        "confidence": 0.5363,
+        "box": {
+          "x": 12.12,
+          "y": 21.34,
+          "width": 5.54,
+          "height": 4.38
+        },
+        "box_pixels": {
+          "x1": 77.57,
+          "y1": 136.59,
+          "x2": 113.05,
+          "y2": 164.62,
+          "width": 35.48,
+          "height": 28.04
+        }
+      },
+      {
+        "id": "wheat_34",
+        "label": "Cabeça de Trigo #34",
+        "type": "wheat_head",
+        "confidence": 0.535,
+        "box": {
+          "x": 85.23,
+          "y": 29.64,
+          "width": 10.27,
+          "height": 4.29
+        },
+        "box_pixels": {
+          "x1": 545.5,
+          "y1": 189.73,
+          "x2": 611.24,
+          "y2": 217.18,
+          "width": 65.74,
+          "height": 27.46
+        }
+      },
+      {
+        "id": "wheat_35",
+        "label": "Cabeça de Trigo #35",
+        "type": "wheat_head",
+        "confidence": 0.5326,
+        "box": {
+          "x": 83.78,
+          "y": 78.08,
+          "width": 5.16,
+          "height": 2.81
+        },
+        "box_pixels": {
+          "x1": 536.18,
+          "y1": 499.72,
+          "x2": 569.22,
+          "y2": 517.69,
+          "width": 33.04,
+          "height": 17.97
+        }
+      },
+      {
+        "id": "wheat_36",
+        "label": "Cabeça de Trigo #36",
+        "type": "wheat_head",
+        "confidence": 0.5323,
+        "box": {
+          "x": 47.78,
+          "y": 84.24,
+          "width": 4.82,
+          "height": 6.17
+        },
+        "box_pixels": {
+          "x1": 305.79,
+          "y1": 539.13,
+          "x2": 336.67,
+          "y2": 578.64,
+          "width": 30.88,
+          "height": 39.51
+        }
+      },
+      {
+        "id": "wheat_37",
+        "label": "Cabeça de Trigo #37",
+        "type": "wheat_head",
+        "confidence": 0.522,
+        "box": {
+          "x": 35.92,
+          "y": 20.77,
+          "width": 5.99,
+          "height": 4.95
+        },
+        "box_pixels": {
+          "x1": 229.87,
+          "y1": 132.94,
+          "x2": 268.2,
+          "y2": 164.61,
+          "width": 38.33,
+          "height": 31.67
+        }
+      },
+      {
+        "id": "wheat_38",
+        "label": "Cabeça de Trigo #38",
+        "type": "wheat_head",
+        "confidence": 0.5093,
+        "box": {
+          "x": 41.63,
+          "y": 88.24,
+          "width": 3.14,
+          "height": 4.47
+        },
+        "box_pixels": {
+          "x1": 266.44,
+          "y1": 564.73,
+          "x2": 286.53,
+          "y2": 593.31,
+          "width": 20.09,
+          "height": 28.58
+        }
+      },
+      {
+        "id": "wheat_39",
+        "label": "Cabeça de Trigo #39",
+        "type": "wheat_head",
+        "confidence": 0.5083,
+        "box": {
+          "x": 86.59,
+          "y": 42.7,
+          "width": 5.42,
+          "height": 9.44
+        },
+        "box_pixels": {
+          "x1": 554.16,
+          "y1": 273.28,
+          "x2": 588.82,
+          "y2": 333.67,
+          "width": 34.66,
+          "height": 60.39
+        }
+      },
+      {
+        "id": "wheat_40",
+        "label": "Cabeça de Trigo #40",
+        "type": "wheat_head",
+        "confidence": 0.5028,
+        "box": {
+          "x": 23.9,
+          "y": 89.94,
+          "width": 5.93,
+          "height": 6.13
+        },
+        "box_pixels": {
+          "x1": 152.94,
+          "y1": 575.59,
+          "x2": 190.92,
+          "y2": 614.82,
+          "width": 37.98,
+          "height": 39.23
+        }
+      },
+      {
+        "id": "wheat_41",
+        "label": "Cabeça de Trigo #41",
+        "type": "wheat_head",
+        "confidence": 0.4973,
+        "box": {
+          "x": 58.46,
+          "y": 39.2,
+          "width": 6.01,
+          "height": 5.46
+        },
+        "box_pixels": {
+          "x1": 374.17,
+          "y1": 250.87,
+          "x2": 412.6,
+          "y2": 285.79,
+          "width": 38.43,
+          "height": 34.92
+        }
+      },
+      {
+        "id": "wheat_42",
+        "label": "Cabeça de Trigo #42",
+        "type": "wheat_head",
+        "confidence": 0.4965,
+        "box": {
+          "x": 33.5,
+          "y": 69.08,
+          "width": 4.2,
+          "height": 3.26
+        },
+        "box_pixels": {
+          "x1": 214.41,
+          "y1": 442.11,
+          "x2": 241.31,
+          "y2": 462.97,
+          "width": 26.9,
+          "height": 20.86
+        }
+      },
+      {
+        "id": "wheat_43",
+        "label": "Cabeça de Trigo #43",
+        "type": "wheat_head",
+        "confidence": 0.4894,
+        "box": {
+          "x": 40.1,
+          "y": 83.59,
+          "width": 3.41,
+          "height": 4.96
+        },
+        "box_pixels": {
+          "x1": 256.62,
+          "y1": 534.99,
+          "x2": 278.47,
+          "y2": 566.74,
+          "width": 21.85,
+          "height": 31.75
+        }
+      },
+      {
+        "id": "wheat_44",
+        "label": "Cabeça de Trigo #44",
+        "type": "wheat_head",
+        "confidence": 0.4808,
+        "box": {
+          "x": 12.95,
+          "y": 91.74,
+          "width": 5.08,
+          "height": 7.22
+        },
+        "box_pixels": {
+          "x1": 82.85,
+          "y1": 587.16,
+          "x2": 115.36,
+          "y2": 633.36,
+          "width": 32.51,
+          "height": 46.2
+        }
+      },
+      {
+        "id": "wheat_45",
+        "label": "Cabeça de Trigo #45",
+        "type": "wheat_head",
+        "confidence": 0.4795,
+        "box": {
+          "x": 77.94,
+          "y": 26.59,
+          "width": 7.23,
+          "height": 4.28
+        },
+        "box_pixels": {
+          "x1": 498.82,
+          "y1": 170.2,
+          "x2": 545.11,
+          "y2": 197.61,
+          "width": 46.29,
+          "height": 27.41
+        }
+      },
+      {
+        "id": "wheat_46",
+        "label": "Cabeça de Trigo #46",
+        "type": "wheat_head",
+        "confidence": 0.4724,
+        "box": {
+          "x": 7.66,
+          "y": 82.41,
+          "width": 5.01,
+          "height": 4.38
+        },
+        "box_pixels": {
+          "x1": 49.02,
+          "y1": 527.43,
+          "x2": 81.1,
+          "y2": 555.44,
+          "width": 32.08,
+          "height": 28.0
+        }
+      },
+      {
+        "id": "wheat_47",
+        "label": "Cabeça de Trigo #47",
+        "type": "wheat_head",
+        "confidence": 0.4715,
+        "box": {
+          "x": 38.61,
+          "y": 65.52,
+          "width": 4.37,
+          "height": 4.06
+        },
+        "box_pixels": {
+          "x1": 247.11,
+          "y1": 419.32,
+          "x2": 275.07,
+          "y2": 445.27,
+          "width": 27.96,
+          "height": 25.95
+        }
+      },
+      {
+        "id": "wheat_48",
+        "label": "Cabeça de Trigo #48",
+        "type": "wheat_head",
+        "confidence": 0.4655,
+        "box": {
+          "x": 57.77,
+          "y": 72.98,
+          "width": 12.19,
+          "height": 8.99
+        },
+        "box_pixels": {
+          "x1": 369.73,
+          "y1": 467.06,
+          "x2": 447.77,
+          "y2": 524.62,
+          "width": 78.04,
+          "height": 57.56
+        }
+      },
+      {
+        "id": "wheat_49",
+        "label": "Cabeça de Trigo #49",
+        "type": "wheat_head",
+        "confidence": 0.4643,
+        "box": {
+          "x": 46.86,
+          "y": 81.28,
+          "width": 5.13,
+          "height": 4.27
+        },
+        "box_pixels": {
+          "x1": 299.93,
+          "y1": 520.16,
+          "x2": 332.74,
+          "y2": 547.49,
+          "width": 32.81,
+          "height": 27.33
+        }
+      },
+      {
+        "id": "wheat_50",
+        "label": "Cabeça de Trigo #50",
+        "type": "wheat_head",
+        "confidence": 0.4605,
+        "box": {
+          "x": 33.17,
+          "y": 31.59,
+          "width": 6.96,
+          "height": 4.28
+        },
+        "box_pixels": {
+          "x1": 212.32,
+          "y1": 202.19,
+          "x2": 256.88,
+          "y2": 229.55,
+          "width": 44.56,
+          "height": 27.37
+        }
+      },
+      {
+        "id": "wheat_51",
+        "label": "Cabeça de Trigo #51",
+        "type": "wheat_head",
+        "confidence": 0.4601,
+        "box": {
+          "x": 20.24,
+          "y": 79.4,
+          "width": 5.21,
+          "height": 4.42
+        },
+        "box_pixels": {
+          "x1": 129.52,
+          "y1": 508.18,
+          "x2": 162.86,
+          "y2": 536.49,
+          "width": 33.35,
+          "height": 28.31
+        }
+      },
+      {
+        "id": "wheat_52",
+        "label": "Cabeça de Trigo #52",
+        "type": "wheat_head",
+        "confidence": 0.4562,
+        "box": {
+          "x": 79.32,
+          "y": 73.86,
+          "width": 3.81,
+          "height": 3.24
+        },
+        "box_pixels": {
+          "x1": 507.67,
+          "y1": 472.7,
+          "x2": 532.05,
+          "y2": 493.42,
+          "width": 24.38,
+          "height": 20.72
+        }
+      },
+      {
+        "id": "wheat_53",
+        "label": "Cabeça de Trigo #53",
+        "type": "wheat_head",
+        "confidence": 0.442,
+        "box": {
+          "x": 66.05,
+          "y": 30.75,
+          "width": 4.58,
+          "height": 4.84
+        },
+        "box_pixels": {
+          "x1": 422.72,
+          "y1": 196.82,
+          "x2": 452.05,
+          "y2": 227.81,
+          "width": 29.32,
+          "height": 30.99
+        }
+      },
+      {
+        "id": "wheat_54",
+        "label": "Cabeça de Trigo #54",
+        "type": "wheat_head",
+        "confidence": 0.4394,
+        "box": {
+          "x": 33.67,
+          "y": 95.81,
+          "width": 4.39,
+          "height": 4.02
+        },
+        "box_pixels": {
+          "x1": 215.52,
+          "y1": 613.19,
+          "x2": 243.6,
+          "y2": 638.92,
+          "width": 28.09,
+          "height": 25.72
+        }
+      },
+      {
+        "id": "wheat_55",
+        "label": "Cabeça de Trigo #55",
+        "type": "wheat_head",
+        "confidence": 0.4215,
+        "box": {
+          "x": 12.86,
+          "y": 87.37,
+          "width": 5.37,
+          "height": 6.15
+        },
+        "box_pixels": {
+          "x1": 82.32,
+          "y1": 559.16,
+          "x2": 116.69,
+          "y2": 598.53,
+          "width": 34.38,
+          "height": 39.37
+        }
+      },
+      {
+        "id": "wheat_56",
+        "label": "Cabeça de Trigo #56",
+        "type": "wheat_head",
+        "confidence": 0.41,
+        "box": {
+          "x": 79.18,
+          "y": 7.86,
+          "width": 3.5,
+          "height": 4.41
+        },
+        "box_pixels": {
+          "x1": 506.77,
+          "y1": 50.32,
+          "x2": 529.15,
+          "y2": 78.54,
+          "width": 22.38,
+          "height": 28.22
+        }
+      },
+      {
+        "id": "wheat_57",
+        "label": "Cabeça de Trigo #57",
+        "type": "wheat_head",
+        "confidence": 0.4064,
+        "box": {
+          "x": 8.94,
+          "y": 87.61,
+          "width": 4.32,
+          "height": 4.27
+        },
+        "box_pixels": {
+          "x1": 57.22,
+          "y1": 560.7,
+          "x2": 84.86,
+          "y2": 588.02,
+          "width": 27.64,
+          "height": 27.32
+        }
+      }
+    ],
+    "summary": {
+      "total_cabecas_trigo": 57,
+      "confianca_media": 0.5764,
+      "status_analise": "concluida"
+    },
+    "id": "d033aa3c-8223-4631-91ce-fa61153ae175",
+    "nomeImagem": "d602b35796d467379242ecd661e190c869481665689dd74700d892eda9b46f5b_pngrfec6235f48b72f38931bec1c386fd75fb.jpg",
+    "tamanhoArquivo": "128.3 KB",
+    "talhaoNome": "Amostra d602b35796d467379242ecd661e190c869481665689dd74700d892eda9b46f5b_pngrfec6235f48b72f38931bec1c386fd75fb",
+    "talhaoId": "talhao-01",
+    "areaAmostraM2": 2.5,
+    "areaInfestacaoM2": 2.0,
+    "percentualInfestacao": 80.0,
+    "focosDetectados": 57,
+    "dataCaptura": "15/10/2026",
+    "horaCaptura": "17:43",
+    "created_at": "2026-10-15T17:43:39.038899"
+  },
+  {
     "image_id": "eae1ed20-16b4-4d90-b34e-021b6ce532b0",
     "nome_imagem": "e86fcf9c02cea25b3301ae0c1b3a87de34e124db25f98924b28701fb7d009c5c_pngrf6eda85e7f541e222e4a55f3b6eb1f404.jpg",
     "image_url": "http://127.0.0.1:8000/temp_images/e86fcf9c02cea25b3301ae0c1b3a87de34e124db25f98924b28701fb7d009c5c_pngrf6eda85e7f541e222e4a55f3b6eb1f404.jpg",
