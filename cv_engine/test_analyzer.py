@@ -12,10 +12,11 @@ class TestSugarVisionAnalyzer(unittest.TestCase):
     """Bateria de testes para o motor de visão computacional SugarVision."""
 
     def test_analyzer_initialization_with_best_model(self):
-        """Verifica se o analisador carrega o best.pt com a classe correta."""
-        analyzer = SugarVisionAnalyzer(conf_threshold=0.25)
+        """Verifica se o analisador carrega o best.pt com os limiares padrão da Sprint 7."""
+        analyzer = SugarVisionAnalyzer()
         self.assertIsNotNone(analyzer.model)
-        self.assertEqual(analyzer.conf_threshold, 0.25)
+        self.assertEqual(analyzer.conf_threshold, 0.45)
+        self.assertEqual(analyzer.iou_threshold, 0.50)
         # Modelo de trigo é single-class — só deve existir a classe 0 (wheat)
         classes = analyzer.model.names
         self.assertEqual(len(classes), 1)
@@ -70,9 +71,26 @@ class TestSugarVisionAnalyzer(unittest.TestCase):
         # não deve quebrar a execução. Mantém o pipeline vivo com o rótulo bruto.
         self.assertEqual(det_type, "wheat_head")
 
+    def test_classify_wheat_density_categories(self):
+        """Valida as três faixas agronômicas de contagem de espigas por enquadramento (Sprint 7)."""
+        # Faixa 1: Espaçamento Baixo/Ralo (< 20 espigas)
+        self.assertEqual(SugarVisionAnalyzer.classify_wheat_density(0), "Espaçamento Baixo/Ralo")
+        self.assertEqual(SugarVisionAnalyzer.classify_wheat_density(10), "Espaçamento Baixo/Ralo")
+        self.assertEqual(SugarVisionAnalyzer.classify_wheat_density(19), "Espaçamento Baixo/Ralo")
+
+        # Faixa 2: Espaçamento Adequado (20 a 50 espigas)
+        self.assertEqual(SugarVisionAnalyzer.classify_wheat_density(20), "Espaçamento Adequado")
+        self.assertEqual(SugarVisionAnalyzer.classify_wheat_density(35), "Espaçamento Adequado")
+        self.assertEqual(SugarVisionAnalyzer.classify_wheat_density(50), "Espaçamento Adequado")
+
+        # Faixa 3: Alta Densidade (> 50 espigas)
+        self.assertEqual(SugarVisionAnalyzer.classify_wheat_density(51), "Alta Densidade")
+        self.assertEqual(SugarVisionAnalyzer.classify_wheat_density(100), "Alta Densidade")
+        self.assertEqual(SugarVisionAnalyzer.classify_wheat_density(350), "Alta Densidade")
+
     def test_wheat_detection_and_json_structure(self):
-        """Executa a inferência e valida a estrutura do JSON de saída para cabeças de trigo."""
-        analyzer = SugarVisionAnalyzer(conf_threshold=0.25)
+        """Executa a inferência com defaults da Sprint 7 e valida estrutura do JSON de saída."""
+        analyzer = SugarVisionAnalyzer()
         resultado = analyzer.detect("cv_engine/trigo_teste.png")
 
         self.assertEqual(resultado["status"], "success")
@@ -80,11 +98,21 @@ class TestSugarVisionAnalyzer(unittest.TestCase):
         self.assertIn("image_metadata", resultado)
         self.assertIn("summary", resultado)
         self.assertIn("deteccoes", resultado)
+        self.assertIn("classificacao_densidade", resultado)
+        self.assertIn("classificacao_densidade", resultado["summary"])
 
         # O modelo best.pt deve detectar cabeças de trigo nesta imagem
         self.assertGreater(resultado["summary"]["total_cabecas_trigo"], 0)
         self.assertGreaterEqual(resultado["summary"]["confianca_media"], 0.0)
         self.assertLessEqual(resultado["summary"]["confianca_media"], 1.0)
+
+        # Valida categorização agronômica
+        valid_categories = {"Espaçamento Baixo/Ralo", "Espaçamento Adequado", "Alta Densidade"}
+        self.assertIn(resultado["summary"]["classificacao_densidade"], valid_categories)
+        self.assertEqual(
+            resultado["classificacao_densidade"],
+            resultado["summary"]["classificacao_densidade"],
+        )
 
         # Valida estrutura das detecções individuais
         for item in resultado["deteccoes"]:
@@ -97,7 +125,7 @@ class TestSugarVisionAnalyzer(unittest.TestCase):
             self.assertGreaterEqual(item["customAreaM2"], 0)
 
     def test_draw_and_export(self):
-        """Verifica se a imagem anotada e o JSON são exportados com integridade."""
+        """Verifica se a imagem anotada e o JSON são exportados com integridade e classificação."""
         with tempfile.TemporaryDirectory() as tmpdir:
             json_path = Path(tmpdir) / "teste_saida.json"
             img_path = Path(tmpdir) / "teste_anotado.jpg"
@@ -106,7 +134,6 @@ class TestSugarVisionAnalyzer(unittest.TestCase):
                 image_path="cv_engine/trigo_teste.png",
                 output_json_path=json_path,
                 output_annotated_path=img_path,
-                conf_threshold=0.25,
             )
 
             self.assertTrue(json_path.exists())
@@ -117,6 +144,11 @@ class TestSugarVisionAnalyzer(unittest.TestCase):
 
             self.assertEqual(carregado["status"], "success")
             self.assertGreater(carregado["summary"]["total_cabecas_trigo"], 0)
+            self.assertIn("classificacao_densidade", carregado["summary"])
+            self.assertIn(
+                carregado["summary"]["classificacao_densidade"],
+                {"Espaçamento Baixo/Ralo", "Espaçamento Adequado", "Alta Densidade"},
+            )
 
 
 if __name__ == "__main__":
