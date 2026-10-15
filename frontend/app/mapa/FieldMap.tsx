@@ -142,10 +142,10 @@ export default function FieldMap() {
                 📍 Ponto de Inspeção UAV
               </div>
               <p style={{ margin: "4px 0 8px 0", fontSize: "11px", color: "#57606a" }}>
-                Talhão 01 - Rio Claro (Cana Soca)
+                Área de Trigo 01 - Rio Claro (GWHD)
               </p>
               <Link
-                href="/?amostra=cana_teste.jpg"
+                href="/?amostra=campo_talhao_01_rioclaro_foto.jpg"
                 style={{
                   display: "block",
                   textAlign: "center",

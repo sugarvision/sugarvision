@@ -66,7 +66,7 @@ function SampleImage({
   style?: React.CSSProperties;
 }) {
   const getInitialSrc = (name: string) => {
-    if (!name) return "/cana_teste.jpg";
+    if (!name) return "/campo_talhao_01_rioclaro_foto.jpg";
     return `http://127.0.0.1:8000/temp_images/${name}`;
   };
 
@@ -84,21 +84,13 @@ function SampleImage({
       setSrc(`/${filename}`);
     } else if (errorStage === 1) {
       setErrorStage(2);
-      const fnLower = (filename || "").toLowerCase();
-      if (fnLower.includes("daninha") || fnLower.includes("weed") || fnLower.includes("erva")) {
-        setSrc("/amostra_erva_daninha.jpg");
-      } else {
-        setSrc("/cana_teste.jpg");
-      }
-    } else if (errorStage === 2) {
-      setErrorStage(3);
-      setSrc("/cana_teste.jpg");
+      setSrc("/campo_talhao_01_rioclaro_foto.jpg");
     } else {
-      setErrorStage(4);
+      setErrorStage(3);
     }
   };
 
-  if (errorStage >= 4) {
+  if (errorStage >= 3) {
     return (
       <div
         style={{
@@ -117,7 +109,7 @@ function SampleImage({
       >
         <IconScan className="w-8 h-8 text-[var(--accent-green)] opacity-80 mb-1" />
         <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--foreground)" }}>
-          Amostra UAV
+          Amostra de Trigo
         </span>
         <span style={{ fontSize: "10px", color: "var(--muted)", wordBreak: "break-all" }}>
           {filename}
@@ -142,14 +134,14 @@ function SampleImage({
   );
 }
 
-function getAnomalyLabel(anomalyType: string): string {
+function getDetectionLabel(detType: string): string {
   const labels: Record<string, string> = {
-    healthy_cane: "Classe de cobertura",
-    white_leaf_disease: "Anomalia foliar",
-    erva_daninha: "Anomalia vegetal",
+    wheat: "Espiga de Trigo",
+    wheat_head: "Espiga de Trigo",
+    espiga_trigo: "Espiga de Trigo",
   };
 
-  return labels[anomalyType] ?? `Classe registrada: ${anomalyType.replace(/_/g, " ")}`;
+  return labels[detType] ?? `Detecção: ${detType.replace(/_/g, " ")}`;
 }
 
 // ── Tipos de Dados da Tabela 'images' e Anomalias Vinculadas ──────────────────
@@ -717,7 +709,7 @@ export default function BancoDeAmostrasPage() {
               </span>
             </div>
 
-            {/* Card 3: Registros de anomalia */}
+            {/* Card 3: Espigas detectadas */}
             <div
               style={{
                 background: "var(--card-bg)",
@@ -731,7 +723,7 @@ export default function BancoDeAmostrasPage() {
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: "12px", color: "var(--muted)", fontWeight: 500 }}>
-                  Anomalias Registradas
+                  Espigas Detectadas
                 </span>
                 <span
                   style={{
@@ -739,21 +731,21 @@ export default function BancoDeAmostrasPage() {
                     borderRadius: "6px",
                     fontSize: "10px",
                     fontWeight: 600,
-                    background: "rgba(248, 81, 73, 0.15)",
-                    color: "#f85149",
+                    background: "rgba(46, 160, 67, 0.15)",
+                    color: "var(--accent-green)",
                   }}
                 >
-                  Tabela anomalies
+                  YOLOv8x
                 </span>
               </div>
               <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
                 <span style={{ fontSize: "28px", fontWeight: 700, color: "#ffa657" }}>
                   {loading ? "..." : metrics.totalAnomalias}
                 </span>
-                <span style={{ fontSize: "13px", color: "var(--muted)" }}>registros</span>
+                <span style={{ fontSize: "13px", color: "var(--muted)" }}>espigas</span>
               </div>
               <span style={{ fontSize: "11px", color: "var(--muted)" }}>
-                Vínculo por chave estrangeira image_id
+                Contagem total acumulada nas amostras
               </span>
             </div>
 
@@ -1155,7 +1147,7 @@ export default function BancoDeAmostrasPage() {
                       </span>
                     </div>
 
-                    {/* Métricas: anomalias e área */}
+                    {/* Métricas: espigas e área */}
                     <div
                       style={{
                         display: "grid",
@@ -1168,20 +1160,20 @@ export default function BancoDeAmostrasPage() {
                       }}
                     >
                       <div>
-                        <span style={{ fontSize: "10px", color: "var(--muted)", display: "block" }}>Anomalias</span>
+                        <span style={{ fontSize: "10px", color: "var(--muted)", display: "block" }}>Espigas</span>
                         <span style={{ fontSize: "14px", fontWeight: 700, color: "#ffa657" }}>
-                          {sample.total_anomalies} registros
+                          {sample.total_anomalies} espigas
                         </span>
                       </div>
                       <div>
-                        <span style={{ fontSize: "10px", color: "var(--muted)", display: "block" }}>Área Coberta</span>
+                        <span style={{ fontSize: "10px", color: "var(--muted)", display: "block" }}>Área Estimada</span>
                         <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--foreground)" }}>
                           {sample.total_area_ha} ha
                         </span>
                       </div>
                     </div>
 
-                    {/* Tags de Anomalias Detectadas */}
+                    {/* Tags de Detecções */}
                     {sample.anomalies && sample.anomalies.length > 0 && (
                       <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
                         {sample.anomalies.map((anom, idx) => (
@@ -1191,22 +1183,12 @@ export default function BancoDeAmostrasPage() {
                               fontSize: "10px",
                               padding: "2px 6px",
                               borderRadius: "4px",
-                              background:
-                                anom.anomaly_type === "healthy_cane"
-                                  ? "rgba(46, 160, 67, 0.15)"
-                                  : "rgba(248, 81, 73, 0.15)",
-                              color:
-                                anom.anomaly_type === "healthy_cane"
-                                  ? "var(--accent-green)"
-                                  : "#f85149",
-                              border: `1px solid ${
-                                anom.anomaly_type === "healthy_cane"
-                                  ? "rgba(46, 160, 67, 0.3)"
-                                  : "rgba(248, 81, 73, 0.3)"
-                              }`,
+                              background: "rgba(46, 160, 67, 0.15)",
+                              color: "var(--accent-green)",
+                              border: "1px solid rgba(46, 160, 67, 0.3)",
                             }}
                           >
-                            {getAnomalyLabel(anom.anomaly_type)} ({anom.area_hectares} ha)
+                            {getDetectionLabel(anom.anomaly_type)}
                           </span>
                         ))}
                       </div>
@@ -1353,7 +1335,7 @@ export default function BancoDeAmostrasPage() {
                       <th style={{ padding: "12px 16px" }}>UUID (ID Banco)</th>
                       <th style={{ padding: "12px 16px" }}>Status</th>
                       <th style={{ padding: "12px 16px" }}>Data Upload</th>
-                      <th style={{ padding: "12px 16px" }}>Anomalias</th>
+                      <th style={{ padding: "12px 16px" }}>Espigas Detectadas</th>
                       <th style={{ padding: "12px 16px" }}>Área (ha)</th>
                       <th style={{ padding: "12px 16px", textAlign: "right" }}>Ações</th>
                     </tr>
@@ -1768,14 +1750,14 @@ export default function BancoDeAmostrasPage() {
                   </div>
                 </div>
 
-                {/* Anomalias Registradas no Banco */}
+                {/* Detecções Registradas no Banco */}
                 <div>
                   <h4 style={{ fontSize: "13px", fontWeight: 600, margin: "0 0 8px 0", color: "var(--foreground)" }}>
-                    Registros Vinculados na Tabela 'anomalies' ({selectedSample.anomalies.length}):
+                    Detecções Registradas da Imagem ({selectedSample.anomalies.length}):
                   </h4>
                   {selectedSample.anomalies.length === 0 ? (
                     <p style={{ fontSize: "12px", color: "var(--muted)", margin: 0 }}>
-                      Nenhuma anomalia direta vinculada a esta imagem no banco.
+                      Nenhuma detecção vinculada a esta imagem no banco.
                     </p>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -1797,13 +1779,10 @@ export default function BancoDeAmostrasPage() {
                             <span
                               style={{
                                 fontWeight: 600,
-                                color:
-                                  anom.anomaly_type === "healthy_cane"
-                                    ? "var(--accent-green)"
-                                    : "#f85149",
+                                color: "var(--accent-green)",
                               }}
                             >
-                              {getAnomalyLabel(anom.anomaly_type)}
+                              {getDetectionLabel(anom.anomaly_type)}
                             </span>
                             <span style={{ display: "block", fontSize: "10px", color: "var(--muted)" }}>
                               ID: {anom.id.slice(0, 16)}...
@@ -2002,8 +1981,8 @@ export default function BancoDeAmostrasPage() {
                   </span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "var(--muted)" }}>Anomalias Mapeadas:</span>
-                  <span style={{ fontWeight: 600, color: "#ffa657" }}>{sampleToDelete.total_anomalies} registros</span>
+                  <span style={{ color: "var(--muted)" }}>Espigas Registradas:</span>
+                  <span style={{ fontWeight: 600, color: "#ffa657" }}>{sampleToDelete.total_anomalies} espigas</span>
                 </div>
               </div>
 

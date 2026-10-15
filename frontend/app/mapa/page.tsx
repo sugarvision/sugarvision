@@ -83,7 +83,7 @@ export default function MapaPage() {
                 lineHeight: 1,
               }}
             >
-              Geolocalização de talhões, anomalias e fotos aéreas de cana-de-açúcar
+              Geolocalização de áreas de plantio, densidade de espigas e fotos aéreas de trigo
             </p>
           </div>
 
@@ -137,15 +137,15 @@ export default function MapaPage() {
             </span>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <span style={{ width: "12px", height: "12px", borderRadius: "3px", background: "#f85149" }} />
-              <span>Alta Infestação / Falha de Plantio</span>
+              <span>Alta Densidade de Espigas</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <span style={{ width: "12px", height: "12px", borderRadius: "3px", background: "#d29922" }} />
-              <span>Infestação Moderada</span>
+              <span>Densidade Moderada / Normal</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <span style={{ width: "12px", height: "12px", borderRadius: "50%", background: "#2ea043" }} />
-              <span>Ponto de Amostra UAV (Drone)</span>
+              <span>Ponto de Amostra UAV (Trigo)</span>
             </div>
           </div>
         </div>

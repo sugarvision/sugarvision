@@ -16,6 +16,8 @@ export interface WeedDetection {
   };
 }
 
+export type WheatDetection = WeedDetection;
+
 interface ImageDetectionViewerProps {
   imageSrc?: string;
   detections?: WeedDetection[];
@@ -65,9 +67,9 @@ export default function ImageDetectionViewer({
 
               return {
                 id: item.id ?? index + 1,
-                label: item.label ?? item.name ?? 'Erva Daninha Detectada',
+                label: item.label ?? item.name ?? `Espiga de Trigo #${index + 1}`,
                 confidence: typeof item.confidence === 'number' ? item.confidence : 0.90,
-                type: item.type ?? 'erva_daninha',
+                type: item.type ?? 'wheat',
                 severity: item.severity ?? 'media',
                 box: {
                   x: Number(box.x) || 0,
