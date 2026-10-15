@@ -133,19 +133,19 @@ export default function MapaPage() {
             }}
           >
             <span style={{ fontWeight: 700, fontSize: "11px", color: "var(--muted)", textTransform: "uppercase" }}>
-              Legenda do Campo
+              Legenda de Densidade
             </span>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span style={{ width: "12px", height: "12px", borderRadius: "3px", background: "#f85149" }} />
-              <span>Alta Densidade de Espigas</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span style={{ width: "12px", height: "12px", borderRadius: "3px", background: "#d29922" }} />
-              <span>Densidade Moderada / Normal</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <span style={{ width: "12px", height: "12px", borderRadius: "50%", background: "#2ea043" }} />
-              <span>Ponto de Amostra UAV (Trigo)</span>
+              <span>Alta Densidade (&gt; 50 espigas)</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{ width: "12px", height: "12px", borderRadius: "50%", background: "#d29922" }} />
+              <span>Densidade Média (20 - 50)</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{ width: "12px", height: "12px", borderRadius: "50%", background: "#f85149" }} />
+              <span>Baixa Densidade (&lt; 20)</span>
             </div>
           </div>
         </div>

@@ -173,6 +173,7 @@ export default function BancoDeAmostrasPage() {
   // Filtros e Visualização
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [espigasFilter, setEspigasFilter] = useState<"all" | "com_espigas" | "sem_espigas">("all");
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [selectedSample, setSelectedSample] = useState<ImageSample | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -384,9 +385,14 @@ export default function BancoDeAmostrasPage() {
         sample.filename.toLowerCase().includes(searchTerm.toLowerCase()) ||
         sample.id.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === "all" || sample.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      const totalEspigas = sample.total_anomalies || 0;
+      const matchesEspigas =
+        espigasFilter === "all" ||
+        (espigasFilter === "com_espigas" && totalEspigas > 0) ||
+        (espigasFilter === "sem_espigas" && totalEspigas === 0);
+      return matchesSearch && matchesStatus && matchesEspigas;
     });
-  }, [samples, searchTerm, statusFilter]);
+  }, [samples, searchTerm, statusFilter, espigasFilter]);
 
   // ── Formatação de Datas ─────────────────────────────────────────────────────
   const formatDate = (isoStr: string | null) => {
@@ -864,6 +870,30 @@ export default function BancoDeAmostrasPage() {
                 <option value="all">Todos os Status</option>
                 <option value="completed">Concluídos (completed)</option>
                 <option value="processing">Em Análise (processing)</option>
+              </select>
+            </div>
+
+            {/* Filtro por Detecções de Trigo */}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{ fontSize: "12px", color: "var(--muted)" }}>Espigas:</span>
+              <select
+                id="filter-espigas-select"
+                value={espigasFilter}
+                onChange={(e) => setEspigasFilter(e.target.value as any)}
+                style={{
+                  padding: "7px 12px",
+                  borderRadius: "6px",
+                  background: "var(--surface)",
+                  border: "1px solid var(--card-border)",
+                  color: "var(--foreground)",
+                  fontSize: "12px",
+                  cursor: "pointer",
+                  outline: "none",
+                }}
+              >
+                <option value="all">Todas as Amostras</option>
+                <option value="com_espigas">Com Espigas Detectadas (&gt; 0)</option>
+                <option value="sem_espigas">Sem Espigas (0)</option>
               </select>
             </div>
 
