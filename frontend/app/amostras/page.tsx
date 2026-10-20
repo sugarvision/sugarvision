@@ -68,13 +68,8 @@ function SampleImage({
   style?: React.CSSProperties;
 }) {
   const getInitialSrc = (name: string) => {
-<<<<<<< HEAD
-    if (!name) return "/cana_teste.jpg";
+    if (!name) return "/trigo_teste.png";
     return `${API_URL}/temp_images/${name}`;
-=======
-    if (!name) return "/campo_talhao_01_rioclaro_foto.jpg";
-    return `http://127.0.0.1:8000/temp_images/${name}`;
->>>>>>> 9d3e61a4d537eabf81ffd1e4b96009c620f48427
   };
 
   const [src, setSrc] = useState<string>(() => getInitialSrc(filename));
