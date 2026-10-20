@@ -6,6 +6,8 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import Link from "next/link";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
 // Correção do ícone do Leaflet
 const customDronePin = L.divIcon({
   className: "custom-drone-pin",
@@ -51,7 +53,7 @@ export default function FieldMap() {
   useEffect(() => {
     async function loadMapData() {
       try {
-        const res = await fetch("http://127.0.0.1:8000/api/anomalies");
+        const res = await fetch(`${API_URL}/api/anomalies`);
         if (res.ok) {
           const data = await res.json();
           setAnomalies(data);
