@@ -3,6 +3,25 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "../context/AuthContext";
+
+export function IconLogOut({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  );
+}
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 export function IconScan({ className = "" }: { className?: string }) {
@@ -284,6 +303,18 @@ export function Sidebar({
   onToggle: () => void;
 }) {
   const pathname = usePathname();
+  const { user, signOut } = useAuth();
+
+  const initials = user?.fullName
+    ? user.fullName
+        .split(" ")
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((n) => n[0]?.toUpperCase())
+        .join("")
+    : user?.email
+    ? user.email.slice(0, 2).toUpperCase()
+    : "SV";
 
   return (
     <aside
@@ -569,58 +600,135 @@ export function Sidebar({
           )}
         </button>
 
-        {/* User avatar */}
+        {/* User profile & Logout */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             gap: "10px",
             padding: collapsed ? "10px 0" : "10px 12px",
-            justifyContent: collapsed ? "center" : "flex-start",
+            justifyContent: collapsed ? "center" : "space-between",
             marginTop: "4px",
+            background: "rgba(255, 255, 255, 0.03)",
+            borderRadius: "8px",
+            border: "1px solid var(--sidebar-border)",
           }}
         >
           <div
             style={{
-              width: "32px",
-              height: "32px",
-              borderRadius: "50%",
-              background: "linear-gradient(135deg, #2ea043, #0d4f1c)",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              minWidth: 0,
+            }}
+          >
+            <div
+              style={{
+                width: "32px",
+                height: "32px",
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, #2ea043, #0d4f1c)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "12px",
+                fontWeight: 700,
+                color: "#fff",
+                flexShrink: 0,
+              }}
+              title={user?.email || "Operador"}
+            >
+              {initials}
+            </div>
+            {!collapsed && (
+              <div style={{ minWidth: 0, overflow: "hidden" }}>
+                <div
+                  style={{
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    color: "var(--foreground)",
+                    lineHeight: 1.2,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                  title={user?.fullName || "Operador UAV"}
+                >
+                  {user?.fullName || "Operador UAV"}
+                </div>
+                <div
+                  style={{
+                    fontSize: "11px",
+                    color: "var(--muted)",
+                    marginTop: "2px",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                  title={user?.email || "Sessão Ativa"}
+                >
+                  {user?.email || "Sessão Ativa"}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {!collapsed && (
+            <button
+              id="sidebar-logout-btn"
+              onClick={() => signOut()}
+              style={{
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                color: "var(--muted)",
+                padding: "6px",
+                borderRadius: "6px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "#f85149";
+                e.currentTarget.style.background = "rgba(248, 81, 73, 0.1)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "var(--muted)";
+                e.currentTarget.style.background = "transparent";
+              }}
+              title="Encerrar sessão"
+              aria-label="Encerrar sessão"
+            >
+              <IconLogOut className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        {collapsed && (
+          <button
+            id="sidebar-logout-collapsed-btn"
+            onClick={() => signOut()}
+            style={{
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              color: "var(--muted)",
+              padding: "8px 0",
+              width: "100%",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: "13px",
-              fontWeight: 700,
-              color: "#fff",
-              flexShrink: 0,
+              transition: "color 0.2s ease",
             }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "#f85149")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "var(--muted)")}
+            title="Encerrar sessão"
+            aria-label="Encerrar sessão"
           >
-            M4
-          </div>
-          {!collapsed && (
-            <div>
-              <div
-                style={{
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  color: "var(--foreground)",
-                  lineHeight: 1,
-                }}
-              >
-                Membro 4
-              </div>
-              <div
-                style={{
-                  fontSize: "11px",
-                  color: "var(--muted)",
-                  marginTop: "2px",
-                }}
-              >
-                Frontend Dev
-              </div>
-            </div>
-          )}
-        </div>
+            <IconLogOut className="w-4 h-4" />
+          </button>
+        )}
       </div>
     </aside>
   );
