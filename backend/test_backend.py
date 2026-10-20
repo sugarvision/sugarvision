@@ -12,6 +12,9 @@ Testa os seguintes cenários:
 """
 
 import io
+import os
+import time
+import jwt
 import asyncio
 from pathlib import Path
 import unittest
@@ -37,6 +40,8 @@ class TestSugarVisionBackend(unittest.TestCase):
     def setUpClass(cls):
         """Inicializa o cliente de teste HTTP do FastAPI."""
         cls.client = TestClient(app)
+        cls._original_auth = os.environ.get("AUTH_ENABLED")
+        os.environ["AUTH_ENABLED"] = "False"  # suíte legada roda em modo de contingência
         cls.created_files = []
         # Configura delay para 0 durante a suite geral para execução ultrarrápida
         cls._original_delay = main.AI_DELAY_SECONDS
@@ -46,6 +51,10 @@ class TestSugarVisionBackend(unittest.TestCase):
     def tearDownClass(cls):
         """Restaura configurações e limpa arquivos gerados."""
         main.AI_DELAY_SECONDS = cls._original_delay
+        if cls._original_auth is None:
+            os.environ.pop("AUTH_ENABLED", None)
+        else:
+            os.environ["AUTH_ENABLED"] = cls._original_auth
         for file_path in cls.created_files:
             if file_path.exists():
                 file_path.unlink()
@@ -645,6 +654,76 @@ class TestSugarVisionBackend(unittest.TestCase):
         ordenado = _ordenar_mais_recentes([{"created_at": "2026-01-01"}, {"created_at": "2026-03-01"}])
         self.assertEqual(ordenado[0]["created_at"], "2026-03-01")
         print("  [PASS] 38 - Enriquecimento (espigas/coordenadas) e ordenação validados")
+
+
+class TestJWTProtection(unittest.TestCase):
+    """Valida a proteção JWT e o modo de contingência AUTH_ENABLED."""
+
+    SECRET = "segredo-de-teste-com-tamanho-suficiente-32b"
+    PNG = (
+        b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+        b"\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00"
+        b"\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+    )
+
+    def setUp(self):
+        self.client = TestClient(app)
+        self._env = patch.dict(os.environ, {"AUTH_ENABLED": "True", "SUPABASE_JWT_SECRET": self.SECRET})
+        self._env.start()
+
+    def tearDown(self):
+        self._env.stop()
+
+    def _token(self, exp_offset=3600, secret=None):
+        payload = {"sub": "user-1", "aud": "authenticated", "exp": int(time.time()) + exp_offset}
+        return jwt.encode(payload, secret or self.SECRET, algorithm="HS256")
+
+    def _upload(self, headers=None):
+        files = {"file": ("jwt_teste.png", io.BytesIO(self.PNG), "image/png")}
+        resp = self.client.post("/upload", files=files, headers=headers or {})
+        if resp.status_code == 201:
+            saved = Path(resp.json().get("saved_path", ""))
+            if saved.exists():
+                saved.unlink()
+        return resp
+
+    def test_39_sem_token_retorna_401(self):
+        self.assertEqual(self.client.get("/api/anomalies").status_code, 401)
+        self.assertEqual(self._upload().status_code, 401)
+        print("  [PASS] 39 - Sem token com AUTH_ENABLED=True retorna 401")
+
+    def test_40_token_invalido_ou_expirado_retorna_401(self):
+        bad = {"Authorization": "Bearer lixo.invalido.token"}
+        self.assertEqual(self.client.get("/api/anomalies", headers=bad).status_code, 401)
+        expired = {"Authorization": f"Bearer {self._token(exp_offset=-60)}"}
+        self.assertEqual(self.client.get("/api/anomalies", headers=expired).status_code, 401)
+        wrong_secret = {"Authorization": f"Bearer {self._token(secret='outro-segredo-com-32-bytes-ou-mais-xx')}"}
+        self.assertEqual(self.client.get("/api/anomalies", headers=wrong_secret).status_code, 401)
+        malformed = {"Authorization": "Basic abc"}
+        self.assertEqual(self.client.get("/api/anomalies", headers=malformed).status_code, 401)
+        print("  [PASS] 40 - Token inválido/expirado/assinatura errada/esquema errado retorna 401")
+
+    def test_41_token_valido_permite_acesso(self):
+        headers = {"Authorization": f"Bearer {self._token()}"}
+        self.assertEqual(self.client.get("/api/anomalies", headers=headers).status_code, 200)
+        print("  [PASS] 41 - Token válido permite acesso (200)")
+
+    def test_42_rotas_publicas_continuam_abertas(self):
+        self.assertEqual(self.client.get("/").status_code, 200)
+        self.assertEqual(self.client.get("/health").status_code, 200)
+        print("  [PASS] 42 - Rotas / e /health permanecem públicas")
+
+    def test_43_auth_desabilitado_processa_normalmente(self):
+        with patch.dict(os.environ, {"AUTH_ENABLED": "False"}):
+            self.assertEqual(self.client.get("/api/anomalies").status_code, 200)
+        print("  [PASS] 43 - AUTH_ENABLED=False processa sem token (contingência)")
+
+    def test_44_upload_sem_interrupcoes(self):
+        with patch.dict(os.environ, {"AUTH_ENABLED": "False"}):
+            self.assertEqual(self._upload().status_code, 201)
+        headers = {"Authorization": f"Bearer {self._token()}"}
+        self.assertEqual(self._upload(headers).status_code, 201)
+        print("  [PASS] 44 - Upload funciona com token válido e em modo contingência")
 
 
 if __name__ == "__main__":

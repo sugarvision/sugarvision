@@ -97,15 +97,19 @@ def carregar_modelo_yolo(model_path: Path = DEFAULT_MODEL_PATH) -> Any:
         return None
 
 
-def extract_yolo_detections(preds: Any, model: Any = None) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+def extract_yolo_detections(
+    preds: Any,
+    model: Any = None,
+    area_m2: float = DEFAULT_AREA_ENQUADRAMENTO_M2,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Extrai detecções de cabeças de trigo (classe única) para o frontend."""
     if not preds or len(preds) == 0:
-        return [], {"total_cabecas_trigo": 0, "confianca_media": 0.0, "status_analise": "concluida"}
+        return [], {"total_cabecas_trigo": 0, "confianca_media": 0.0, "status_analise": "concluida", **diagnostico_agronomico(0, area_m2)}
 
     first = preds[0]
     boxes = getattr(first, "boxes", None)
     if boxes is None:
-        return [], {"total_cabecas_trigo": 0, "confianca_media": 0.0, "status_analise": "concluida"}
+        return [], {"total_cabecas_trigo": 0, "confianca_media": 0.0, "status_analise": "concluida", **diagnostico_agronomico(0, area_m2)}
 
     img_h, img_w = (1000.0, 1000.0)
     if hasattr(first, "orig_shape") and first.orig_shape is not None and len(first.orig_shape) >= 2:
@@ -191,6 +195,7 @@ def extract_yolo_detections(preds: Any, model: Any = None) -> tuple[list[dict[st
         "total_cabecas_trigo": total_detections,
         "confianca_media": confianca_media,
         "status_analise": "concluida",
+        **diagnostico_agronomico(total_detections, area_m2),
     }
     return detections, summary
 
@@ -274,7 +279,7 @@ def processar_imagem_ia(
                 logger.warning("[IA] Aviso na leitura da imagem: %s. Operando modo resiliente.", read_err)
                 preds = []
 
-            detections, summary = extract_yolo_detections(preds, modelo)
+            detections, summary = extract_yolo_detections(preds, modelo, area_m2)
             total_deteccoes = summary["total_cabecas_trigo"]
 
             resultado["status"] = "completed"
