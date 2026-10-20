@@ -4,6 +4,15 @@ Carrega o modelo YOLO treinado (Ultralytics) para detecção de cabeças de
 trigo (classe única: wheat), extrai caixas delimitadoras e as transforma
 em coordenadas reais georreferenciadas formatadas em JSON.
 """
+# Importação no topo
+import sys
+import os
+# Adiciona a pasta backend ao path para conseguir importar o database
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
+try:
+    from database import salvar_deteccao_trigo
+except ImportError:
+    salvar_deteccao_trigo = None
 
 from datetime import datetime
 import json
@@ -37,16 +46,16 @@ class SugarVisionAnalyzer:
     def __init__(
         self,
         model_path: Optional[Union[str, Path]] = None,
-        conf_threshold: float = 0.25,
-        iou_threshold: float = 0.45,
+        conf_threshold: float = 0.45,
+        iou_threshold: float = 0.50,
         device: Optional[str] = None,
     ):
-        """Inicializa o motor de análise YOLO.
+        """Inicializa o motor de análise YOLO calibrado para trigo (Sprint 7).
 
         Args:
             model_path: Caminho para os pesos (.pt). Prioriza 'best.pt' local.
-            conf_threshold: Limiar mínimo de confiança para a inferência (0 a 1).
-            iou_threshold: Limiar de sobreposição IoU para Non-Maximum Suppression.
+            conf_threshold: Limiar mínimo de confiança para a inferência (padrão Sprint 7: 0.45).
+            iou_threshold: Limiar de sobreposição IoU para Non-Maximum Suppression (padrão Sprint 7: 0.50).
             device: Dispositivo de execução ('cpu', 'cuda', etc.). Se None, detecta auto.
         """
         self.conf_threshold = conf_threshold
@@ -213,6 +222,27 @@ class SugarVisionAnalyzer:
         """
         return "baixa"  # TODO(T04): substituir por classificação de zona por densidade
 
+    @staticmethod
+    def classify_wheat_density(count: int) -> str:
+        """Categoriza agronomicamente a densidade de espigas de trigo por enquadramento.
+
+        Regras Agronômicas (Sprint 7):
+        - Espaçamento Baixo/Ralo: < 20 espigas por enquadramento
+        - Espaçamento Adequado: 20 a 50 espigas
+        - Alta Densidade: > 50 espigas
+
+        Args:
+            count: Total de espigas detectadas na imagem.
+
+        Returns:
+            Classificação textual da densidade agronômica.
+        """
+        if count < 20:
+            return "Espaçamento Baixo/Ralo"
+        elif count <= 50:
+            return "Espaçamento Adequado"
+        return "Alta Densidade"
+
     def detect(
         self,
         image_input: Union[str, Path, np.ndarray],
@@ -339,6 +369,7 @@ class SugarVisionAnalyzer:
             if total_detections > 0
             else 0.0
         )
+        classificacao_densidade = self.classify_wheat_density(total_detections)
 
         output: Dict[str, Any] = {
             "status": "success",
@@ -351,13 +382,11 @@ class SugarVisionAnalyzer:
                 "gsd_meters_per_pixel": gsd,
             },
             "summary": {
-                # Escopo do T01: contagem bruta + confiança média.
-                # Densidade (T02), produtividade estimada (T03) e zonas
-                # de densidade (T04) são adicionadas aqui por outras
-                # tasks do backlog — não implementar esses campos agora.
                 "total_cabecas_trigo": total_detections,
                 "confianca_media": confianca_media,
+                "classificacao_densidade": classificacao_densidade,
             },
+            "classificacao_densidade": classificacao_densidade,
             "deteccoes": detections,
         }
 
@@ -467,10 +496,15 @@ def analyze_wheat_image(
     model_path: Optional[Union[str, Path]] = None,
     output_json_path: Optional[Union[str, Path]] = None,
     output_annotated_path: Optional[Union[str, Path]] = None,
-    conf_threshold: float = 0.25,
+    conf_threshold: float = 0.45,
+    iou_threshold: float = 0.50,
 ) -> Dict[str, Any]:
     """Função ponte para acionamento direto do motor de visão computacional."""
-    analyzer = SugarVisionAnalyzer(model_path=model_path, conf_threshold=conf_threshold)
+    analyzer = SugarVisionAnalyzer(
+        model_path=model_path,
+        conf_threshold=conf_threshold,
+        iou_threshold=iou_threshold,
+    )
     result = analyzer.detect(image_path)
 
     if output_annotated_path:
@@ -478,6 +512,24 @@ def analyze_wheat_image(
 
     if output_json_path:
         analyzer.export_json(result, output_json_path=output_json_path)
+
+    # --- INTEGRAÇÃO COM O SUPABASE (TRIGO) ---
+    if salvar_deteccao_trigo:
+        try:
+             lat = result["deteccoes"][0]["coordinates"][0][0] if len(result["deteccoes"]) > 0 else None
+             lon = result["deteccoes"][0]["coordinates"][0][1] if len(result["deteccoes"]) > 0 else None
+             salvar_deteccao_trigo(
+                  nome_amostra=Path(image_path).name,
+                  data=datetime.now().isoformat(),
+                  total_espigas=result["summary"].get("total_cana", 0),
+                  densidade=result["summary"].get("taxa_infestacao_percent", 0.0),
+                  lat=lat,
+                  lon=lon,
+                  bounding_boxes_json=result["deteccoes"]
+             )
+        except Exception as e:
+             logger.error("Erro ao salvar no banco a partir do analyzer: %s", e)
+    # -----------------------------------------
 
     return result
 
@@ -507,8 +559,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--conf",
         type=float,
-        default=0.25,
-        help="Limiar de confiança para detecção (padrão: 0.25)",
+        default=0.45,
+        help="Limiar de confiança para detecção (padrão Sprint 7: 0.45)",
+    )
+    parser.add_argument(
+        "--iou",
+        type=float,
+        default=0.50,
+        help="Limiar de sobreposição IoU para NMS (padrão Sprint 7: 0.50)",
     )
     parser.add_argument(
         "--output-json",
@@ -544,12 +602,14 @@ if __name__ == "__main__":
         output_json_path=args.output_json,
         output_annotated_path=args.output_img,
         conf_threshold=args.conf,
+        iou_threshold=args.iou,
     )
 
     resumo = resultado["summary"]
     print("\n📊 Resumo da Análise:")
     print(f"- Total de Cabeças de Trigo: {resumo['total_cabecas_trigo']}")
     print(f"- Confiança Média:           {resumo['confianca_media']*100:.1f}%")
+    print(f"- Classificação Densidade:   {resumo['classificacao_densidade']}")
     print(f"\n📁 Arquivos Gerados:")
     print(f"  ✓ JSON estruturado: {Path(args.output_json).resolve()}")
     print(f"  ✓ Imagem anotada:   {Path(args.output_img).resolve()}\n")

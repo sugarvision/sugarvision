@@ -26,6 +26,10 @@ ALLOWED_IMAGE_EXTENSIONS: Set[str] = {
     ".tiff",
 }
 
+# Limite máximo de tamanho de payload por upload (padrão: 20 MB)
+MAX_UPLOAD_SIZE_MB: int = int(os.getenv("MAX_UPLOAD_SIZE_MB", "20"))
+MAX_UPLOAD_SIZE_BYTES: int = MAX_UPLOAD_SIZE_MB * 1024 * 1024
+
 # Configurações de Inteligência Artificial
 AI_DELAY_SECONDS: float = float(os.getenv("AI_DELAY_SECONDS", "1.0"))
 

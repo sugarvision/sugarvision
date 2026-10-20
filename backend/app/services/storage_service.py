@@ -8,7 +8,7 @@ from typing import Optional, Tuple
 
 from fastapi import HTTPException, UploadFile, status
 
-from app.core.config import ALLOWED_IMAGE_EXTENSIONS, TEMP_IMAGES_DIR
+from app.core.config import ALLOWED_IMAGE_EXTENSIONS, MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_MB, TEMP_IMAGES_DIR
 
 logger = logging.getLogger("sugarvision-storage")
 
@@ -16,9 +16,19 @@ logger = logging.getLogger("sugarvision-storage")
 class StorageService:
     """Microserviço responsável pela validação, gravação em stream e limpeza de imagens."""
 
-    def __init__(self, target_dir: Path = TEMP_IMAGES_DIR):
+    def __init__(self, target_dir: Path = TEMP_IMAGES_DIR, max_size_bytes: int = MAX_UPLOAD_SIZE_BYTES):
         self.target_dir = target_dir
+        self.max_size_bytes = max_size_bytes
         self.target_dir.mkdir(parents=True, exist_ok=True)
+
+    def _size_limit_error(self) -> HTTPException:
+        return HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=(
+                f"Arquivo excede o tamanho máximo permitido de "
+                f"{self.max_size_bytes / (1024 * 1024):g} MB."
+            ),
+        )
 
     def validate_extension(self, filename: str) -> str:
         """Valida e retorna a extensão sanitizada do arquivo.
@@ -84,6 +94,10 @@ class StorageService:
         safe_filename = self.generate_safe_filename(file.filename or "upload.jpg", custom_name=custom_name)
         target_path = self.target_dir / safe_filename
 
+        declared_size = getattr(file, "size", None)
+        if declared_size is not None and declared_size > self.max_size_bytes:
+            raise self._size_limit_error()
+
         try:
             # Função síncrona executada em worker thread para não travar o loop
             def write_file() -> int:
@@ -93,8 +107,10 @@ class StorageService:
                         chunk = file.file.read(chunk_size)
                         if not chunk:
                             break
-                        buffer.write(chunk)
                         total_bytes += len(chunk)
+                        if total_bytes > self.max_size_bytes:
+                            raise self._size_limit_error()
+                        buffer.write(chunk)
                 return total_bytes
 
             total_bytes = await asyncio.to_thread(write_file)
@@ -106,6 +122,11 @@ class StorageService:
             )
             return target_path, total_bytes
 
+        except HTTPException:
+            if target_path.exists():
+                target_path.unlink()
+            logger.warning("Upload rejeitado por exceder %d MB: %s", MAX_UPLOAD_SIZE_MB, safe_filename)
+            raise
         except Exception as exc:
             if target_path.exists():
                 target_path.unlink()

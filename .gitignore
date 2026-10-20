@@ -231,8 +231,18 @@ temp_images/
 # Machine learning models & weights
 *.pt
 *.onnx
+*.bak
+*.pt.bak
+
 
 # CV engine temporary run outputs
 cv_engine/resultado_anotado.jpg
 cv_engine/resultado_analise.json
+
+# Datasets & image databases
+Global Wheat 2021.v1i.yolov8/
+backend/data/
+**/gwhd_val/
+*.zip
+
 

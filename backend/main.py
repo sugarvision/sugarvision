@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, List, Optional
 
 from pydantic import BaseModel
-from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, UploadFile, status
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, Query, Response, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from ai_engine import DEFAULT_MODEL_PATH, processar_imagem_ia
@@ -32,6 +32,7 @@ from app.services.anomaly_service import AnomalyService
 from app.services.history_service import HistoryService
 from app.services.image_service import ImageService
 from app.services.storage_service import StorageService
+from app.core.security import verify_token
 from database import check_connection, get_all_anomalies, get_all_images, get_all_analyses
 
 BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:8000")
@@ -64,6 +65,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Total-Count", "X-Page", "X-Page-Size"],
 )
 
 
@@ -91,7 +93,10 @@ async def health_check(
     }
 
 
-@app.get("/api/anomalies", response_model=List[dict[str, Any]])
+PROTECTED = [Depends(verify_token)]
+
+
+@app.get("/api/anomalies", response_model=List[dict[str, Any]], dependencies=PROTECTED)
 async def get_anomalies(
     anomaly_service: AnomalyService = Depends(get_anomaly_service),
 ) -> List[dict[str, Any]]:
@@ -103,8 +108,8 @@ async def get_anomalies(
     return await anomaly_service.get_all_anomalies_async()
 
 
-@app.get("/api/images", response_model=List[dict[str, Any]])
-@app.get("/api/amostras", response_model=List[dict[str, Any]])
+@app.get("/api/images", response_model=List[dict[str, Any]], dependencies=PROTECTED)
+@app.get("/api/amostras", response_model=List[dict[str, Any]], dependencies=PROTECTED)
 async def get_images_samples(
     image_service: ImageService = Depends(get_image_service),
 ) -> List[dict[str, Any]]:
@@ -116,8 +121,8 @@ async def get_images_samples(
     return await image_service.get_all_images_async()
 
 
-@app.delete("/api/images/{image_id}", status_code=status.HTTP_200_OK)
-@app.delete("/api/amostras/{image_id}", status_code=status.HTTP_200_OK)
+@app.delete("/api/images/{image_id}", status_code=status.HTTP_200_OK, dependencies=PROTECTED)
+@app.delete("/api/amostras/{image_id}", status_code=status.HTTP_200_OK, dependencies=PROTECTED)
 async def delete_image(
     image_id: str,
     filename: Optional[str] = None,
@@ -140,14 +145,25 @@ async def delete_image(
 # ROTAS DO HISTÓRICO DE ANÁLISES
 # -------------------------------------------------------------
 
-@app.get("/api/historico", response_model=List[dict[str, Any]])
+@app.get("/api/historico", response_model=List[dict[str, Any]], dependencies=PROTECTED)
 async def get_history(
+    response: Response,
+    page: int = Query(1, ge=1, description="Número da página (começa em 1)"),
+    page_size: int = Query(50, ge=1, le=200, description="Itens por página (máx. 200)"),
     history_service: HistoryService = Depends(get_history_service),
 ) -> List[dict[str, Any]]:
-    """Retorna todas as análises cadastradas no histórico."""
-    return await history_service.get_all_analyses_async()
+    """Retorna o histórico paginado, da análise mais recente para a mais antiga.
 
-@app.get("/api/historico/{analysis_id}")
+    Cada item traz data, nome da amostra, total de espigas e coordenadas. O total geral
+    de registros vai no cabeçalho X-Total-Count.
+    """
+    items, total = await history_service.get_analyses_page_async(page, page_size)
+    response.headers["X-Total-Count"] = str(total)
+    response.headers["X-Page"] = str(page)
+    response.headers["X-Page-Size"] = str(page_size)
+    return items
+
+@app.get("/api/historico/{analysis_id}", dependencies=PROTECTED)
 async def get_single_history(analysis_id: str) -> dict[str, Any]:
     """Retorna uma análise específica do histórico com suas caixas delimitadoras já salvas."""
     all_analyses = get_all_analyses()
@@ -156,7 +172,7 @@ async def get_single_history(analysis_id: str) -> dict[str, Any]:
             return item
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Análise não encontrada.")
 
-@app.post("/api/historico", status_code=status.HTTP_201_CREATED)
+@app.post("/api/historico", status_code=status.HTTP_201_CREATED, dependencies=PROTECTED)
 async def create_history_record(
     payload: dict[str, Any],
     history_service: HistoryService = Depends(get_history_service),
@@ -165,7 +181,7 @@ async def create_history_record(
     return await history_service.create_analysis_async(payload)
 
 
-@app.delete("/api/historico/{analysis_id}", status_code=status.HTTP_200_OK)
+@app.delete("/api/historico/{analysis_id}", status_code=status.HTTP_200_OK, dependencies=PROTECTED)
 async def delete_history_record(
     analysis_id: str,
     history_service: HistoryService = Depends(get_history_service),
@@ -188,8 +204,8 @@ async def delete_history_record(
 # ROTA DE RENOMEAR FOTO / AMOSTRA
 # -------------------------------------------------------------
 
-@app.patch("/api/images/{image_id}", status_code=status.HTTP_200_OK)
-@app.patch("/api/amostras/{image_id}", status_code=status.HTTP_200_OK)
+@app.patch("/api/images/{image_id}", status_code=status.HTTP_200_OK, dependencies=PROTECTED)
+@app.patch("/api/amostras/{image_id}", status_code=status.HTTP_200_OK, dependencies=PROTECTED)
 async def rename_image(
     image_id: str,
     payload: RenameImageRequest,
@@ -218,8 +234,8 @@ class AnalyzeSampleRequest(BaseModel):
     filename: Optional[str] = None
 
 
-@app.post("/api/analyze-sample")
-@app.get("/api/analyze-sample")
+@app.post("/api/analyze-sample", dependencies=PROTECTED)
+@app.get("/api/analyze-sample", dependencies=PROTECTED)
 async def analyze_sample(
     filename: Optional[str] = None,
     payload: Optional[AnalyzeSampleRequest] = None,
@@ -304,7 +320,7 @@ async def analyze_sample(
     }
 
 
-@app.post("/upload", status_code=status.HTTP_201_CREATED)
+@app.post("/upload", status_code=status.HTTP_201_CREATED, dependencies=PROTECTED)
 async def upload_image(
     file: UploadFile = File(...),
     custom_name: Optional[str] = Form(None),
@@ -364,6 +380,7 @@ async def upload_image(
         return {
             "status": "success",
             "message": "Imagem enviada e processada com sucesso.",
+            "ai_status": "enqueued",
             "filename": target_path.name,
             "original_filename": file.filename,
             "content_type": file.content_type,

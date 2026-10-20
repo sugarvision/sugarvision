@@ -573,7 +573,7 @@ const navItems = [
     {
         id: "deteccao",
         href: "/",
-        label: "Detecção de Daninhas",
+        label: "Detecção de Trigo",
         icon: IconScan
     },
     {
@@ -584,8 +584,8 @@ const navItems = [
     },
     /* ── Abas comentadas temporariamente (retornar caso necessário) ──
   { id: "analises", href: "/", label: "Análises de Campo", icon: IconChart },
-  { id: "culturas", href: "/", label: "Cana-de-Açúcar", icon: IconLeaf },
-  { id: "alertas", href: "/", label: "Alertas de Infestação", icon: IconAlert, badge: 3 },
+  { id: "culturas", href: "/", label: "Cultura do Trigo", icon: IconLeaf },
+  { id: "alertas", href: "/", label: "Alertas de Detecção", icon: IconAlert, badge: 3 },
   ── */ {
         id: "amostras",
         href: "/amostras",
@@ -1110,12 +1110,12 @@ const ImageDetectionViewer = (0, __TURBOPACK__imported__module__$5b$project$5d2f
             children: "Carregando foto de campo..."
         }, void 0, false, {
             fileName: "[project]/app/page.tsx",
-            lineNumber: 28,
+            lineNumber: 29,
             columnNumber: 5
         }, ("TURBOPACK compile-time value", void 0))
 });
 _c = ImageDetectionViewer;
-// ── Stat Card (Métricas em m² e % de Infestação Foliar) ──────────────────────
+// ── Stat Card (Métricas da análise de detecção) ──────────────────────────────
 function StatCard({ label, value, unit, subtitle, badge, badgeType = "neutral", color = "var(--foreground)", icon: Icon, percentage }) {
     const badgeStyles = {
         success: {
@@ -1188,7 +1188,7 @@ function StatCard({ label, value, unit, subtitle, badge, badgeType = "neutral", 
                         children: label
                     }, void 0, false, {
                         fileName: "[project]/app/page.tsx",
-                        lineNumber: 92,
+                        lineNumber: 93,
                         columnNumber: 9
                     }, this),
                     Icon && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1206,18 +1206,18 @@ function StatCard({ label, value, unit, subtitle, badge, badgeType = "neutral", 
                             className: "w-4 h-4"
                         }, void 0, false, {
                             fileName: "[project]/app/page.tsx",
-                            lineNumber: 116,
+                            lineNumber: 117,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/app/page.tsx",
-                        lineNumber: 104,
+                        lineNumber: 105,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/page.tsx",
-                lineNumber: 91,
+                lineNumber: 92,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1239,7 +1239,7 @@ function StatCard({ label, value, unit, subtitle, badge, badgeType = "neutral", 
                         children: value
                     }, void 0, false, {
                         fileName: "[project]/app/page.tsx",
-                        lineNumber: 122,
+                        lineNumber: 123,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1251,7 +1251,7 @@ function StatCard({ label, value, unit, subtitle, badge, badgeType = "neutral", 
                         children: unit
                     }, void 0, false, {
                         fileName: "[project]/app/page.tsx",
-                        lineNumber: 133,
+                        lineNumber: 134,
                         columnNumber: 9
                     }, this),
                     badge && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1269,13 +1269,13 @@ function StatCard({ label, value, unit, subtitle, badge, badgeType = "neutral", 
                         children: badge
                     }, void 0, false, {
                         fileName: "[project]/app/page.tsx",
-                        lineNumber: 138,
+                        lineNumber: 139,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/page.tsx",
-                lineNumber: 121,
+                lineNumber: 122,
                 columnNumber: 7
             }, this),
             subtitle && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1290,7 +1290,7 @@ function StatCard({ label, value, unit, subtitle, badge, badgeType = "neutral", 
                         children: subtitle
                     }, void 0, false, {
                         fileName: "[project]/app/page.tsx",
-                        lineNumber: 158,
+                        lineNumber: 159,
                         columnNumber: 11
                     }, this),
                     percentage !== undefined && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1304,13 +1304,13 @@ function StatCard({ label, value, unit, subtitle, badge, badgeType = "neutral", 
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/page.tsx",
-                        lineNumber: 160,
+                        lineNumber: 161,
                         columnNumber: 13
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/page.tsx",
-                lineNumber: 157,
+                lineNumber: 158,
                 columnNumber: 9
             }, this),
             percentage !== undefined && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1332,22 +1332,64 @@ function StatCard({ label, value, unit, subtitle, badge, badgeType = "neutral", 
                     }
                 }, void 0, false, {
                     fileName: "[project]/app/page.tsx",
-                    lineNumber: 176,
+                    lineNumber: 177,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/app/page.tsx",
-                lineNumber: 166,
+                lineNumber: 167,
                 columnNumber: 9
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/app/page.tsx",
-        lineNumber: 65,
+        lineNumber: 66,
         columnNumber: 5
     }, this);
 }
 _c1 = StatCard;
+function calculateMarkedAreaPercent(detections) {
+    const clamp = (value)=>Math.min(100, Math.max(0, value));
+    const boxes = detections.map(({ box })=>({
+            left: clamp(box.x),
+            right: clamp(box.x + box.width),
+            top: clamp(box.y),
+            bottom: clamp(box.y + box.height)
+        })).filter((box)=>box.right > box.left && box.bottom > box.top);
+    const xEdges = Array.from(new Set(boxes.flatMap((box)=>[
+            box.left,
+            box.right
+        ]))).sort((a, b)=>a - b);
+    let coveredArea = 0;
+    for(let index = 0; index < xEdges.length - 1; index += 1){
+        const left = xEdges[index];
+        const right = xEdges[index + 1];
+        const intervals = boxes.filter((box)=>box.left < right && box.right > left).map((box)=>[
+                box.top,
+                box.bottom
+            ]).sort((first, second)=>first[0] - second[0]);
+        if (intervals.length === 0) continue;
+        let intervalStart = intervals[0][0];
+        let intervalEnd = intervals[0][1];
+        let coveredHeight = 0;
+        for (const [top, bottom] of intervals.slice(1)){
+            if (top <= intervalEnd) {
+                intervalEnd = Math.max(intervalEnd, bottom);
+            } else {
+                coveredHeight += intervalEnd - intervalStart;
+                intervalStart = top;
+                intervalEnd = bottom;
+            }
+        }
+        coveredHeight += intervalEnd - intervalStart;
+        coveredArea += (right - left) * coveredHeight;
+    }
+    return Math.min(100, coveredArea / 100);
+}
+function calculateMeanConfidence(detections) {
+    if (detections.length === 0) return null;
+    return detections.reduce((total, detection)=>total + detection.confidence, 0) / detections.length * 100;
+}
 function HomeContent() {
     _s();
     const [sidebarCollapsed, setSidebarCollapsed] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
@@ -1411,7 +1453,7 @@ function HomeContent() {
                         });
                         setActiveDetections(detections);
                         setIsViewingSavedHistory(true);
-                        __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$toastify$2f$dist$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["toast"].info(`Exibindo análise salva: ${data.nome_imagem} (${weedCount} focos detectados)`, {
+                        __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$toastify$2f$dist$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["toast"].info(`Exibindo análise salva: ${data.nome_imagem} (${weedCount} cabeças detectadas)`, {
                             position: "top-right",
                             autoClose: 3500,
                             theme: "dark"
@@ -1459,10 +1501,10 @@ function HomeContent() {
                             setActiveDetections(result.detections);
                         }
                         setIsModalOpen(true);
-                        const weedCount = result.summary?.total_ervas_daninhas ?? (result.detections ? result.detections.filter({
+                        const wheatCount = result.summary?.total_ervas_daninhas ?? (result.detections ? result.detections.filter({
                             "HomeContent.useEffect.loadAndInferSample": (d)=>d.type !== "cana_de_acucar"
                         }["HomeContent.useEffect.loadAndInferSample"]).length : 0);
-                        __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$toastify$2f$dist$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["toast"].success(`Amostra '${filename}' analisada: ${weedCount} focos identificados e salvos no histórico!`, {
+                        __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$toastify$2f$dist$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["toast"].success(`Amostra '${filename}' analisada: ${wheatCount} espigas de trigo identificadas!`, {
                             position: "top-right",
                             autoClose: 4500,
                             theme: "dark"
@@ -1537,7 +1579,7 @@ function HomeContent() {
             }
             setIsModalOpen(true);
             const weedCount = result.summary?.total_ervas_daninhas ?? (result.detections ? result.detections.filter((d)=>d.type !== "cana_de_acucar").length : 0);
-            __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$toastify$2f$dist$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["toast"].success(`Análise concluída: ${weedCount} focos de ervas daninhas identificados!`, {
+            __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$toastify$2f$dist$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["toast"].success(`Análise concluída: ${weedCount} cabeças de trigo identificadas!`, {
                 position: "top-right",
                 autoClose: 4000,
                 theme: "dark"
@@ -1599,12 +1641,12 @@ function HomeContent() {
                             d: "M21 12a9 9 0 1 1-6.219-8.56"
                         }, void 0, false, {
                             fileName: "[project]/app/page.tsx",
-                            lineNumber: 510,
+                            lineNumber: 560,
                             columnNumber: 13
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/app/page.tsx",
-                        lineNumber: 498,
+                        lineNumber: 548,
                         columnNumber: 11
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1617,13 +1659,13 @@ function HomeContent() {
                         children: analiseIdQuery ? "Carregando análise salva do histórico..." : "Processando imagem com IA... Aguarde."
                     }, void 0, false, {
                         fileName: "[project]/app/page.tsx",
-                        lineNumber: 512,
+                        lineNumber: 562,
                         columnNumber: 11
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/page.tsx",
-                lineNumber: 484,
+                lineNumber: 534,
                 columnNumber: 9
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$react$2d$toastify$2f$dist$2f$index$2e$mjs__$5b$app$2d$client$5d$__$28$ecmascript$29$__["ToastContainer"], {
@@ -1639,7 +1681,7 @@ function HomeContent() {
                 theme: "dark"
             }, void 0, false, {
                 fileName: "[project]/app/page.tsx",
-                lineNumber: 526,
+                lineNumber: 576,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1653,7 +1695,7 @@ function HomeContent() {
                 id: "field-file-input"
             }, void 0, false, {
                 fileName: "[project]/app/page.tsx",
-                lineNumber: 540,
+                lineNumber: 590,
                 columnNumber: 7
             }, this),
             isModalOpen && uploadSuccessData && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1717,12 +1759,12 @@ function HomeContent() {
                                                 className: "w-5 h-5"
                                             }, void 0, false, {
                                                 fileName: "[project]/app/page.tsx",
-                                                lineNumber: 598,
+                                                lineNumber: 648,
                                                 columnNumber: 19
                                             }, this)
                                         }, void 0, false, {
                                             fileName: "[project]/app/page.tsx",
-                                            lineNumber: 585,
+                                            lineNumber: 635,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1737,7 +1779,7 @@ function HomeContent() {
                                                     children: "Foto de Campo Processada"
                                                 }, void 0, false, {
                                                     fileName: "[project]/app/page.tsx",
-                                                    lineNumber: 601,
+                                                    lineNumber: 651,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1746,22 +1788,22 @@ function HomeContent() {
                                                         color: "var(--muted)",
                                                         margin: "2px 0 0 0"
                                                     },
-                                                    children: "Detecção e contagem de focos de ervas daninhas"
+                                                    children: "Detecção e contagem de cabeças de trigo"
                                                 }, void 0, false, {
                                                     fileName: "[project]/app/page.tsx",
-                                                    lineNumber: 604,
+                                                    lineNumber: 654,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/app/page.tsx",
-                                            lineNumber: 600,
+                                            lineNumber: 650,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/app/page.tsx",
-                                    lineNumber: 584,
+                                    lineNumber: 634,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1778,18 +1820,18 @@ function HomeContent() {
                                         className: "w-5 h-5"
                                     }, void 0, false, {
                                         fileName: "[project]/app/page.tsx",
-                                        lineNumber: 620,
+                                        lineNumber: 670,
                                         columnNumber: 17
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/app/page.tsx",
-                                    lineNumber: 609,
+                                    lineNumber: 659,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app/page.tsx",
-                            lineNumber: 583,
+                            lineNumber: 633,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1814,12 +1856,12 @@ function HomeContent() {
                                 }
                             }, void 0, false, {
                                 fileName: "[project]/app/page.tsx",
-                                lineNumber: 637,
+                                lineNumber: 687,
                                 columnNumber: 15
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/app/page.tsx",
-                            lineNumber: 624,
+                            lineNumber: 674,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1853,14 +1895,14 @@ function HomeContent() {
                                                     className: "w-4 h-4 text-muted"
                                                 }, void 0, false, {
                                                     fileName: "[project]/app/page.tsx",
-                                                    lineNumber: 662,
+                                                    lineNumber: 712,
                                                     columnNumber: 19
                                                 }, this),
                                                 "Arquivo:"
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/app/page.tsx",
-                                            lineNumber: 661,
+                                            lineNumber: 711,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1871,13 +1913,13 @@ function HomeContent() {
                                             children: uploadSuccessData.backend.original_filename
                                         }, void 0, false, {
                                             fileName: "[project]/app/page.tsx",
-                                            lineNumber: 665,
+                                            lineNumber: 715,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/app/page.tsx",
-                                    lineNumber: 660,
+                                    lineNumber: 710,
                                     columnNumber: 15
                                 }, this),
                                 uploadSuccessData.backend.size_bytes > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1895,7 +1937,7 @@ function HomeContent() {
                                             children: "Tamanho do Arquivo:"
                                         }, void 0, false, {
                                             fileName: "[project]/app/page.tsx",
-                                            lineNumber: 669,
+                                            lineNumber: 719,
                                             columnNumber: 19
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1906,13 +1948,13 @@ function HomeContent() {
                                             children: formatFileSize(uploadSuccessData.backend.size_bytes)
                                         }, void 0, false, {
                                             fileName: "[project]/app/page.tsx",
-                                            lineNumber: 670,
+                                            lineNumber: 720,
                                             columnNumber: 19
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/app/page.tsx",
-                                    lineNumber: 668,
+                                    lineNumber: 718,
                                     columnNumber: 17
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1927,10 +1969,10 @@ function HomeContent() {
                                             style: {
                                                 color: "var(--muted)"
                                             },
-                                            children: "Ervas Daninhas:"
+                                            children: "Cabeças de Trigo:"
                                         }, void 0, false, {
                                             fileName: "[project]/app/page.tsx",
-                                            lineNumber: 674,
+                                            lineNumber: 724,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1940,20 +1982,20 @@ function HomeContent() {
                                             },
                                             children: [
                                                 uploadSuccessData.backend.summary?.total_ervas_daninhas ?? (uploadSuccessData.backend.detections ? uploadSuccessData.backend.detections.filter((d)=>d.type !== 'cana_de_acucar').length : 0),
-                                                " focos identificados"
+                                                " cabeças identificadas"
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/app/page.tsx",
-                                            lineNumber: 675,
+                                            lineNumber: 725,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/app/page.tsx",
-                                    lineNumber: 673,
+                                    lineNumber: 723,
                                     columnNumber: 15
                                 }, this),
-                                uploadSuccessData.backend.summary?.taxa_infestacao_percent !== undefined && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                uploadSuccessData.backend.detections !== undefined && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                     style: {
                                         display: "flex",
                                         justifyContent: "space-between",
@@ -1965,30 +2007,30 @@ function HomeContent() {
                                             style: {
                                                 color: "var(--muted)"
                                             },
-                                            children: "Taxa de Infestação:"
+                                            children: "Área marcada pelas caixas:"
                                         }, void 0, false, {
                                             fileName: "[project]/app/page.tsx",
-                                            lineNumber: 681,
+                                            lineNumber: 731,
                                             columnNumber: 19
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                             style: {
                                                 fontWeight: 700,
-                                                color: uploadSuccessData.backend.summary.taxa_infestacao_percent > 20 ? "#f85149" : "#d29922"
+                                                color: "#58a6ff"
                                             },
                                             children: [
-                                                uploadSuccessData.backend.summary.taxa_infestacao_percent.toFixed(1),
+                                                (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$utils$2f$geoMath$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["formatNumberBR"])(calculateMarkedAreaPercent(uploadSuccessData.backend.detections.filter((d)=>d.type !== "cana_de_acucar")), 1),
                                                 "%"
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/app/page.tsx",
-                                            lineNumber: 682,
+                                            lineNumber: 732,
                                             columnNumber: 19
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/app/page.tsx",
-                                    lineNumber: 680,
+                                    lineNumber: 730,
                                     columnNumber: 17
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2004,7 +2046,7 @@ function HomeContent() {
                                             children: "Status da Análise:"
                                         }, void 0, false, {
                                             fileName: "[project]/app/page.tsx",
-                                            lineNumber: 688,
+                                            lineNumber: 738,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2025,26 +2067,26 @@ function HomeContent() {
                                                     }
                                                 }, void 0, false, {
                                                     fileName: "[project]/app/page.tsx",
-                                                    lineNumber: 690,
+                                                    lineNumber: 740,
                                                     columnNumber: 19
                                                 }, this),
                                                 "Detecção Concluída e Registrada"
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/app/page.tsx",
-                                            lineNumber: 689,
+                                            lineNumber: 739,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/app/page.tsx",
-                                    lineNumber: 687,
+                                    lineNumber: 737,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/app/page.tsx",
-                            lineNumber: 649,
+                            lineNumber: 699,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2068,23 +2110,23 @@ function HomeContent() {
                                 children: "Fechar Detalhes"
                             }, void 0, false, {
                                 fileName: "[project]/app/page.tsx",
-                                lineNumber: 697,
+                                lineNumber: 747,
                                 columnNumber: 15
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/app/page.tsx",
-                            lineNumber: 696,
+                            lineNumber: 746,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/app/page.tsx",
-                    lineNumber: 565,
+                    lineNumber: 615,
                     columnNumber: 11
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/app/page.tsx",
-                lineNumber: 551,
+                lineNumber: 601,
                 columnNumber: 9
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$app$2f$components$2f$Sidebar$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Sidebar"], {
@@ -2092,7 +2134,7 @@ function HomeContent() {
                 onToggle: ()=>setSidebarCollapsed(true)
             }, void 0, false, {
                 fileName: "[project]/app/page.tsx",
-                lineNumber: 718,
+                lineNumber: 768,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("main", {
@@ -2134,12 +2176,12 @@ function HomeContent() {
                                     className: "w-5 h-5"
                                 }, void 0, false, {
                                     fileName: "[project]/app/page.tsx",
-                                    lineNumber: 762,
+                                    lineNumber: 812,
                                     columnNumber: 15
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/app/page.tsx",
-                                lineNumber: 747,
+                                lineNumber: 797,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2155,10 +2197,10 @@ function HomeContent() {
                                             margin: 0,
                                             lineHeight: 1
                                         },
-                                        children: "Inspeção Visual & Detecção de Ervas Daninhas"
+                                        children: "Inspeção Visual & Detecção de Cabeças de Trigo"
                                     }, void 0, false, {
                                         fileName: "[project]/app/page.tsx",
-                                        lineNumber: 767,
+                                        lineNumber: 817,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2168,16 +2210,16 @@ function HomeContent() {
                                             margin: "3px 0 0 0",
                                             lineHeight: 1
                                         },
-                                        children: isViewingSavedHistory ? "Visualizando análise salva no Histórico (Modo Leitura)" : "Visão computacional e identificação de matocompetição em cana-de-açúcar"
+                                        children: isViewingSavedHistory ? "Visualizando análise salva no Histórico (Modo Leitura)" : "Visão computacional e contagem de cabeças de trigo"
                                     }, void 0, false, {
                                         fileName: "[project]/app/page.tsx",
-                                        lineNumber: 778,
+                                        lineNumber: 828,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/page.tsx",
-                                lineNumber: 766,
+                                lineNumber: 816,
                                 columnNumber: 11
                             }, this),
                             isViewingSavedHistory && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2196,7 +2238,7 @@ function HomeContent() {
                                 children: "📁 Visualização do Histórico"
                             }, void 0, false, {
                                 fileName: "[project]/app/page.tsx",
-                                lineNumber: 791,
+                                lineNumber: 841,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2225,20 +2267,20 @@ function HomeContent() {
                                         className: "w-4 h-4"
                                     }, void 0, false, {
                                         fileName: "[project]/app/page.tsx",
-                                        lineNumber: 835,
+                                        lineNumber: 885,
                                         columnNumber: 13
                                     }, this),
                                     "Nova Análise de Campo"
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/app/page.tsx",
-                                lineNumber: 809,
+                                lineNumber: 859,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/page.tsx",
-                        lineNumber: 734,
+                        lineNumber: 784,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2252,72 +2294,91 @@ function HomeContent() {
                         },
                         children: [
                             (()=>{
-                                const hasModelData = Boolean(uploadSuccessData?.backend?.summary);
+                                const hasModelData = Boolean(uploadSuccessData);
                                 const modelSummary = uploadSuccessData?.backend?.summary;
-                                const modelDetections = activeDetections;
-                                const taxaInfestacao = modelSummary?.taxa_infestacao_percent ?? metrics.percentualInfestacao;
-                                const totalFocos = modelSummary?.total_ervas_daninhas ?? (modelDetections ? modelDetections.filter((d)=>d.type !== 'cana_de_acucar').length : metrics.totalFocos);
-                                const taxaSaudavel = Math.max(0, 100 - taxaInfestacao);
+                                const modelDetections = uploadSuccessData?.backend?.detections ?? activeDetections;
+                                const headDetections = modelDetections?.filter((d)=>d.type !== "cana_de_acucar");
+                                const totalEspigas = modelSummary?.total_ervas_daninhas ?? headDetections?.length ?? 0;
+                                const meanConfidence = headDetections ? calculateMeanConfidence(headDetections) : null;
+                                // Densidade estimada de espigas com base na contagem e área aproximada
+                                const densidadeEstimada = totalEspigas > 0 ? `${(totalEspigas / (currentAmostra.areaAmostraM2 || 2.5)).toFixed(1)} espigas/m²` : "—";
+                                const densidadeClassificacao = totalEspigas === 0 ? "Sem leitura" : totalEspigas < 20 ? "Densidade Baixa" : totalEspigas <= 60 ? "Densidade Média" : "Alta Densidade";
+                                const statusAnalise = hasModelData ? "Concluída" : "Aguardando";
                                 return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                    className: "fade-in-up",
+                                    className: "dashboard-metrics-grid fade-in-up",
                                     style: {
-                                        display: "flex",
+                                        display: "grid",
+                                        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
                                         gap: "12px",
-                                        flexWrap: "wrap"
+                                        width: "100%"
                                     },
                                     children: [
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
-                                            label: "Taxa de Infestação",
-                                            value: (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$utils$2f$geoMath$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["formatNumberBR"])(taxaInfestacao, 1),
-                                            unit: "%",
-                                            subtitle: hasModelData ? `Cálculo registrado da amostra` : `${(0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$utils$2f$geoMath$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["formatNumberBR"])(metrics.infestacaoM2, 2)} m² de daninhas`,
-                                            badge: `${(0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$utils$2f$geoMath$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["formatNumberBR"])(taxaInfestacao, 1)}% Matocompetição`,
-                                            badgeType: taxaInfestacao > 20 ? "danger" : "warning",
-                                            color: taxaInfestacao > 20 ? "#f85149" : "#d29922",
-                                            icon: __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$components$2f$Sidebar$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["IconAlert"],
-                                            percentage: taxaInfestacao
-                                        }, void 0, false, {
-                                            fileName: "[project]/app/page.tsx",
-                                            lineNumber: 866,
-                                            columnNumber: 17
-                                        }, this),
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
-                                            label: "Cana Saudável",
-                                            value: (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$utils$2f$geoMath$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["formatNumberBR"])(taxaSaudavel, 1),
-                                            unit: "%",
-                                            subtitle: hasModelData ? "Área livre de ervas daninhas" : `${(0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$utils$2f$geoMath$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["formatNumberBR"])(metrics.canaSaudavelM2, 2)} m² livres de mato`,
-                                            badge: "Área Útil",
-                                            badgeType: "success",
-                                            color: "var(--accent-green)",
-                                            icon: __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$components$2f$Sidebar$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["IconLeaf"],
-                                            percentage: taxaSaudavel
-                                        }, void 0, false, {
-                                            fileName: "[project]/app/page.tsx",
-                                            lineNumber: 878,
-                                            columnNumber: 17
-                                        }, this),
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
-                                            label: "Ervas Identificadas",
-                                            value: String(totalFocos),
-                                            unit: "focos",
-                                            subtitle: hasModelData ? `Identificadas e mapeadas` : `Confiança IA: ${(0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$utils$2f$geoMath$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["formatNumberBR"])(metrics.mediaConfianca, 0)}%`,
-                                            badge: totalFocos > 2 ? "Infestação Moderada" : "Baixa Infestação",
-                                            badgeType: totalFocos > 2 ? "warning" : "success",
+                                            label: "Total de Espigas",
+                                            value: String(totalEspigas),
+                                            unit: "espigas",
+                                            subtitle: hasModelData ? "Espigas de trigo detectadas" : "Selecione uma imagem para analisar",
+                                            badge: totalEspigas > 0 ? "Detectadas" : "Aguardando",
+                                            badgeType: totalEspigas > 0 ? "success" : "neutral",
                                             color: "#ffa657",
+                                            icon: __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$components$2f$Sidebar$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["IconLeaf"]
+                                        }, void 0, false, {
+                                            fileName: "[project]/app/page.tsx",
+                                            lineNumber: 936,
+                                            columnNumber: 17
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
+                                            label: "Densidade Estimada",
+                                            value: totalEspigas > 0 ? (totalEspigas / (currentAmostra.areaAmostraM2 || 2.5)).toFixed(1) : "—",
+                                            unit: totalEspigas > 0 ? "esp/m²" : "",
+                                            subtitle: totalEspigas > 0 ? densidadeEstimada : "Calculada por enquadramento de campo",
+                                            badge: densidadeClassificacao,
+                                            badgeType: totalEspigas > 60 ? "warning" : totalEspigas > 0 ? "success" : "neutral",
+                                            color: "#3fb950",
                                             icon: __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$components$2f$Sidebar$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["IconChart"]
                                         }, void 0, false, {
                                             fileName: "[project]/app/page.tsx",
-                                            lineNumber: 890,
+                                            lineNumber: 948,
+                                            columnNumber: 17
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
+                                            label: "Confiança Média",
+                                            value: meanConfidence === null ? "—" : (0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$utils$2f$geoMath$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["formatNumberBR"])(meanConfidence, 1),
+                                            unit: meanConfidence === null ? "" : "%",
+                                            subtitle: hasModelData ? "Acurácia média das detecções" : "Disponível após o processamento",
+                                            badge: hasModelData ? "YOLOv8x" : "Aguardando",
+                                            badgeType: "info",
+                                            color: "#58a6ff",
+                                            icon: __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$components$2f$Sidebar$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["IconAlert"],
+                                            percentage: meanConfidence ?? undefined
+                                        }, void 0, false, {
+                                            fileName: "[project]/app/page.tsx",
+                                            lineNumber: 960,
+                                            columnNumber: 17
+                                        }, this),
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(StatCard, {
+                                            label: "Status do Pipeline",
+                                            value: statusAnalise,
+                                            unit: "",
+                                            subtitle: hasModelData ? "IA processada e registrada" : "Pronto para nova captura",
+                                            badge: hasModelData ? "Online / Ativo" : "Em espera",
+                                            badgeType: hasModelData ? "success" : "neutral",
+                                            color: hasModelData ? "#2ea043" : "var(--muted)",
+                                            icon: __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$components$2f$Sidebar$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["IconScan"]
+                                        }, void 0, false, {
+                                            fileName: "[project]/app/page.tsx",
+                                            lineNumber: 973,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/app/page.tsx",
-                                    lineNumber: 862,
+                                    lineNumber: 926,
                                     columnNumber: 15
                                 }, this);
                             })(),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                className: "detection-panel",
                                 style: {
                                     flex: 1,
                                     minHeight: "420px",
@@ -2325,19 +2386,126 @@ function HomeContent() {
                                     border: "1px solid var(--card-border)",
                                     background: "var(--card-bg)",
                                     overflow: "hidden",
-                                    position: "relative"
+                                    position: "relative",
+                                    display: "flex"
                                 },
-                                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ImageDetectionViewer, {
-                                    imageSrc: uploadSuccessData?.localPreview || (amostraQuery ? `http://127.0.0.1:8000/temp_images/${amostraQuery}` : "/cana_teste.jpg"),
-                                    detections: activeDetections
-                                }, uploadSuccessData?.localPreview || (amostraQuery ? `amostra-${amostraQuery}-${timestampQuery || ''}` : "default"), false, {
-                                    fileName: "[project]/app/page.tsx",
-                                    lineNumber: 916,
-                                    columnNumber: 13
-                                }, this)
-                            }, void 0, false, {
+                                children: [
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                        className: "detection-image",
+                                        children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(ImageDetectionViewer, {
+                                            imageSrc: uploadSuccessData?.localPreview || (amostraQuery ? `http://127.0.0.1:8000/temp_images/${amostraQuery}` : undefined),
+                                            detections: activeDetections
+                                        }, uploadSuccessData?.localPreview || (amostraQuery ? `amostra-${amostraQuery}-${timestampQuery || ''}` : "default"), false, {
+                                            fileName: "[project]/app/page.tsx",
+                                            lineNumber: 1002,
+                                            columnNumber: 15
+                                        }, this)
+                                    }, void 0, false, {
+                                        fileName: "[project]/app/page.tsx",
+                                        lineNumber: 1001,
+                                        columnNumber: 13
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("aside", {
+                                        className: "detection-legend",
+                                        "aria-label": "Legenda das detecções",
+                                        children: [
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
+                                                children: "Legenda"
+                                            }, void 0, false, {
+                                                fileName: "[project]/app/page.tsx",
+                                                lineNumber: 1009,
+                                                columnNumber: 15
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                className: "detection-legend-item",
+                                                children: [
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                        className: "detection-legend-swatch",
+                                                        "aria-hidden": "true"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/app/page.tsx",
+                                                        lineNumber: 1011,
+                                                        columnNumber: 17
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                                        children: "Espigas de Trigo"
+                                                    }, void 0, false, {
+                                                        fileName: "[project]/app/page.tsx",
+                                                        lineNumber: 1012,
+                                                        columnNumber: 17
+                                                    }, this)
+                                                ]
+                                            }, void 0, true, {
+                                                fileName: "[project]/app/page.tsx",
+                                                lineNumber: 1010,
+                                                columnNumber: 15
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                style: {
+                                                    marginTop: "12px",
+                                                    display: "flex",
+                                                    flexDirection: "column",
+                                                    gap: "6px",
+                                                    fontSize: "11px",
+                                                    color: "var(--muted)"
+                                                },
+                                                children: [
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                        children: [
+                                                            "• Classe: ",
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("strong", {
+                                                                children: "0 (wheat)"
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/app/page.tsx",
+                                                                lineNumber: 1015,
+                                                                columnNumber: 32
+                                                            }, this)
+                                                        ]
+                                                    }, void 0, true, {
+                                                        fileName: "[project]/app/page.tsx",
+                                                        lineNumber: 1015,
+                                                        columnNumber: 17
+                                                    }, this),
+                                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                                        children: [
+                                                            "• Modelo: ",
+                                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("strong", {
+                                                                children: "YOLOv8x"
+                                                            }, void 0, false, {
+                                                                fileName: "[project]/app/page.tsx",
+                                                                lineNumber: 1016,
+                                                                columnNumber: 32
+                                                            }, this)
+                                                        ]
+                                                    }, void 0, true, {
+                                                        fileName: "[project]/app/page.tsx",
+                                                        lineNumber: 1016,
+                                                        columnNumber: 17
+                                                    }, this)
+                                                ]
+                                            }, void 0, true, {
+                                                fileName: "[project]/app/page.tsx",
+                                                lineNumber: 1014,
+                                                columnNumber: 15
+                                            }, this),
+                                            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                                className: "ai-disclaimer",
+                                                children: "A IA pode cometer erros. Revise as detecções antes de tomar decisões agronômicas."
+                                            }, void 0, false, {
+                                                fileName: "[project]/app/page.tsx",
+                                                lineNumber: 1018,
+                                                columnNumber: 15
+                                            }, this)
+                                        ]
+                                    }, void 0, true, {
+                                        fileName: "[project]/app/page.tsx",
+                                        lineNumber: 1008,
+                                        columnNumber: 13
+                                    }, this)
+                                ]
+                            }, void 0, true, {
                                 fileName: "[project]/app/page.tsx",
-                                lineNumber: 905,
+                                lineNumber: 988,
                                 columnNumber: 11
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2361,9 +2529,9 @@ function HomeContent() {
                                         desc: currentAmostra.cidade
                                     },
                                     {
-                                        icon: "🌿",
-                                        title: "Recomendação Técnica",
-                                        desc: `Aplicação seletiva / catação nos ${(0, __TURBOPACK__imported__module__$5b$project$5d2f$app$2f$utils$2f$geoMath$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["formatNumberBR"])(metrics.infestacaoM2, 2)} m² afetados`
+                                        icon: "🌾",
+                                        title: "Cultura Alvo",
+                                        desc: "Trigo (Triticum aestivum)"
                                     }
                                 ].map((item)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                         style: {
@@ -2385,7 +2553,7 @@ function HomeContent() {
                                                 children: item.icon
                                             }, void 0, false, {
                                                 fileName: "[project]/app/page.tsx",
-                                                lineNumber: 964,
+                                                lineNumber: 1065,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2399,7 +2567,7 @@ function HomeContent() {
                                                         children: item.title
                                                     }, void 0, false, {
                                                         fileName: "[project]/app/page.tsx",
-                                                        lineNumber: 968,
+                                                        lineNumber: 1069,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2410,36 +2578,36 @@ function HomeContent() {
                                                         children: item.desc
                                                     }, void 0, false, {
                                                         fileName: "[project]/app/page.tsx",
-                                                        lineNumber: 977,
+                                                        lineNumber: 1078,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/app/page.tsx",
-                                                lineNumber: 967,
+                                                lineNumber: 1068,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, item.title, true, {
                                         fileName: "[project]/app/page.tsx",
-                                        lineNumber: 951,
+                                        lineNumber: 1052,
                                         columnNumber: 15
                                     }, this))
                             }, void 0, false, {
                                 fileName: "[project]/app/page.tsx",
-                                lineNumber: 924,
+                                lineNumber: 1025,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/app/page.tsx",
-                        lineNumber: 841,
+                        lineNumber: 891,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/app/page.tsx",
-                lineNumber: 724,
+                lineNumber: 774,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("style", {
@@ -2451,13 +2619,13 @@ function HomeContent() {
       `
             }, void 0, false, {
                 fileName: "[project]/app/page.tsx",
-                lineNumber: 988,
+                lineNumber: 1090,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/app/page.tsx",
-        lineNumber: 481,
+        lineNumber: 531,
         columnNumber: 5
     }, this);
 }
@@ -2482,17 +2650,17 @@ function Home() {
             children: "Carregando Painel SugarVision..."
         }, void 0, false, {
             fileName: "[project]/app/page.tsx",
-            lineNumber: 1002,
+            lineNumber: 1104,
             columnNumber: 9
         }, this),
         children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(HomeContent, {}, void 0, false, {
             fileName: "[project]/app/page.tsx",
-            lineNumber: 1017,
+            lineNumber: 1119,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/app/page.tsx",
-        lineNumber: 1000,
+        lineNumber: 1102,
         columnNumber: 5
     }, this);
 }

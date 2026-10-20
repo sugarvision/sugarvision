@@ -287,6 +287,7 @@ export function Sidebar({
 
   return (
     <aside
+      className="sidebar"
       style={{
         background: "var(--sidebar-bg)",
         borderRight: "1px solid var(--sidebar-border)",

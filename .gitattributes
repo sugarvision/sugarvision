@@ -1,1 +1,5 @@
+<<<<<<< HEAD
 best.pt filter=lfs diff=lfs merge=lfs -text
+=======
+*.pt filter=lfs diff=lfs merge=lfs -text
+>>>>>>> 9d3e61a4d537eabf81ffd1e4b96009c620f48427

@@ -1,0 +1,267 @@
+{
+  "sprint": 5,
+  "task": "Avaliação e Validação Funcional da IA de Trigo",
+  "timestamp": "2026-10-13T11:57:21",
+  "model_file": "C:\\Users\\elisa\\OneDrive\\Documentos\\sugarvision\\backend\\best.pt",
+  "model_size_mb": 130.47,
+  "model_classes": {
+    "0": "wheat"
+  },
+  "total_images_evaluated": 20,
+  "total_wheat_heads_detected": 456,
+  "overall_average_confidence": 0.6804,
+  "min_confidence_filter": 0.4,
+  "backend_upload_endpoint_status": "201 Created - Validado",
+  "images_summary": [
+    {
+      "image_name": "00319488e879a811698174d9f26ef174f2f108a13e12edee5a3c50899ed26336_png.rf.85825628f76b21d290c2485ffb1e125b.jpg",
+      "total_wheat_heads": 9,
+      "avg_confidence": 0.5226,
+      "min_confidence": 0.4072,
+      "max_confidence": 0.7271,
+      "inference_time_ms": 3626.07,
+      "overlapping_pairs_count": 0,
+      "annotated_saved_path": "C:\\Users\\elisa\\OneDrive\\Documentos\\sugarvision\\reports\\sprint5_wheat_validation\\annotated\\annotated_00319488e879a811698174d9f26ef174f2f108a13e12edee5a3c50899ed26336_png.rf.85825628f76b21d290c2485ffb1e125b.jpg"
+    },
+    {
+      "image_name": "0045ab3d479309837ba595e10de6ef94aeddb15e8cc4387a2bbc0fe2f25ada12_png.rf.e35a2529b2416e616a60c91ab244f24d.jpg",
+      "total_wheat_heads": 24,
+      "avg_confidence": 0.6564,
+      "min_confidence": 0.4269,
+      "max_confidence": 0.8331,
+      "inference_time_ms": 2186.81,
+      "overlapping_pairs_count": 0,
+      "annotated_saved_path": "C:\\Users\\elisa\\OneDrive\\Documentos\\sugarvision\\reports\\sprint5_wheat_validation\\annotated\\annotated_0045ab3d479309837ba595e10de6ef94aeddb15e8cc4387a2bbc0fe2f25ada12_png.rf.e35a2529b2416e616a60c91ab244f24d.jpg"
+    },
+    {
+      "image_name": "004cf579e4a96bfadc9c626f4fc6f5270795d01f49b6f00628879667586219b5_png.rf.061124c7a78ccd57b324deac0aff9a29.jpg",
+      "total_wheat_heads": 7,
+      "avg_confidence": 0.6563,
+      "min_confidence": 0.5187,
+      "max_confidence": 0.7486,
+      "inference_time_ms": 4264.76,
+      "overlapping_pairs_count": 0,
+      "annotated_saved_path": "C:\\Users\\elisa\\OneDrive\\Documentos\\sugarvision\\reports\\sprint5_wheat_validation\\annotated\\annotated_004cf579e4a96bfadc9c626f4fc6f5270795d01f49b6f00628879667586219b5_png.rf.061124c7a78ccd57b324deac0aff9a29.jpg"
+    },
+    {
+      "image_name": "00b517a1161844d3002f32ed536ee95b70571a6f2a30f26cee23c8ddc7a0ec2b_png.rf.fc60ca8e7b2f2384a02122adb72fde13.jpg",
+      "total_wheat_heads": 34,
+      "avg_confidence": 0.65,
+      "min_confidence": 0.4732,
+      "max_confidence": 0.7882,
+      "inference_time_ms": 4535.52,
+      "overlapping_pairs_count": 0,
+      "annotated_saved_path": "C:\\Users\\elisa\\OneDrive\\Documentos\\sugarvision\\reports\\sprint5_wheat_validation\\annotated\\annotated_00b517a1161844d3002f32ed536ee95b70571a6f2a30f26cee23c8ddc7a0ec2b_png.rf.fc60ca8e7b2f2384a02122adb72fde13.jpg"
+    },
+    {
+      "image_name": "00bb861c1f4e7dacc4f04ecd0092e348bc08d408d1d98029126adf290b39f3af_png.rf.1606c65c7b62db76a9869e8a03ceb101.jpg",
+      "total_wheat_heads": 25,
+      "avg_confidence": 0.7084,
+      "min_confidence": 0.4005,
+      "max_confidence": 0.8213,
+      "inference_time_ms": 4231.79,
+      "overlapping_pairs_count": 1,
+      "annotated_saved_path": "C:\\Users\\elisa\\OneDrive\\Documentos\\sugarvision\\reports\\sprint5_wheat_validation\\annotated\\annotated_00bb861c1f4e7dacc4f04ecd0092e348bc08d408d1d98029126adf290b39f3af_png.rf.1606c65c7b62db76a9869e8a03ceb101.jpg"
+    },
+    {
+      "image_name": "00c63d3b51b886f9c29ca196e1e212a2c790408ae5428a1181ce958a83d8a6be_png.rf.7260052ce2ab602788203b407d860983.jpg",
+      "total_wheat_heads": 4,
+      "avg_confidence": 0.4881,
+      "min_confidence": 0.4138,
+      "max_confidence": 0.6174,
+      "inference_time_ms": 4217.25,
+      "overlapping_pairs_count": 0,
+      "annotated_saved_path": "C:\\Users\\elisa\\OneDrive\\Documentos\\sugarvision\\reports\\sprint5_wheat_validation\\annotated\\annotated_00c63d3b51b886f9c29ca196e1e212a2c790408ae5428a1181ce958a83d8a6be_png.rf.7260052ce2ab602788203b407d860983.jpg"
+    },
+    {
+      "image_name": "00e6e6ba993877c21066a4050c601e66f47d9b21a8d3dce9b399e4882d6ba3f1_png.rf.395c11f1e0c83b1c7bf174b7f6d932b4.jpg",
+      "total_wheat_heads": 9,
+      "avg_confidence": 0.5817,
+      "min_confidence": 0.4127,
+      "max_confidence": 0.7522,
+      "inference_time_ms": 4125.51,
+      "overlapping_pairs_count": 0,
+      "annotated_saved_path": "C:\\Users\\elisa\\OneDrive\\Documentos\\sugarvision\\reports\\sprint5_wheat_validation\\annotated\\annotated_00e6e6ba993877c21066a4050c601e66f47d9b21a8d3dce9b399e4882d6ba3f1_png.rf.395c11f1e0c83b1c7bf174b7f6d932b4.jpg"
+    },
+    {
+      "image_name": "010462ab12092ecc64a291d3f1044d45a8e8bfe425cab6c5321497ae7de1046b_png.rf.606d8e79cce269866cf2b817d339548d.jpg",
+      "total_wheat_heads": 25,
+      "avg_confidence": 0.7013,
+      "min_confidence": 0.4645,
+      "max_confidence": 0.8429,
+      "inference_time_ms": 4043.68,
+      "overlapping_pairs_count": 0,
+      "annotated_saved_path": "C:\\Users\\elisa\\OneDrive\\Documentos\\sugarvision\\reports\\sprint5_wheat_validation\\annotated\\annotated_010462ab12092ecc64a291d3f1044d45a8e8bfe425cab6c5321497ae7de1046b_png.rf.606d8e79cce269866cf2b817d339548d.jpg"
+    },
+    {
+      "image_name": "010e77526ec7fe8d14cfc7fbc63f9acc7dcfe810fe9e986139ec3c087cc51981_png.rf.6de9f26516fec9863f18adb2bb1f1de5.jpg",
+      "total_wheat_heads": 11,
+      "avg_confidence": 0.724,
+      "min_confidence": 0.6727,
+      "max_confidence": 0.7905,
+      "inference_time_ms": 4104.38,
+      "overlapping_pairs_count": 0,
+      "annotated_saved_path": "C:\\Users\\elisa\\OneDrive\\Documentos\\sugarvision\\reports\\sprint5_wheat_validation\\annotated\\annotated_010e77526ec7fe8d14cfc7fbc63f9acc7dcfe810fe9e986139ec3c087cc51981_png.rf.6de9f26516fec9863f18adb2bb1f1de5.jpg"
+    },
+    {
+      "image_name": "01254aa643c25894834a62d6643e0ee8965d06ba5c9ab8eb1991b4c81e72e5e4_png.rf.094c719dbc5e8192a3dc0cb8c99f1478.jpg",
+      "total_wheat_heads": 31,
+      "avg_confidence": 0.6375,
+      "min_confidence": 0.4279,
+      "max_confidence": 0.8312,
+      "inference_time_ms": 4095.87,
+      "overlapping_pairs_count": 0,
+      "annotated_saved_path": "C:\\Users\\elisa\\OneDrive\\Documentos\\sugarvision\\reports\\sprint5_wheat_validation\\annotated\\annotated_01254aa643c25894834a62d6643e0ee8965d06ba5c9ab8eb1991b4c81e72e5e4_png.rf.094c719dbc5e8192a3dc0cb8c99f1478.jpg"
+    },
+    {
+      "image_name": "01395e349968115fab139dc01add52e932cb6516f46a481ab681531c1b415216_png.rf.3ba7f1cd4d82c773a3861aebf38f64b2.jpg",
+      "total_wheat_heads": 18,
+      "avg_confidence": 0.7294,
+      "min_confidence": 0.4255,
+      "max_confidence": 0.8432,
+      "inference_time_ms": 4251.2,
+      "overlapping_pairs_count": 0,
+      "annotated_saved_path": "C:\\Users\\elisa\\OneDrive\\Documentos\\sugarvision\\reports\\sprint5_wheat_validation\\annotated\\annotated_01395e349968115fab139dc01add52e932cb6516f46a481ab681531c1b415216_png.rf.3ba7f1cd4d82c773a3861aebf38f64b2.jpg"
+    },
+    {
+      "image_name": "013e5a0b57b693b7eda28d192ac8f7631440274556740227a52953c25a6a48ce_png.rf.89d07547334c4e8da4db00c934d6932f.jpg",
+      "total_wheat_heads": 26,
+      "avg_confidence": 0.69,
+      "min_confidence": 0.4488,
+      "max_confidence": 0.8383,
+      "inference_time_ms": 4028.12,
+      "overlapping_pairs_count": 0,
+      "annotated_saved_path": "C:\\Users\\elisa\\OneDrive\\Documentos\\sugarvision\\reports\\sprint5_wheat_validation\\annotated\\annotated_013e5a0b57b693b7eda28d192ac8f7631440274556740227a52953c25a6a48ce_png.rf.89d07547334c4e8da4db00c934d6932f.jpg"
+    },
+    {
+      "image_name": "01541decd3f6775b2207415d47f9a570be921643c4239572eeadf82c87b762e9_png.rf.554cecc1474f8b5d1d3574ecd9e4fc52.jpg",
+      "total_wheat_heads": 29,
+      "avg_confidence": 0.6747,
+      "min_confidence": 0.4679,
+      "max_confidence": 0.7825,
+      "inference_time_ms": 4003.94,
+      "overlapping_pairs_count": 1,
+      "annotated_saved_path": "C:\\Users\\elisa\\OneDrive\\Documentos\\sugarvision\\reports\\sprint5_wheat_validation\\annotated\\annotated_01541decd3f6775b2207415d47f9a570be921643c4239572eeadf82c87b762e9_png.rf.554cecc1474f8b5d1d3574ecd9e4fc52.jpg"
+    },
+    {
+      "image_name": "01584be6bbe184896fa413d6b69d7c146f6e53a7660a0d3bcaea83fc4dbe071c_png.rf.b6e9716ad70bf67e22fcf78e60a42fd9.jpg",
+      "total_wheat_heads": 29,
+      "avg_confidence": 0.6275,
+      "min_confidence": 0.4327,
+      "max_confidence": 0.7456,
+      "inference_time_ms": 4095.2,
+      "overlapping_pairs_count": 0,
+      "annotated_saved_path": "C:\\Users\\elisa\\OneDrive\\Documentos\\sugarvision\\reports\\sprint5_wheat_validation\\annotated\\annotated_01584be6bbe184896fa413d6b69d7c146f6e53a7660a0d3bcaea83fc4dbe071c_png.rf.b6e9716ad70bf67e22fcf78e60a42fd9.jpg"
+    },
+    {
+      "image_name": "018ab5d5af979df0fec62aeeed3b37ecaa975fb76dd02f9ad67cb018e2023cb8_png.rf.9974480a90bb8b95526dad46a59134b4.jpg",
+      "total_wheat_heads": 29,
+      "avg_confidence": 0.7302,
+      "min_confidence": 0.4858,
+      "max_confidence": 0.8459,
+      "inference_time_ms": 4015.65,
+      "overlapping_pairs_count": 0,
+      "annotated_saved_path": "C:\\Users\\elisa\\OneDrive\\Documentos\\sugarvision\\reports\\sprint5_wheat_validation\\annotated\\annotated_018ab5d5af979df0fec62aeeed3b37ecaa975fb76dd02f9ad67cb018e2023cb8_png.rf.9974480a90bb8b95526dad46a59134b4.jpg"
+    },
+    {
+      "image_name": "01a489d0a898d2867d70f92421ce14b13c8a2f292ff46a92413205883ec4d08b_png.rf.5be9d63207d460c16bcf7f73e9130832.jpg",
+      "total_wheat_heads": 19,
+      "avg_confidence": 0.7259,
+      "min_confidence": 0.4926,
+      "max_confidence": 0.8446,
+      "inference_time_ms": 3901.55,
+      "overlapping_pairs_count": 0,
+      "annotated_saved_path": "C:\\Users\\elisa\\OneDrive\\Documentos\\sugarvision\\reports\\sprint5_wheat_validation\\annotated\\annotated_01a489d0a898d2867d70f92421ce14b13c8a2f292ff46a92413205883ec4d08b_png.rf.5be9d63207d460c16bcf7f73e9130832.jpg"
+    },
+    {
+      "image_name": "01f03ec5a1af6dc8590bed5f102aba4005feea467184dbaef77019995813508e_png.rf.7468310ada5045c5be46459a2b5e013b.jpg",
+      "total_wheat_heads": 38,
+      "avg_confidence": 0.6649,
+      "min_confidence": 0.4237,
+      "max_confidence": 0.8147,
+      "inference_time_ms": 3914.0,
+      "overlapping_pairs_count": 0,
+      "annotated_saved_path": "C:\\Users\\elisa\\OneDrive\\Documentos\\sugarvision\\reports\\sprint5_wheat_validation\\annotated\\annotated_01f03ec5a1af6dc8590bed5f102aba4005feea467184dbaef77019995813508e_png.rf.7468310ada5045c5be46459a2b5e013b.jpg"
+    },
+    {
+      "image_name": "024838e411bbcac5fea9d262e63335152c4d6d161da2e36b48133f001d98ff3e_png.rf.990067ea4ec8fb1422ebdefcb74f967d.jpg",
+      "total_wheat_heads": 43,
+      "avg_confidence": 0.718,
+      "min_confidence": 0.442,
+      "max_confidence": 0.8406,
+      "inference_time_ms": 3904.18,
+      "overlapping_pairs_count": 0,
+      "annotated_saved_path": "C:\\Users\\elisa\\OneDrive\\Documentos\\sugarvision\\reports\\sprint5_wheat_validation\\annotated\\annotated_024838e411bbcac5fea9d262e63335152c4d6d161da2e36b48133f001d98ff3e_png.rf.990067ea4ec8fb1422ebdefcb74f967d.jpg"
+    },
+    {
+      "image_name": "024f21f0e6b59a0e8c5c18e4b83381e52cce15f7ddc96f33e9fea3141666a86b_png.rf.42beb5dedf0d2af6e55a1c085c297305.jpg",
+      "total_wheat_heads": 25,
+      "avg_confidence": 0.7095,
+      "min_confidence": 0.4196,
+      "max_confidence": 0.823,
+      "inference_time_ms": 4097.39,
+      "overlapping_pairs_count": 0,
+      "annotated_saved_path": "C:\\Users\\elisa\\OneDrive\\Documentos\\sugarvision\\reports\\sprint5_wheat_validation\\annotated\\annotated_024f21f0e6b59a0e8c5c18e4b83381e52cce15f7ddc96f33e9fea3141666a86b_png.rf.42beb5dedf0d2af6e55a1c085c297305.jpg"
+    },
+    {
+      "image_name": "02984f94a65912641b63e9a85b23b04a6a1c542f2db588328c76c9a6b9a44d8c_png.rf.e2a01e001f3a9455a5a5417f66713ec9.jpg",
+      "total_wheat_heads": 21,
+      "avg_confidence": 0.7266,
+      "min_confidence": 0.5361,
+      "max_confidence": 0.8587,
+      "inference_time_ms": 4250.94,
+      "overlapping_pairs_count": 1,
+      "annotated_saved_path": "C:\\Users\\elisa\\OneDrive\\Documentos\\sugarvision\\reports\\sprint5_wheat_validation\\annotated\\annotated_02984f94a65912641b63e9a85b23b04a6a1c542f2db588328c76c9a6b9a44d8c_png.rf.e2a01e001f3a9455a5a5417f66713ec9.jpg"
+    }
+  ],
+  "sprint7_edge_cases": [
+    {
+      "image": "00bb861c1f4e7dacc4f04ecd0092e348bc08d408d1d98029126adf290b39f3af_png.rf.1606c65c7b62db76a9869e8a03ceb101.jpg",
+      "type": "overlapping_heads",
+      "severity": "medium",
+      "details": "1 pares de espigas sobrepostas com IoU > 0.30",
+      "pairs": [
+        {
+          "box_a": 2,
+          "box_b": 24,
+          "iou": 0.334,
+          "conf_a": 0.79,
+          "conf_b": 0.4
+        }
+      ],
+      "recommendation_sprint7": "Implementar Soft-NMS ou limiar dinâmico de supressão para evitar duplicação ou fusão de contagem."
+    },
+    {
+      "image": "01541decd3f6775b2207415d47f9a570be921643c4239572eeadf82c87b762e9_png.rf.554cecc1474f8b5d1d3574ecd9e4fc52.jpg",
+      "type": "overlapping_heads",
+      "severity": "medium",
+      "details": "1 pares de espigas sobrepostas com IoU > 0.30",
+      "pairs": [
+        {
+          "box_a": 25,
+          "box_b": 26,
+          "iou": 0.363,
+          "conf_a": 0.516,
+          "conf_b": 0.503
+        }
+      ],
+      "recommendation_sprint7": "Implementar Soft-NMS ou limiar dinâmico de supressão para evitar duplicação ou fusão de contagem."
+    },
+    {
+      "image": "02984f94a65912641b63e9a85b23b04a6a1c542f2db588328c76c9a6b9a44d8c_png.rf.e2a01e001f3a9455a5a5417f66713ec9.jpg",
+      "type": "overlapping_heads",
+      "severity": "medium",
+      "details": "1 pares de espigas sobrepostas com IoU > 0.30",
+      "pairs": [
+        {
+          "box_a": 10,
+          "box_b": 20,
+          "iou": 0.377,
+          "conf_a": 0.749,
+          "conf_b": 0.536
+        }
+      ],
+      "recommendation_sprint7": "Implementar Soft-NMS ou limiar dinâmico de supressão para evitar duplicação ou fusão de contagem."
+    }
+  ]
+}

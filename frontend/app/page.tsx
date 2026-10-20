@@ -14,6 +14,7 @@ import {
   IconMenu,
   IconUploadCloud,
   IconFileImage,
+  IconScan,
 } from "./components/Sidebar";
 import {
   TALHOES_MOCK_DATA,
@@ -388,14 +389,14 @@ function HomeContent() {
 
           setIsModalOpen(true);
 
-          const weedCount =
+          const wheatCount =
             result.summary?.total_ervas_daninhas ??
             (result.detections
               ? result.detections.filter((d) => d.type !== "cana_de_acucar").length
               : 0);
 
           toast.success(
-            `Amostra '${filename}' analisada: ${weedCount} cabeças identificadas e salvas no histórico!`,
+            `Amostra '${filename}' analisada: ${wheatCount} espigas de trigo identificadas!`,
             {
               position: "top-right",
               autoClose: 4500,
@@ -851,6 +852,30 @@ function HomeContent() {
           )}
 
           <button
+            id="btn-imprimir-laudo"
+            type="button"
+            onClick={() => window.print()}
+            className="no-print"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "9px 16px",
+              borderRadius: "8px",
+              background: "var(--surface)",
+              border: "1px solid var(--card-border)",
+              cursor: "pointer",
+              color: "var(--foreground)",
+              fontSize: "13.5px",
+              fontWeight: 600,
+              transition: "all 0.2s ease",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Imprimir Laudo
+          </button>
+
+          <button
             id="btn-nova-captura"
             onClick={handleOpenFileDialog}
             disabled={uploadLoading}
@@ -892,54 +917,87 @@ function HomeContent() {
             gap: "16px",
           }}
         >
-          {/* ── 📊 CARDS COM MÉTRICAS ATIVAS ───────────── */}
+          {/* ── 📊 4 CARDS COM MÉTRICAS OFICIAIS DE TRIGO ───────────── */}
           {(() => {
             const hasModelData = Boolean(uploadSuccessData);
             const modelSummary = uploadSuccessData?.backend?.summary;
             const modelDetections = uploadSuccessData?.backend?.detections ?? activeDetections;
             const headDetections = modelDetections?.filter((d) => d.type !== "cana_de_acucar");
-            const totalCabecas = modelSummary?.total_ervas_daninhas ?? headDetections?.length ?? 0;
-            const markedAreaPercent = headDetections ? calculateMarkedAreaPercent(headDetections) : null;
+            const totalEspigas = modelSummary?.total_ervas_daninhas ?? headDetections?.length ?? 0;
             const meanConfidence = headDetections ? calculateMeanConfidence(headDetections) : null;
+
+            // Densidade estimada de espigas com base na contagem e área aproximada
+            const densidadeEstimada = totalEspigas > 0
+              ? `${(totalEspigas / (currentAmostra.areaAmostraM2 || 2.5)).toFixed(1)} espigas/m²`
+              : "—";
+
+            const densidadeClassificacao = totalEspigas === 0
+              ? "Sem leitura"
+              : totalEspigas < 20
+              ? "Densidade Baixa"
+              : totalEspigas <= 60
+              ? "Densidade Média"
+              : "Alta Densidade";
+
+            const statusAnalise = hasModelData ? "Concluída" : "Aguardando";
 
             return (
               <div
-                className="fade-in-up"
-                style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}
+                className="dashboard-metrics-grid fade-in-up"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                  gap: "12px",
+                  width: "100%",
+                }}
               >
+                {/* 1. Total de Espigas */}
                 <StatCard
-                  label="Área Marcada"
-                  value={markedAreaPercent === null ? "—" : formatNumberBR(markedAreaPercent, 1)}
-                  unit={markedAreaPercent === null ? "" : "%"}
-                  subtitle="Imagem coberta pelas caixas de detecção"
-                  badge={markedAreaPercent === null ? "Após análise" : "Área delimitada"}
-                  badgeType="info"
-                  color="#58a6ff"
-                  icon={IconAlert}
-                  percentage={markedAreaPercent ?? undefined}
+                  label="Total de Espigas"
+                  value={String(totalEspigas)}
+                  unit="espigas"
+                  subtitle={hasModelData ? "Espigas de trigo detectadas" : "Selecione uma imagem para analisar"}
+                  badge={totalEspigas > 0 ? "Detectadas" : "Aguardando"}
+                  badgeType={totalEspigas > 0 ? "success" : "neutral"}
+                  color="#ffa657"
+                  icon={IconLeaf}
                 />
 
+                {/* 2. Densidade Estimada */}
+                <StatCard
+                  label="Densidade Estimada"
+                  value={totalEspigas > 0 ? (totalEspigas / (currentAmostra.areaAmostraM2 || 2.5)).toFixed(1) : "—"}
+                  unit={totalEspigas > 0 ? "esp/m²" : ""}
+                  subtitle={totalEspigas > 0 ? densidadeEstimada : "Calculada por enquadramento de campo"}
+                  badge={densidadeClassificacao}
+                  badgeType={totalEspigas > 60 ? "warning" : totalEspigas > 0 ? "success" : "neutral"}
+                  color="#3fb950"
+                  icon={IconChart}
+                />
+
+                {/* 3. Confiança Média */}
                 <StatCard
                   label="Confiança Média"
                   value={meanConfidence === null ? "—" : formatNumberBR(meanConfidence, 1)}
                   unit={meanConfidence === null ? "" : "%"}
-                  subtitle={hasModelData ? "Média das cabeças detectadas" : "Disponível após selecionar uma imagem"}
-                  badge={hasModelData ? "Modelo IA" : "Aguardando imagem"}
+                  subtitle={hasModelData ? "Acurácia média das detecções" : "Disponível após o processamento"}
+                  badge={hasModelData ? "YOLOv8x" : "Aguardando"}
                   badgeType="info"
                   color="#58a6ff"
-                  icon={IconChart}
+                  icon={IconAlert}
                   percentage={meanConfidence ?? undefined}
                 />
 
+                {/* 4. Status do Pipeline */}
                 <StatCard
-                  label="Cabeças de Trigo"
-                  value={String(totalCabecas)}
-                  unit="cabeças"
-                  subtitle={hasModelData ? "Identificadas na imagem" : "Selecione uma imagem para analisar"}
-                  badge={totalCabecas > 0 ? "Detectadas" : "Nenhuma detecção"}
-                  badgeType={totalCabecas > 0 ? "success" : "neutral"}
-                  color="#ffa657"
-                  icon={IconLeaf}
+                  label="Status do Pipeline"
+                  value={statusAnalise}
+                  unit=""
+                  subtitle={hasModelData ? "IA processada e registrada" : "Pronto para nova captura"}
+                  badge={hasModelData ? "Online / Ativo" : "Em espera"}
+                  badgeType={hasModelData ? "success" : "neutral"}
+                  color={hasModelData ? "#2ea043" : "var(--muted)"}
+                  icon={IconScan}
                 />
               </div>
             );
@@ -970,10 +1028,14 @@ function HomeContent() {
               <h2>Legenda</h2>
               <div className="detection-legend-item">
                 <span className="detection-legend-swatch" aria-hidden="true" />
-                <span>Cabeças de trigo</span>
+                <span>Espigas de Trigo</span>
+              </div>
+              <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "6px", fontSize: "11px", color: "var(--muted)" }}>
+                <div>• Classe: <strong>0 (wheat)</strong></div>
+                <div>• Modelo: <strong>YOLOv8x</strong></div>
               </div>
               <p className="ai-disclaimer">
-                A IA pode cometer erros. Revise as detecções antes de tomar decisões.
+                A IA pode cometer erros. Revise as detecções antes de tomar decisões agronômicas.
               </p>
             </aside>
           </div>
@@ -1001,9 +1063,9 @@ function HomeContent() {
                 desc: currentAmostra.cidade,
               },
               {
-                icon: "🌿",
-                title: "Alvo da Análise",
-                desc: "Cabeças de trigo",
+                icon: "🌾",
+                title: "Cultura Alvo",
+                desc: "Trigo (Triticum aestivum)",
               },
             ].map((item) => (
               <div

@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from typing import Any, List, Optional
 
-from database import delete_analysis, get_all_analyses, insert_analysis
+from database import delete_analysis, get_all_analyses, get_analyses_page, insert_analysis
 
 BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:8000")
 
@@ -19,6 +19,10 @@ class HistoryService:
     async def get_all_analyses_async(self) -> List[dict[str, Any]]:
         """Busca todas as análises registradas no histórico de forma assíncrona."""
         return await asyncio.to_thread(get_all_analyses)
+
+    async def get_analyses_page_async(self, page: int, page_size: int) -> tuple[List[dict[str, Any]], int]:
+        """Busca uma página do histórico (mais recentes primeiro) e o total de registros."""
+        return await asyncio.to_thread(get_analyses_page, page_size, (page - 1) * page_size)
 
     async def create_analysis_async(self, data: dict[str, Any]) -> dict[str, Any]:
         """Salva uma nova análise no histórico de forma assíncrona."""

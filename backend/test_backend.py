@@ -12,6 +12,9 @@ Testa os seguintes cenários:
 """
 
 import io
+import os
+import time
+import jwt
 import asyncio
 from pathlib import Path
 import unittest
@@ -37,6 +40,8 @@ class TestSugarVisionBackend(unittest.TestCase):
     def setUpClass(cls):
         """Inicializa o cliente de teste HTTP do FastAPI."""
         cls.client = TestClient(app)
+        cls._original_auth = os.environ.get("AUTH_ENABLED")
+        os.environ["AUTH_ENABLED"] = "False"  # suíte legada roda em modo de contingência
         cls.created_files = []
         # Configura delay para 0 durante a suite geral para execução ultrarrápida
         cls._original_delay = main.AI_DELAY_SECONDS
@@ -46,6 +51,10 @@ class TestSugarVisionBackend(unittest.TestCase):
     def tearDownClass(cls):
         """Restaura configurações e limpa arquivos gerados."""
         main.AI_DELAY_SECONDS = cls._original_delay
+        if cls._original_auth is None:
+            os.environ.pop("AUTH_ENABLED", None)
+        else:
+            os.environ["AUTH_ENABLED"] = cls._original_auth
         for file_path in cls.created_files:
             if file_path.exists():
                 file_path.unlink()
@@ -140,6 +149,32 @@ class TestSugarVisionBackend(unittest.TestCase):
         self.assertIn("não suportado", data.get("detail", ""))
         print("  [PASS] 06 - Rejeição correta de arquivo com formato inválido (HTTP 400)")
 
+    def test_06b_reject_fake_txt_extension(self):
+        """Valida que um .txt também é rejeitado com HTTP 400 e mensagem explicativa."""
+        file_payload = {"file": ("notas.txt", io.BytesIO(b"nao sou imagem"), "text/plain")}
+        response = self.client.post("/upload", files=file_payload)
+        self.assertEqual(response.status_code, 400)
+        detail = response.json().get("detail", "")
+        self.assertIn(".txt", detail)
+        self.assertIn("Formatos aceitos", detail)
+        print("  [PASS] 06b - Arquivo .txt rejeitado com HTTP 400 e mensagem explicativa")
+
+    def test_06c_max_upload_limit_configured_as_20mb(self):
+        """Valida que o limite máximo de upload em config.py está em 20 MB."""
+        from app.core import config
+        self.assertEqual(config.MAX_UPLOAD_SIZE_BYTES, 20 * 1024 * 1024)
+        print("  [PASS] 06c - Limite máximo de upload configurado em 20 MB")
+
+    def test_06d_reject_oversized_file(self):
+        """Valida que arquivo acima de 20 MB é rejeitado com HTTP 413 e não fica no disco."""
+        oversized = b"X" * (20 * 1024 * 1024 + 1)
+        file_payload = {"file": ("gigante_rejeitado.png", io.BytesIO(oversized), "image/png")}
+        response = self.client.post("/upload", files=file_payload)
+        self.assertEqual(response.status_code, 413)
+        self.assertIn("20 MB", response.json().get("detail", ""))
+        self.assertFalse((TEMP_IMAGES_DIR / "gigante_rejeitado.png").exists())
+        print("  [PASS] 06d - Arquivo acima de 20 MB rejeitado com HTTP 413")
+
     def test_07_reject_missing_file_payload(self):
         """Valida que requisição sem campo de arquivo é rejeitada com HTTP 422."""
         response = self.client.post("/upload", data={})
@@ -166,10 +201,12 @@ class TestSugarVisionBackend(unittest.TestCase):
         response = self.client.post("/upload", files=payload)
         self.assertEqual(response.status_code, 201)
         data = response.json()
-        self.assertEqual(data.get("ai_status"), "enqueued")
+        self.assertEqual(data.get("status"), "success")
+        self.assertIn("detections", data)
+        self.assertIn("summary", data)
         saved_path = Path(data.get("saved_path"))
         self.created_files.append(saved_path)
-        print("  [PASS] 10 - Upload responde com 'ai_status': 'enqueued'")
+        print("  [PASS] 10 - Upload retorna payload de sucesso com detections e summary")
 
     @patch("main.processar_imagem_ia")
     def test_11_upload_calls_background_task_with_saved_path(self, mock_ai):
@@ -431,7 +468,6 @@ class TestSugarVisionBackend(unittest.TestCase):
         self.assertEqual(response.status_code, 201)
         data = response.json()
         self.assertEqual(data.get("status"), "success")
-        self.assertEqual(data.get("ai_status"), "enqueued")
         self.assertIn("detections", data)
         self.assertIn("summary", data)
 
@@ -528,6 +564,166 @@ class TestSugarVisionBackend(unittest.TestCase):
         self.assertIsInstance(items, list)
         self.assertGreaterEqual(len(items), 1)
         print(f"  [PASS] 33 - ImageService assíncrono validado com sucesso")
+
+    def test_34_densidade_estimada_formula_e_classificacao(self):
+        """Valida densidade_estimada = total_espigas / area e classificação textual."""
+        from ai_engine import calcular_densidade_estimada, classificar_densidade, diagnostico_agronomico
+        self.assertEqual(calcular_densidade_estimada(200, 1.0), 200.0)
+        self.assertEqual(calcular_densidade_estimada(900, 2.0), 450.0)
+        self.assertEqual(calcular_densidade_estimada(10, 0), 10.0)  # área inválida -> padrão
+        self.assertEqual(classificar_densidade(150.0), "Baixa")
+        self.assertEqual(classificar_densidade(300.0), "Média")
+        self.assertEqual(classificar_densidade(499.9), "Média")
+        self.assertEqual(classificar_densidade(500.0), "Alta densidade")
+        diag = diagnostico_agronomico(600, 1.0)
+        self.assertEqual(diag["classificacao_densidade"], "Alta densidade")
+        self.assertGreater(diag["produtividade_estimada_kg_ha"], 0)
+        print("  [PASS] 34 - Fórmula e classificação de densidade de espigas validadas")
+
+    @patch("ai_engine.carregar_modelo_yolo")
+    def test_35_densidade_no_payload_da_ia(self, mock_load):
+        """Valida que o JSON da IA retorna densidade_estimada e classificação textual."""
+        mock_model = MagicMock()
+        mock_prediction = MagicMock()
+        mock_prediction.boxes = [MagicMock() for _ in range(3)]
+        mock_model.predict.return_value = [mock_prediction]
+        mock_load.return_value = mock_model
+
+        test_img = TEMP_IMAGES_DIR / "teste_densidade.jpg"
+        test_img.write_bytes(b"\xff\xd8\xff\xe0" + b"X" * 16)
+        self.created_files.append(test_img)
+
+        resultado = processar_imagem_ia(test_img, delay_seconds=0.0, area_m2=0.01)
+        self.assertEqual(resultado["densidade_estimada"], 300.0)
+        self.assertEqual(resultado["classificacao_densidade"], "Média")
+        self.assertEqual(resultado["summary"]["classificacao_densidade"], "Média")
+        print("  [PASS] 35 - Payload da IA contém densidade_estimada e classificação")
+
+    def test_36_historico_paginado_ordenado_e_campos(self):
+        """Valida GET /api/historico: paginação, ordem decrescente e campos obrigatórios."""
+        import time
+        self.client.get("/api/historico", params={"page": 1, "page_size": 5})  # aquece o pool de conexões
+        tempos = []
+        for _ in range(3):  # melhor de 3: reduz ruído de rede (latência remota do Supabase)
+            inicio = time.perf_counter()
+            response = self.client.get("/api/historico", params={"page": 1, "page_size": 5})
+            tempos.append((time.perf_counter() - inicio) * 1000)
+        elapsed_ms = min(tempos)
+        self.assertLess(elapsed_ms, 500, f"Histórico demorou {elapsed_ms:.0f} ms (limite: 500 ms)")
+        self.assertEqual(response.status_code, 200)
+        items = response.json()
+        self.assertLessEqual(len(items), 5)
+        self.assertGreaterEqual(int(response.headers["X-Total-Count"]), len(items))
+        self.assertEqual(response.headers["X-Page"], "1")
+        self.assertEqual(response.headers["X-Page-Size"], "5")
+        self.assertGreater(len(items), 0)
+
+        for item in items:
+            for campo in ("data", "nome_amostra", "total_espigas", "latitude", "longitude"):
+                self.assertIn(campo, item)
+            self.assertIsInstance(item["total_espigas"], int)
+
+        datas = [i["created_at"] or "" for i in items]
+        self.assertEqual(datas, sorted(datas, reverse=True))
+        print(f"  [PASS] 36 - /api/historico paginado, ordenado e com campos exigidos ({elapsed_ms:.0f} ms)")
+
+    def test_37_historico_paginas_distintas_e_validacao(self):
+        """Valida que páginas diferentes não se repetem e parâmetros inválidos retornam 422."""
+        p1 = self.client.get("/api/historico", params={"page": 1, "page_size": 2}).json()
+        p2 = self.client.get("/api/historico", params={"page": 2, "page_size": 2}).json()
+        ids1 = {i["id"] for i in p1}
+        ids2 = {i["id"] for i in p2}
+        self.assertTrue(ids1.isdisjoint(ids2))
+        self.assertEqual(self.client.get("/api/historico", params={"page": 0}).status_code, 422)
+        self.assertEqual(self.client.get("/api/historico", params={"page_size": 500}).status_code, 422)
+        print("  [PASS] 37 - Páginas distintas sem repetição e validação de parâmetros (422)")
+
+    def test_38_enriquecer_analise_extrai_espigas_e_coordenadas(self):
+        """Valida o enriquecimento do item do histórico com espigas e coordenadas."""
+        from database import _enriquecer_analise, _ordenar_mais_recentes
+        item = _enriquecer_analise({
+            "nome_imagem": "trigo.jpg", "created_at": "2026-01-01T10:00:00",
+            "summary": {"total_espigas": 42, "latitude": -22.4, "longitude": -47.5},
+        })
+        self.assertEqual(item["total_espigas"], 42)
+        self.assertEqual(item["latitude"], -22.4)
+        self.assertEqual(item["nome_amostra"], "trigo.jpg")
+        sem_coord = _enriquecer_analise({"nome_imagem": "x.jpg", "focos_detectados": 7})
+        self.assertEqual(sem_coord["total_espigas"], 7)
+        self.assertIsNone(sem_coord["latitude"])
+        ordenado = _ordenar_mais_recentes([{"created_at": "2026-01-01"}, {"created_at": "2026-03-01"}])
+        self.assertEqual(ordenado[0]["created_at"], "2026-03-01")
+        print("  [PASS] 38 - Enriquecimento (espigas/coordenadas) e ordenação validados")
+
+
+class TestJWTProtection(unittest.TestCase):
+    """Valida a proteção JWT e o modo de contingência AUTH_ENABLED."""
+
+    SECRET = "segredo-de-teste-com-tamanho-suficiente-32b"
+    PNG = (
+        b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+        b"\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00"
+        b"\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+    )
+
+    def setUp(self):
+        self.client = TestClient(app)
+        self._env = patch.dict(os.environ, {"AUTH_ENABLED": "True", "SUPABASE_JWT_SECRET": self.SECRET})
+        self._env.start()
+
+    def tearDown(self):
+        self._env.stop()
+
+    def _token(self, exp_offset=3600, secret=None):
+        payload = {"sub": "user-1", "aud": "authenticated", "exp": int(time.time()) + exp_offset}
+        return jwt.encode(payload, secret or self.SECRET, algorithm="HS256")
+
+    def _upload(self, headers=None):
+        files = {"file": ("jwt_teste.png", io.BytesIO(self.PNG), "image/png")}
+        resp = self.client.post("/upload", files=files, headers=headers or {})
+        if resp.status_code == 201:
+            saved = Path(resp.json().get("saved_path", ""))
+            if saved.exists():
+                saved.unlink()
+        return resp
+
+    def test_39_sem_token_retorna_401(self):
+        self.assertEqual(self.client.get("/api/anomalies").status_code, 401)
+        self.assertEqual(self._upload().status_code, 401)
+        print("  [PASS] 39 - Sem token com AUTH_ENABLED=True retorna 401")
+
+    def test_40_token_invalido_ou_expirado_retorna_401(self):
+        bad = {"Authorization": "Bearer lixo.invalido.token"}
+        self.assertEqual(self.client.get("/api/anomalies", headers=bad).status_code, 401)
+        expired = {"Authorization": f"Bearer {self._token(exp_offset=-60)}"}
+        self.assertEqual(self.client.get("/api/anomalies", headers=expired).status_code, 401)
+        wrong_secret = {"Authorization": f"Bearer {self._token(secret='outro-segredo-com-32-bytes-ou-mais-xx')}"}
+        self.assertEqual(self.client.get("/api/anomalies", headers=wrong_secret).status_code, 401)
+        malformed = {"Authorization": "Basic abc"}
+        self.assertEqual(self.client.get("/api/anomalies", headers=malformed).status_code, 401)
+        print("  [PASS] 40 - Token inválido/expirado/assinatura errada/esquema errado retorna 401")
+
+    def test_41_token_valido_permite_acesso(self):
+        headers = {"Authorization": f"Bearer {self._token()}"}
+        self.assertEqual(self.client.get("/api/anomalies", headers=headers).status_code, 200)
+        print("  [PASS] 41 - Token válido permite acesso (200)")
+
+    def test_42_rotas_publicas_continuam_abertas(self):
+        self.assertEqual(self.client.get("/").status_code, 200)
+        self.assertEqual(self.client.get("/health").status_code, 200)
+        print("  [PASS] 42 - Rotas / e /health permanecem públicas")
+
+    def test_43_auth_desabilitado_processa_normalmente(self):
+        with patch.dict(os.environ, {"AUTH_ENABLED": "False"}):
+            self.assertEqual(self.client.get("/api/anomalies").status_code, 200)
+        print("  [PASS] 43 - AUTH_ENABLED=False processa sem token (contingência)")
+
+    def test_44_upload_sem_interrupcoes(self):
+        with patch.dict(os.environ, {"AUTH_ENABLED": "False"}):
+            self.assertEqual(self._upload().status_code, 201)
+        headers = {"Authorization": f"Bearer {self._token()}"}
+        self.assertEqual(self._upload(headers).status_code, 201)
+        print("  [PASS] 44 - Upload funciona com token válido e em modo contingência")
 
 
 if __name__ == "__main__":
