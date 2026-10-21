@@ -5,6 +5,7 @@ Arquitetura orientada a serviços (Service-Oriented Architecture), com injeção
 """
 
 import logging
+import os
 from pathlib import Path
 from typing import Any, List, Optional
 
@@ -33,6 +34,8 @@ from app.services.image_service import ImageService
 from app.services.storage_service import StorageService
 from app.core.security import verify_token
 from database import check_connection, get_all_anomalies, get_all_images, get_all_analyses
+
+BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:8000")
 
 
 class RenameImageRequest(BaseModel):
@@ -288,7 +291,7 @@ async def analyze_sample(
 
     ai_result = await ai_service.detect_image_async(chosen_path, model_path=MODEL_PATH)
     file_size = chosen_path.stat().st_size
-    image_url = f"http://127.0.0.1:8000/temp_images/{chosen_path.name}"
+    image_url = f"{BASE_URL}/temp_images/{chosen_path.name}"
 
     # Salva automaticamente no Histórico
     history_record = None
@@ -360,7 +363,7 @@ async def upload_image(
 
         # 2. Salva no Histórico (tabela analyses)
         image_id = db_image_record.get("id") if db_image_record else None
-        image_url = f"http://127.0.0.1:8000/temp_images/{target_path.name}"
+        image_url = f"{BASE_URL}/temp_images/{target_path.name}"
         history_record = None
         try:
             history_record = await history_service.record_inference_async(

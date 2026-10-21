@@ -2,10 +2,13 @@
 
 import asyncio
 import logging
+import os
 from pathlib import Path
 from typing import Any, List, Optional
 
 from database import delete_analysis, get_all_analyses, get_analyses_page, insert_analysis
+
+BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:8000")
 
 logger = logging.getLogger("sugarvision-history")
 
@@ -77,7 +80,7 @@ class HistoryService:
         analysis_payload = {
             "image_id": image_id,
             "nome_imagem": clean_display_name,
-            "image_url": image_url or f"http://127.0.0.1:8000/temp_images/{filename}",
+            "image_url": image_url or f"{BASE_URL}/temp_images/{filename}",
             "tamanho_arquivo": tam_str,
             "formato": ext,
             "talhao_id": "talhao-01",

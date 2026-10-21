@@ -1,6 +1,7 @@
 """Roteador principal do FastAPI com injeção de dependência e endpoints assíncronos."""
 
 import logging
+import os
 from typing import Any, List, Optional
 from pydantic import BaseModel
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile, status
@@ -17,6 +18,8 @@ from app.services.ai_service import AIService
 from app.services.anomaly_service import AnomalyService
 from app.services.image_service import ImageService
 from app.services.storage_service import StorageService
+
+BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:8000")
 
 logger = logging.getLogger("sugarvision-api")
 
@@ -155,9 +158,9 @@ async def analyze_sample(
     file_size = chosen_path.stat().st_size
 
     if (TEMP_IMAGES_DIR / target_filename).exists():
-        image_url = f"http://127.0.0.1:8000/temp_images/{target_filename}"
+        image_url = f"{BASE_URL}/temp_images/{target_filename}"
     elif (TEMP_IMAGES_DIR / chosen_path.name).exists():
-        image_url = f"http://127.0.0.1:8000/temp_images/{chosen_path.name}"
+        image_url = f"{BASE_URL}/temp_images/{chosen_path.name}"
     else:
         image_url = f"/{chosen_path.name}"
 

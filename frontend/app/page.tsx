@@ -23,6 +23,8 @@ import {
 } from "./utils/geoMath";
 import type { WeedDetection } from "./ImageDetectionViewer";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
 const ImageDetectionViewer = dynamic(() => import("./ImageDetectionViewer"), {
   ssr: false,
   loading: () => (
@@ -297,11 +299,11 @@ function HomeContent() {
       async function loadSavedAnalysis(id: string) {
         setUploadLoading(true);
         try {
-          const res = await fetch(`http://127.0.0.1:8000/api/historico/${encodeURIComponent(id)}`);
+          const res = await fetch(`${API_URL}/api/historico/${encodeURIComponent(id)}`);
           if (!res.ok) throw new Error("Análise não encontrada no banco");
           const data = await res.json();
 
-          const imgUrl = data.image_url || `http://127.0.0.1:8000/temp_images/${data.nome_imagem}`;
+          const imgUrl = data.image_url || `${API_URL}/temp_images/${data.nome_imagem}`;
           const detections = data.detections || [];
           const weedCount = data.focos_detectados ?? detections.length;
 
@@ -354,16 +356,9 @@ function HomeContent() {
         setUploadLoading(true);
         setIsViewingSavedHistory(false);
         try {
-          let response: Response | null = null;
-          try {
-            response = await fetch(
-              `http://127.0.0.1:8000/api/analyze-sample?filename=${encodeURIComponent(filename)}`
-            );
-          } catch {
-            response = await fetch(
-              `http://localhost:8000/api/analyze-sample?filename=${encodeURIComponent(filename)}`
-            );
-          }
+          const response = await fetch(
+            `${API_URL}/api/analyze-sample?filename=${encodeURIComponent(filename)}`
+          );
 
           if (!response.ok) {
             throw new Error(`Erro ${response.status} ao processar a amostra`);
@@ -372,7 +367,7 @@ function HomeContent() {
           const result: BackendUploadResponse = await response.json();
 
           let rawPreviewUrl =
-            (result as any).image_url || `http://127.0.0.1:8000/temp_images/${filename}`;
+            (result as any).image_url || `${API_URL}/temp_images/${filename}`;
 
           if (rawPreviewUrl.startsWith("http://localhost:8000")) {
             rawPreviewUrl = rawPreviewUrl.replace("http://localhost:8000", "http://127.0.0.1:8000");
@@ -467,7 +462,7 @@ function HomeContent() {
     formData.append("file", file);
 
     try {
-      const response = await fetch("http://localhost:8000/upload", {
+      const response = await fetch(`${API_URL}/upload`, {
         method: "POST",
         body: formData,
       });
@@ -506,7 +501,7 @@ function HomeContent() {
       const errorMsg =
         err instanceof Error
           ? err.message
-          : "Não foi possível conectar ao servidor backend (http://localhost:8000).";
+          : `Não foi possível conectar ao servidor backend (${API_URL}).`;
 
       toast.error(`Erro: ${errorMsg}`, {
         position: "top-right",
@@ -1025,7 +1020,7 @@ function HomeContent() {
             <div className="detection-image">
               <ImageDetectionViewer
                 key={uploadSuccessData?.localPreview || (amostraQuery ? `amostra-${amostraQuery}-${timestampQuery || ''}` : "default")}
-                imageSrc={uploadSuccessData?.localPreview || (amostraQuery ? `http://127.0.0.1:8000/temp_images/${amostraQuery}` : undefined)}
+                imageSrc={uploadSuccessData?.localPreview || (amostraQuery ? `${API_URL}/temp_images/${amostraQuery}` : undefined)}
                 detections={activeDetections}
               />
             </div>

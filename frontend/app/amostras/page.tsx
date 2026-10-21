@@ -15,6 +15,8 @@ import {
   IconX,
 } from "../components/Sidebar";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
 // ── Ícone de Lixeira (Exclusão) ──────────────────────────────────────────────
 function IconTrash({ className = "w-4 h-4" }: { className?: string }) {
   return (
@@ -66,8 +68,8 @@ function SampleImage({
   style?: React.CSSProperties;
 }) {
   const getInitialSrc = (name: string) => {
-    if (!name) return "/campo_talhao_01_rioclaro_foto.jpg";
-    return `http://127.0.0.1:8000/temp_images/${name}`;
+    if (!name) return "/trigo_teste.png";
+    return `${API_URL}/temp_images/${name}`;
   };
 
   const [src, setSrc] = useState<string>(() => getInitialSrc(filename));
@@ -208,7 +210,7 @@ export default function BancoDeAmostrasPage() {
     const cleanName = newFilename.trim();
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/images/${encodeURIComponent(target.id)}`, {
+      const res = await fetch(`${API_URL}/api/images/${encodeURIComponent(target.id)}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -257,14 +259,11 @@ export default function BancoDeAmostrasPage() {
       let res: Response | null = null;
       try {
         res = await fetch(
-          `http://127.0.0.1:8000/api/images/${encodeURIComponent(target.id)}?filename=${encodeURIComponent(target.filename)}`,
+          `${API_URL}/api/images/${encodeURIComponent(target.id)}?filename=${encodeURIComponent(target.filename)}`,
           { method: "DELETE" }
         );
       } catch {
-        res = await fetch(
-          `http://localhost:8000/api/images/${encodeURIComponent(target.id)}?filename=${encodeURIComponent(target.filename)}`,
-          { method: "DELETE" }
-        );
+        res = null;
       }
 
       if (!res || !res.ok) {
@@ -298,7 +297,7 @@ export default function BancoDeAmostrasPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/images", {
+      const response = await fetch(`${API_URL}/api/images`, {
         headers: { Accept: "application/json" },
         cache: "no-store",
       });

@@ -6,6 +6,8 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import Link from "next/link";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+
 // Função geradora de ícones dinâmicos Leaflet baseados na densidade de trigo
 function getWheatPin(total_espigas: number) {
   let bg = "#2ea043"; // Verde (Alta densidade)
@@ -79,18 +81,15 @@ export default function FieldMap() {
   useEffect(() => {
     async function loadMapData() {
       try {
-        let res = await fetch("http://127.0.0.1:8000/api/historico").catch(() => null);
-        if (!res || !res.ok) {
-          res = await fetch("http://localhost:8000/api/historico").catch(() => null);
-        }
-
+        const res = await fetch(`${API_URL}/api/historico`).catch(() => null);
+        
         if (res && res.ok) {
           const data = await res.json();
           const items: WheatSampleMapItem[] = (Array.isArray(data) ? data : []).map(
             (item: any, idx: number) => {
               // Distribuição sutil ao redor do centro caso a amostra não venha com GPS
-              const fallbackLat = defaultCenter[0] + (idx * 0.0018 - 0.002);
-              const fallbackLng = defaultCenter[1] + (idx * 0.0022 - 0.002);
+              const fallbackLat = defaultCenter[0] + (idx * 0.0018 * 0.002);
+              const fallbackLng = defaultCenter[1] + (idx * 0.0022 * 0.002);
 
               return {
                 id: String(item.id || idx),

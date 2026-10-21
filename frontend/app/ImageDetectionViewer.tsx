@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+
 export interface WeedDetection {
   id: string | number;
   label: string;
@@ -48,10 +50,7 @@ export default function ImageDetectionViewer({
 
     async function fetchDetections() {
       try {
-        let res = await fetch('http://127.0.0.1:8000/api/anomalies').catch(() => null);
-        if (!res || !res.ok) {
-          res = await fetch('http://localhost:8000/api/anomalies').catch(() => null);
-        }
+        const res = await fetch(`${API_URL}/api/anomalies`).catch(() => null);
         if (res && res.ok) {
           const data = await res.json();
           const list = Array.isArray(data) ? data : data.detections || data.anomalies || [];
