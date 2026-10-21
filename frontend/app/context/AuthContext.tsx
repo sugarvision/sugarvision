@@ -3,7 +3,11 @@
 import React, { createContext, useContext, useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { User, Session } from "@supabase/supabase-js";
-import { createClient } from "../../lib/supabase/client";
+import {
+  createClient,
+  persistAuthToken,
+  getActiveAuthToken,
+} from "../../lib/supabase/client";
 
 export interface AuthUser {
   id: string;
@@ -17,30 +21,43 @@ interface AuthContextType {
   user: AuthUser | null;
   supabaseUser: User | null;
   session: Session | null;
+  token: string | null;
   loading: boolean;
   isDemoSession: boolean;
+  isAuthenticated: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: string | null; confirmationRequired?: boolean }>;
+  signUp: (
+    email: string,
+    password: string,
+    fullName?: string
+  ) => Promise<{ error: string | null; confirmationRequired?: boolean }>;
   signInDemo: (email?: string, name?: string) => Promise<void>;
   signOut: () => Promise<void>;
+  getToken: () => string | null;
+  // Aliases de conveniência
+  login: (email: string, password: string) => Promise<{ error: string | null }>;
+  register: (
+    email: string,
+    password: string,
+    fullName?: string
+  ) => Promise<{ error: string | null; confirmationRequired?: boolean }>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const DEMO_COOKIE_NAME = "sugarvision_auth_session";
+const DEMO_USER_STORAGE_KEY = "sugarvision_demo_user";
 
-function setAuthCookie(value: string) {
-  document.cookie = `${DEMO_COOKIE_NAME}=${encodeURIComponent(value)}; path=/; max-age=604800; SameSite=Lax`;
-}
-
-function removeAuthCookie() {
-  document.cookie = `${DEMO_COOKIE_NAME}=; path=/; max-age=0; SameSite=Lax`;
-}
-
-function getAuthCookie(): string | null {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(new RegExp(`(^|; )${DEMO_COOKIE_NAME}=([^;]*)`));
-  return match ? decodeURIComponent(match[2]) : null;
+function formatAuthUser(user: User): AuthUser {
+  return {
+    id: user.id,
+    email: user.email,
+    fullName:
+      user.user_metadata?.full_name ||
+      user.email?.split("@")[0] ||
+      "Operador UAV",
+    role: user.user_metadata?.role || "Pesquisador UAV",
+  };
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -49,46 +66,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const [supabaseUser, setSupabaseUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [token, setToken] = useState<string | null>(getActiveAuthToken());
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [isDemoSession, setIsDemoSession] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [isDemoSession, setIsDemoSession] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
 
-  // Inicializa sessão do Supabase ou sessão em cookie
+  // Inicializa sessão do Supabase ou sessão persistida no navegador (LocalStorage / Cookies)
   useEffect(() => {
     let mounted = true;
 
     async function initAuth() {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        // 1. Obter sessão nativa do Supabase
+        const {
+          data: { session: initialSession },
+        } = await supabase.auth.getSession();
 
         if (!mounted) return;
 
-        if (session?.user) {
-          setSession(session);
-          setSupabaseUser(session.user);
-          setUser({
-            id: session.user.id,
-            email: session.user.email,
-            fullName: session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "Operador",
-            role: session.user.user_metadata?.role || "Pesquisador UAV",
-          });
-          setAuthCookie(JSON.stringify({ id: session.user.id, email: session.user.email }));
+        if (initialSession?.user) {
+          const jwtToken = initialSession.access_token;
+          setSession(initialSession);
+          setSupabaseUser(initialSession.user);
+          setUser(formatAuthUser(initialSession.user));
+          setToken(jwtToken);
+          persistAuthToken(jwtToken);
           setIsDemoSession(false);
         } else {
-          // Verifica se há cookie de demonstração gravado
-          const rawCookie = getAuthCookie();
-          if (rawCookie) {
-            try {
-              const parsed = JSON.parse(rawCookie);
-              setUser({
-                id: parsed.id || "demo-usr-01",
-                email: parsed.email || "demo@sugarvision.agro",
-                fullName: parsed.name || "Especialista UAV",
-                role: "Analista de Trigo",
-              });
-              setIsDemoSession(true);
-            } catch {
-              removeAuthCookie();
+          // 2. Verifica se há usuário demo salvo no LocalStorage
+          if (typeof window !== "undefined") {
+            const savedDemo = localStorage.getItem(DEMO_USER_STORAGE_KEY);
+            if (savedDemo) {
+              try {
+                const parsed = JSON.parse(savedDemo);
+                setUser(parsed);
+                setIsDemoSession(true);
+                const activeToken = getActiveAuthToken();
+                setToken(activeToken);
+              } catch {
+                localStorage.removeItem(DEMO_USER_STORAGE_KEY);
+              }
             }
           }
         }
@@ -101,28 +118,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     initAuth();
 
-    // Listener para mudanças no estado de autenticação do Supabase
+    // 3. Listener de eventos do Supabase Auth (SIGN_IN, SIGN_OUT, TOKEN_REFRESHED, etc.)
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (_event, newSession) => {
         if (!mounted) return;
+
         setSession(newSession);
+
         if (newSession?.user) {
+          const jwtToken = newSession.access_token;
           setSupabaseUser(newSession.user);
-          setUser({
-            id: newSession.user.id,
-            email: newSession.user.email,
-            fullName: newSession.user.user_metadata?.full_name || newSession.user.email?.split("@")[0] || "Operador",
-            role: newSession.user.user_metadata?.role || "Pesquisador UAV",
-          });
-          setAuthCookie(JSON.stringify({ id: newSession.user.id, email: newSession.user.email }));
+          setUser(formatAuthUser(newSession.user));
+          setToken(jwtToken);
+          persistAuthToken(jwtToken);
           setIsDemoSession(false);
         } else if (!isDemoSession) {
-          // Se não houver sessão ativa nem modo demo
-          const rawCookie = getAuthCookie();
-          if (!rawCookie) {
-            setSupabaseUser(null);
-            setUser(null);
-          }
+          // Apenas limpa se não estiver em sessão demo explícita
+          setSupabaseUser(null);
+          setUser(null);
+          setToken(null);
+          persistAuthToken(null);
         }
         setLoading(false);
       }
@@ -134,11 +149,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [supabase, isDemoSession]);
 
-  // Login com Email e Senha via SDK do Supabase (com contingência inteligente)
-  const signIn = async (email: string, password: string): Promise<{ error: string | null }> => {
+  // Login com Email e Senha via SDK do Supabase
+  const signIn = async (
+    email: string,
+    password: string
+  ): Promise<{ error: string | null }> => {
     try {
       const isPlaceholderKey =
         !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.includes("dummy") ||
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.includes("placeholder");
 
       if (!isPlaceholderKey) {
@@ -148,15 +167,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
 
         if (!error && data.session && data.user) {
+          const jwtToken = data.session.access_token;
           setSession(data.session);
           setSupabaseUser(data.user);
-          setUser({
-            id: data.user.id,
-            email: data.user.email,
-            fullName: data.user.user_metadata?.full_name || data.user.email?.split("@")[0] || "Operador",
-            role: data.user.user_metadata?.role || "Pesquisador UAV",
-          });
-          setAuthCookie(JSON.stringify({ id: data.user.id, email: data.user.email }));
+          setUser(formatAuthUser(data.user));
+          setToken(jwtToken);
+          persistAuthToken(jwtToken);
           setIsDemoSession(false);
           return { error: null };
         }
@@ -166,23 +182,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // Se a chave for placeholder ou falha de conexão na nuvem, autentica em modo local contingencial
-      const localUser = {
+      // Modo de contingência para ambiente local / testes caso a chave ainda não tenha sido inserida
+      const demoToken = "demo-jwt-sugarvision-token-" + Date.now();
+      const localUser: AuthUser = {
         id: "usr-" + Math.random().toString(36).substring(2, 9),
         email,
         fullName: email.split("@")[0],
         role: "Pesquisador UAV",
       };
+
       setUser(localUser);
-      setAuthCookie(JSON.stringify(localUser));
+      setToken(demoToken);
+      persistAuthToken(demoToken);
+      if (typeof window !== "undefined") {
+        localStorage.setItem(DEMO_USER_STORAGE_KEY, JSON.stringify(localUser));
+      }
       setIsDemoSession(true);
       return { error: null };
-    } catch (err: any) {
-      return { error: err.message || "Erro inesperado ao conectar ao Supabase." };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Erro inesperado ao conectar ao Supabase.";
+      return { error: msg };
     }
   };
 
-  // Cadastro de Novo Usuário via SDK do Supabase (com contingência inteligente)
+  // Cadastro de Novo Usuário via SDK do Supabase
   const signUp = async (
     email: string,
     password: string,
@@ -191,6 +214,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const isPlaceholderKey =
         !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.includes("dummy") ||
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.includes("placeholder");
 
       if (!isPlaceholderKey) {
@@ -206,15 +230,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
 
         if (!error && data.session && data.user) {
+          const jwtToken = data.session.access_token;
           setSession(data.session);
           setSupabaseUser(data.user);
-          setUser({
-            id: data.user.id,
-            email: data.user.email,
-            fullName: data.user.user_metadata?.full_name || fullName || "Novo Usuário",
-            role: "Pesquisador de Campo",
-          });
-          setAuthCookie(JSON.stringify({ id: data.user.id, email: data.user.email }));
+          setUser(formatAuthUser(data.user));
+          setToken(jwtToken);
+          persistAuthToken(jwtToken);
           setIsDemoSession(false);
           return { error: null, confirmationRequired: false };
         }
@@ -228,36 +249,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // Se a chave for placeholder, cadastra e autentica em modo local imediatamente
-      const localUser = {
+      // Modo contingência local se chave do Supabase não configurada
+      const demoToken = "demo-jwt-sugarvision-token-" + Date.now();
+      const localUser: AuthUser = {
         id: "usr-" + Math.random().toString(36).substring(2, 9),
         email,
         fullName: fullName || email.split("@")[0],
         role: "Pesquisador de Campo",
       };
+
       setUser(localUser);
-      setAuthCookie(JSON.stringify(localUser));
+      setToken(demoToken);
+      persistAuthToken(demoToken);
+      if (typeof window !== "undefined") {
+        localStorage.setItem(DEMO_USER_STORAGE_KEY, JSON.stringify(localUser));
+      }
       setIsDemoSession(true);
       return { error: null, confirmationRequired: false };
-    } catch (err: any) {
-      return { error: err.message || "Erro inesperado ao registrar no Supabase." };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Erro inesperado ao registrar no Supabase.";
+      return { error: msg };
     }
   };
 
   // Acesso Rápido em Modo Demonstração (Permite validação e avaliação imediata)
-  const signInDemo = async (email = "operador@sugarvision.agro", name = "Eng. Agrônomo") => {
-    const demoPayload = {
+  const signInDemo = async (
+    email = "operador@sugarvision.agro",
+    name = "Eng. Agrônomo"
+  ) => {
+    const demoToken = "demo-jwt-sugarvision-token-evaluation";
+    const demoUser: AuthUser = {
       id: "demo-user-" + Date.now(),
       email,
-      name,
-    };
-    setAuthCookie(JSON.stringify(demoPayload));
-    setUser({
-      id: demoPayload.id,
-      email: demoPayload.email,
       fullName: name,
       role: "Especialista em Trigo",
-    });
+    };
+
+    setToken(demoToken);
+    persistAuthToken(demoToken);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(DEMO_USER_STORAGE_KEY, JSON.stringify(demoUser));
+    }
+    setUser(demoUser);
     setIsDemoSession(true);
     setLoading(false);
   };
@@ -269,13 +302,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       console.warn("Erro ao deslogar do Supabase:", err);
     } finally {
-      removeAuthCookie();
+      persistAuthToken(null);
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(DEMO_USER_STORAGE_KEY);
+      }
       setSession(null);
       setSupabaseUser(null);
       setUser(null);
+      setToken(null);
       setIsDemoSession(false);
       router.push("/login");
     }
+  };
+
+  const getToken = () => {
+    return token || getActiveAuthToken();
   };
 
   return (
@@ -284,12 +325,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         supabaseUser,
         session,
+        token,
         loading,
         isDemoSession,
+        isAuthenticated: !!token || !!user,
         signIn,
         signUp,
         signInDemo,
         signOut,
+        getToken,
+        login: signIn,
+        register: signUp,
+        logout: signOut,
       }}
     >
       {children}

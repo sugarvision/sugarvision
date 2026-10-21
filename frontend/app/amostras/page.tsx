@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast, ToastContainer } from "react-toastify";
+import { authFetch } from "../../lib/supabase/client";
 import "react-toastify/dist/ReactToastify.css";
 import {
   Sidebar,
@@ -210,7 +211,7 @@ export default function BancoDeAmostrasPage() {
     const cleanName = newFilename.trim();
 
     try {
-      const res = await fetch(`${API_URL}/api/images/${encodeURIComponent(target.id)}`, {
+      const res = await authFetch(`${API_URL}/api/images/${encodeURIComponent(target.id)}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -258,7 +259,7 @@ export default function BancoDeAmostrasPage() {
     try {
       let res: Response | null = null;
       try {
-        res = await fetch(
+        res = await authFetch(
           `${API_URL}/api/images/${encodeURIComponent(target.id)}?filename=${encodeURIComponent(target.filename)}`,
           { method: "DELETE" }
         );
@@ -297,7 +298,7 @@ export default function BancoDeAmostrasPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_URL}/api/images`, {
+      const response = await authFetch(`${API_URL}/api/images`, {
         headers: { Accept: "application/json" },
         cache: "no-store",
       });

@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "react-toastify/dist/ReactToastify.css";
-import { AuthProvider } from "./context/AuthContext";
-import { ToastContainer } from "react-toastify";
+import { Providers } from "./providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,9 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SugarVision — Painel de Análise de Trigo",
+  title: "MyAgro — Painel de Análise UAV",
   description:
-    "Plataforma de análise de imagens UAV e Inteligência Artificial para cultura de trigo. Monitore lavouras, identifique anomalias e tome decisões orientadas a dados.",
+    "Plataforma de análise de imagens de drones para agricultura de precisão. Monitore lavouras, identifique problemas e tome decisões baseadas em dados.",
 };
 
 export default function RootLayout({
@@ -31,22 +30,8 @@ export default function RootLayout({
       lang="pt-BR"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="h-full flex flex-col bg-[var(--background)] text-[var(--foreground)]">
-        <AuthProvider>
-          {children}
-          <ToastContainer
-            position="top-right"
-            autoClose={3500}
-            theme="dark"
-            hideProgressBar={false}
-            newestOnTop
-            closeOnClick
-            rtl={false}
-            pauseOnFocusLoss
-            draggable
-            pauseOnHover
-          />
-        </AuthProvider>
+      <body className="h-full flex flex-col">
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

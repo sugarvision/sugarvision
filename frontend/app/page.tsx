@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { ToastContainer, toast } from "react-toastify";
+import { authFetch } from "../lib/supabase/client";
 import {
   Sidebar,
   IconChart,
@@ -299,7 +300,7 @@ function HomeContent() {
       async function loadSavedAnalysis(id: string) {
         setUploadLoading(true);
         try {
-          const res = await fetch(`${API_URL}/api/historico/${encodeURIComponent(id)}`);
+          const res = await authFetch(`${API_URL}/api/historico/${encodeURIComponent(id)}`);
           if (!res.ok) throw new Error("Análise não encontrada no banco");
           const data = await res.json();
 
@@ -356,7 +357,7 @@ function HomeContent() {
         setUploadLoading(true);
         setIsViewingSavedHistory(false);
         try {
-          const response = await fetch(
+          const response = await authFetch(
             `${API_URL}/api/analyze-sample?filename=${encodeURIComponent(filename)}`
           );
 
@@ -462,7 +463,7 @@ function HomeContent() {
     formData.append("file", file);
 
     try {
-      const response = await fetch(`${API_URL}/upload`, {
+      const response = await authFetch(`${API_URL}/upload`, {
         method: "POST",
         body: formData,
       });

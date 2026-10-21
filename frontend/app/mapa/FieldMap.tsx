@@ -5,6 +5,7 @@ import { MapContainer, TileLayer, Polygon, Marker, Popup, LayersControl } from "
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import Link from "next/link";
+import { authFetch } from "../../lib/supabase/client";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
