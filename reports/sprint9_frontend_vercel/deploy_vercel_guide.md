@@ -2,9 +2,17 @@
 
 - **Responsável:** 🎨 Membro 1 (Front A / Cesar)
 - **Projeto:** SugarVision Frontend (Next.js 16)
-- **Status da Validação Pré-Deploy:** Aprovado (100% de sucesso no build)
+- **Status do Deploy:** ✅ Concluído e Publicado com Sucesso
+- **URL Oficial de Produção:** [https://sugarvision-sikq.vercel.app/](https://sugarvision-sikq.vercel.app/)
 
 ---
+
+## 0. Validação em Tempo Real das Rotas Online
+- `GET /` -> `200 OK` (Página inicial do SugarVision / MyAgro carregada)
+- `GET /login` -> `200 OK` (Tela de autenticação via Supabase pronta)
+- `GET /register` -> `200 OK` (Tela de cadastro de operadores pronta)
+- `GET /dashboard` -> `307 Temporary Redirect` (Middleware de proteção de rotas ativado redirecionando usuários não autenticados)
+
 
 ## 1. Conexão do Repositório na Vercel
 
