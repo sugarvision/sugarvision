@@ -303,12 +303,4 @@ main, .detection-panel, .map-container-wrapper {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
-}
-```[cite: 1, 4, 8]
-
-<FollowUp>
-Conseguiu adicionar o bloco no final do arquivo sem problemas?
-</FollowUp>
-
-<ElicitationsGroup>
-</ElicitationsGroup>
+}

@@ -1,9 +1,11 @@
 "use client";
 
+import { createClient } from "../lib/supabase/client";
 import { useState, useRef, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { ToastContainer, toast } from "react-toastify";
+import { authFetch } from "../lib/supabase/client";
 import {
   Sidebar,
   IconChart,
@@ -299,7 +301,7 @@ function HomeContent() {
       async function loadSavedAnalysis(id: string) {
         setUploadLoading(true);
         try {
-          const res = await fetch(`${API_URL}/api/historico/${encodeURIComponent(id)}`);
+          const res = await authFetch(`${API_URL}/api/historico/${encodeURIComponent(id)}`);
           if (!res.ok) throw new Error("Análise não encontrada no banco");
           const data = await res.json();
 
@@ -356,7 +358,7 @@ function HomeContent() {
         setUploadLoading(true);
         setIsViewingSavedHistory(false);
         try {
-          const response = await fetch(
+          const response = await authFetch(
             `${API_URL}/api/analyze-sample?filename=${encodeURIComponent(filename)}`
           );
 
@@ -462,8 +464,22 @@ function HomeContent() {
     formData.append("file", file);
 
     try {
+      // 1. Obter a sessão atual do Supabase
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      // Se não houver token, bloqueia o upload no frontend
+      if (!token) {
+        throw new Error("Sessão expirada ou utilizador não autenticado.");
+      }
+
+      // 2. Fazer o fetch com o cabeçalho Authorization
       const response = await fetch(`${API_URL}/upload`, {
         method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        },
         body: formData,
       });
 
