@@ -212,22 +212,21 @@ export default function BancoDeAmostrasPage() {
     const cleanName = newFilename.trim();
 
     try {
-      // 1. Instanciar o cliente Supabase e obter o token da sessão
+      // 1. Obter a sessão atual do Supabase
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
 
-      // Opcional: validar se o token existe antes de fazer a requisição
       if (!token) {
         throw new Error("Sessão expirada ou utilizador não autenticado.");
       }
 
-      // 2. Requisição com o cabeçalho Authorization adicionado
+      // 2. Fazer o fetch com o cabeçalho Authorization
       const res = await fetch(`${API_URL}/api/images/${encodeURIComponent(target.id)}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}` // <--- TOKEN ADICIONADO AQUI
+          "Authorization": `Bearer ${token}` // <--- Token adicionado aqui
         },
         body: JSON.stringify({ filename: cleanName }),
       });
@@ -271,7 +270,7 @@ export default function BancoDeAmostrasPage() {
     const target = sampleToDelete;
     
     try {
-      // 1. Obter a sessão e o token do Supabase
+      // 1. Obter a sessão atual do Supabase
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
@@ -282,13 +281,13 @@ export default function BancoDeAmostrasPage() {
 
       let res: Response | null = null;
       try {
-        // 2. Executar o fetch com o cabeçalho Authorization
+        // 2. Fazer o fetch com o cabeçalho Authorization
         res = await fetch(
           `${API_URL}/api/images/${encodeURIComponent(target.id)}?filename=${encodeURIComponent(target.filename)}`,
           { 
             method: "DELETE",
             headers: {
-              "Authorization": `Bearer ${token}` // <--- TOKEN ADICIONADO AQUI
+              "Authorization": `Bearer ${token}` // <--- Token adicionado aqui
             }
           }
         );
