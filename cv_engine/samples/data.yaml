@@ -1,7 +1,7 @@
 # SugarVision - Benchmark e Conjunto Oficial de Testes de Trigo (Sprint 6)
 # Origin: Global Wheat Head Detection (GWHD 2021) - David et al. (CC BY 4.0)
 
-path: wheat_test_set
+path: /home/marvao/sugarvision/cv_engine/samples/wheat_test_set
 train: images
 val: images
 test: images
