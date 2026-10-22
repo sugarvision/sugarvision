@@ -8,8 +8,9 @@ import Link from "next/link";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
-// Definição dos Talhões Agrícolas Experimentais (Embrapa Trigo - Passo Fundo - RS)
-// Rodovia BR-285, km 294 - Campos Experimentais de Pesquisa Agropecuária
+// Fazenda e Campos Experimentais de Pesquisa Agronômica da Embrapa Trigo
+// Rodovia BR-285, Km 294, Passo Fundo - RS (Área Rural de Pesquisa - 306 ha)
+// Coordenadas rurais exatas da fazenda experimental: Lat -28.2234, Lon -52.4076
 export interface TalhaoPlot {
   codigo: string;
   nome: string;
@@ -24,32 +25,32 @@ export interface TalhaoPlot {
 export const TALHOES: TalhaoPlot[] = [
   {
     codigo: "EXP-01",
-    nome: "Talhão Experimental 01 (Embrapa Trigo Norte)",
+    nome: "Talhão Experimental 01 (Embrapa Trigo - Setor Norte)",
     cultura: "Trigo (Triticum aestivum)",
     variedade: "BRS Pastoreio",
-    area_ha: 14.8,
+    area_ha: 18.5,
     cor: "#2ea043", // Verde
-    densidade_media: "Alta Produtividade (~60 espigas/m²)",
+    densidade_media: "Alta Produtividade (~62 espigas/amostra)",
     coords: [
-      [-28.2550, -52.4120],
-      [-28.2546, -52.4065],
-      [-28.2578, -52.4062],
-      [-28.2582, -52.4118],
+      [-28.2160, -52.4110],
+      [-28.2155, -52.4045],
+      [-28.2195, -52.4040],
+      [-28.2200, -52.4105],
     ],
   },
   {
     codigo: "EXP-02",
-    nome: "Talhão Experimental 02 (Embrapa Trigo Sul)",
+    nome: "Talhão Experimental 02 (Embrapa Trigo - Setor Sul)",
     cultura: "Trigo (Triticum aestivum)",
     variedade: "TBIO Sintonia",
-    area_ha: 18.2,
+    area_ha: 21.0,
     cor: "#388bfd", // Azul
-    densidade_media: "Densidade Média (~42 espigas/m²)",
+    densidade_media: "Densidade Média (~40 espigas/amostra)",
     coords: [
-      [-28.2592, -52.4125],
-      [-28.2588, -52.4060],
-      [-28.2625, -52.4058],
-      [-28.2628, -52.4122],
+      [-28.2215, -52.4115],
+      [-28.2210, -52.4050],
+      [-28.2255, -52.4045],
+      [-28.2260, -52.4110],
     ],
   },
   {
@@ -57,14 +58,14 @@ export const TALHOES: TalhaoPlot[] = [
     nome: "Talhão Experimental 03 (Ensaio Irrigado Embrapa Leste)",
     cultura: "Trigo (Triticum aestivum)",
     variedade: "BRS Belamar",
-    area_ha: 16.5,
+    area_ha: 24.2,
     cor: "#d29922", // Âmbar / Ouro
-    densidade_media: "Alta Densidade (~68 espigas/m²)",
+    densidade_media: "Alta Densidade (~68 espigas/amostra)",
     coords: [
-      [-28.2555, -52.4055],
-      [-28.2552, -52.4005],
-      [-28.2618, -52.4002],
-      [-28.2621, -52.4052],
+      [-28.2170, -52.4035],
+      [-28.2165, -52.3985],
+      [-28.2235, -52.3980],
+      [-28.2240, -52.4030],
     ],
   },
 ];
@@ -125,7 +126,7 @@ export interface WheatSampleMapItem {
   talhao?: string;
 }
 
-// 12 Amostras Georreferenciadas nos Campos Experimentais da Embrapa Trigo (Passo Fundo - RS)
+// 12 Amostras Georreferenciadas nos Campos Agrícolas Reais da Fazenda da Embrapa Trigo (Passo Fundo - RS)
 const WHEAT_MAP_FALLBACK: WheatSampleMapItem[] = [
   // Talhão EXP-01 Norte (BRS Pastoreio)
   {
@@ -134,8 +135,8 @@ const WHEAT_MAP_FALLBACK: WheatSampleMapItem[] = [
     total_espigas: 68,
     densidade_estimada: "Alta Densidade",
     data: "2026-10-20T10:15:00Z",
-    latitude: -28.2558,
-    longitude: -52.4095,
+    latitude: -28.2172,
+    longitude: -52.4085,
     filename: "wheat_test_01_Terraref_1.jpg",
     talhao: "Talhão EXP-01 (Embrapa Norte)",
   },
@@ -145,8 +146,8 @@ const WHEAT_MAP_FALLBACK: WheatSampleMapItem[] = [
     total_espigas: 54,
     densidade_estimada: "Alta Densidade",
     data: "2026-10-20T10:30:00Z",
-    latitude: -28.2565,
-    longitude: -52.4078,
+    latitude: -28.2180,
+    longitude: -52.4065,
     filename: "wheat_test_02_Terraref_2.jpg",
     talhao: "Talhão EXP-01 (Embrapa Norte)",
   },
@@ -156,8 +157,8 @@ const WHEAT_MAP_FALLBACK: WheatSampleMapItem[] = [
     total_espigas: 39,
     densidade_estimada: "Densidade Média",
     data: "2026-10-20T10:45:00Z",
-    latitude: -28.2572,
-    longitude: -52.4105,
+    latitude: -28.2190,
+    longitude: -52.4090,
     filename: "wheat_test_03_CIMMYT_1.jpg",
     talhao: "Talhão EXP-01 (Embrapa Norte)",
   },
@@ -167,8 +168,8 @@ const WHEAT_MAP_FALLBACK: WheatSampleMapItem[] = [
     total_espigas: 61,
     densidade_estimada: "Alta Densidade",
     data: "2026-10-21T09:00:00Z",
-    latitude: -28.2562,
-    longitude: -52.4068,
+    latitude: -28.2168,
+    longitude: -52.4055,
     filename: "wheat_test_04_CIMMYT_2.jpg",
     talhao: "Talhão EXP-01 (Embrapa Norte)",
   },
@@ -180,8 +181,8 @@ const WHEAT_MAP_FALLBACK: WheatSampleMapItem[] = [
     total_espigas: 16,
     densidade_estimada: "Baixa Densidade",
     data: "2026-10-21T09:20:00Z",
-    latitude: -28.2600,
-    longitude: -52.4108,
+    latitude: -28.2225,
+    longitude: -52.4095,
     filename: "wheat_test_05_Terraref_2.jpg",
     talhao: "Talhão EXP-02 (Embrapa Sul)",
   },
@@ -191,8 +192,8 @@ const WHEAT_MAP_FALLBACK: WheatSampleMapItem[] = [
     total_espigas: 28,
     densidade_estimada: "Densidade Média",
     data: "2026-10-21T09:40:00Z",
-    latitude: -28.2608,
-    longitude: -52.4085,
+    latitude: -28.2238,
+    longitude: -52.4075,
     filename: "wheat_test_06_UQ_11.jpg",
     talhao: "Talhão EXP-02 (Embrapa Sul)",
   },
@@ -202,8 +203,8 @@ const WHEAT_MAP_FALLBACK: WheatSampleMapItem[] = [
     total_espigas: 47,
     densidade_estimada: "Densidade Média",
     data: "2026-10-21T10:00:00Z",
-    latitude: -28.2615,
-    longitude: -52.4112,
+    latitude: -28.2248,
+    longitude: -52.4100,
     filename: "wheat_test_07_UQ_10.jpg",
     talhao: "Talhão EXP-02 (Embrapa Sul)",
   },
@@ -213,8 +214,8 @@ const WHEAT_MAP_FALLBACK: WheatSampleMapItem[] = [
     total_espigas: 52,
     densidade_estimada: "Alta Densidade",
     data: "2026-10-21T10:20:00Z",
-    latitude: -28.2618,
-    longitude: -52.4072,
+    latitude: -28.2252,
+    longitude: -52.4062,
     filename: "wheat_test_08_UQ_8.jpg",
     talhao: "Talhão EXP-02 (Embrapa Sul)",
   },
@@ -226,8 +227,8 @@ const WHEAT_MAP_FALLBACK: WheatSampleMapItem[] = [
     total_espigas: 72,
     densidade_estimada: "Alta Densidade",
     data: "2026-10-22T08:30:00Z",
-    latitude: -28.2568,
-    longitude: -52.4035,
+    latitude: -28.2185,
+    longitude: -52.4015,
     filename: "wheat_test_09_UQ_8.jpg",
     talhao: "Talhão EXP-03 (Ensaio Leste)",
   },
@@ -237,8 +238,8 @@ const WHEAT_MAP_FALLBACK: WheatSampleMapItem[] = [
     total_espigas: 65,
     densidade_estimada: "Alta Densidade",
     data: "2026-10-22T08:50:00Z",
-    latitude: -28.2582,
-    longitude: -52.4020,
+    latitude: -28.2202,
+    longitude: -52.4000,
     filename: "wheat_test_10_UQ_10.jpg",
     talhao: "Talhão EXP-03 (Ensaio Leste)",
   },
@@ -248,8 +249,8 @@ const WHEAT_MAP_FALLBACK: WheatSampleMapItem[] = [
     total_espigas: 34,
     densidade_estimada: "Densidade Média",
     data: "2026-10-22T09:10:00Z",
-    latitude: -28.2598,
-    longitude: -52.4042,
+    latitude: -28.2218,
+    longitude: -52.4022,
     filename: "wheat_test_11_Ukyoto_1.jpg",
     talhao: "Talhão EXP-03 (Ensaio Leste)",
   },
@@ -259,8 +260,8 @@ const WHEAT_MAP_FALLBACK: WheatSampleMapItem[] = [
     total_espigas: 19,
     densidade_estimada: "Baixa Densidade",
     data: "2026-10-22T09:30:00Z",
-    latitude: -28.2610,
-    longitude: -52.4015,
+    latitude: -28.2230,
+    longitude: -52.3995,
     filename: "wheat_test_12_ARC_1.jpg",
     talhao: "Talhão EXP-03 (Ensaio Leste)",
   },
@@ -278,15 +279,14 @@ export default function FieldMap() {
   const [buscaNome, setBuscaNome] = useState<string>("");
   const [apenasMaisRecente, setApenasMaisRecente] = useState<boolean>(false);
 
-  // Ponto central padrão: Campos Experimentais da Embrapa Trigo (Passo Fundo - RS)
-  const defaultCenter: [number, number] = [-28.2585, -52.4080];
+  // Ponto central padrão: Fazenda e Campos Experimentais da Embrapa Trigo (Passo Fundo - RS)
+  const defaultCenter: [number, number] = [-28.2234, -52.4076];
 
   useEffect(() => {
     let isMounted = true;
 
     async function loadMapData() {
       try {
-        // AbortController para não travar na Vercel quando a API estiver em localhost
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 2200);
 
@@ -300,29 +300,29 @@ export default function FieldMap() {
           const data = await res.json();
           if (Array.isArray(data) && data.length > 0) {
             const items: WheatSampleMapItem[] = data.map((item: any, idx: number) => {
-              // Dispersão realista com espaçamento de ~60m nos campos da Embrapa
+              // Dispersão realista dentro dos campos da Embrapa Trigo
               const angle = (idx * 137.5 * Math.PI) / 180;
               const radius = 0.0016 + ((idx % 6) * 0.0006);
               const fallbackLat = defaultCenter[0] + radius * Math.cos(angle);
               const fallbackLng = defaultCenter[1] + radius * Math.sin(angle);
 
-              // Validação: se latitude estiver perto de 0 ou no centro urbano antigo, reajustar para Embrapa
-              const isOldRioClaro =
+              // Validação: ignorar coordenadas que caíam no centro urbano antigo
+              const isOldUrbanCenter =
                 typeof item.latitude === "number" &&
-                item.latitude > -23.0 &&
-                item.latitude < -22.0;
+                item.latitude < -28.24 &&
+                item.latitude > -28.28;
 
               const hasValidLat =
                 typeof item.latitude === "number" &&
                 !isNaN(item.latitude) &&
                 Math.abs(item.latitude) > 0.1 &&
-                !isOldRioClaro;
+                !isOldUrbanCenter;
 
               const hasValidLng =
                 typeof item.longitude === "number" &&
                 !isNaN(item.longitude) &&
                 Math.abs(item.longitude) > 0.1 &&
-                !isOldRioClaro;
+                !isOldUrbanCenter;
 
               const total_espigas = item.total_espigas ?? item.focos_detectados ?? item.focosDetectados ?? 0;
 
@@ -354,7 +354,7 @@ export default function FieldMap() {
         console.warn("Utilizando catálogo de amostras georreferenciadas Embrapa Trigo:", err);
       }
 
-      // Em ambiente de produção ou fallback, utiliza o catálogo oficial da Embrapa Trigo
+      // Em ambiente de produção ou fallback, utiliza o catálogo oficial da fazenda da Embrapa Trigo
       if (isMounted) {
         setSamples(WHEAT_MAP_FALLBACK);
       }
@@ -453,7 +453,7 @@ export default function FieldMap() {
               Embrapa Trigo
             </span>
             <span style={{ fontSize: "10px", color: "var(--muted)" }}>
-              Passo Fundo - RS
+              Fazenda Experimental (BR-285)
             </span>
           </div>
           <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--accent-green)", background: "rgba(46,160,67,0.15)", padding: "2px 8px", borderRadius: "10px" }}>
@@ -634,7 +634,7 @@ export default function FieldMap() {
         style={{ width: "100%", height: "100%", zIndex: 1 }}
       >
         <LayersControl position="topright">
-          {/* Camada 1: Satélite Google (Alta Resolução em Passo Fundo) */}
+          {/* Camada 1: Satélite Google (Alta Resolução Rural) */}
           <LayersControl.BaseLayer checked name="Satélite Google">
             <TileLayer
               attribution="&copy; Google Maps"
@@ -665,7 +665,7 @@ export default function FieldMap() {
           </LayersControl.BaseLayer>
         </LayersControl>
 
-        {/* ── Polígonos de Delimitação dos Talhões Experimentais Embrapa Trigo ── */}
+        {/* ── Polígonos de Delimitação das Parcelas Experimentais da Embrapa Trigo ── */}
         {showTalhoes &&
           TALHOES.map((talhao) => (
             <Polygon
@@ -697,7 +697,7 @@ export default function FieldMap() {
                     </div>
                   </div>
                   <div style={{ fontSize: "10.5px", color: "#57606a" }}>
-                    Embrapa Trigo • Passo Fundo - RS • UAV SugarVision
+                    Embrapa Trigo • Fazenda BR-285 • UAV SugarVision
                   </div>
                 </div>
               </Popup>

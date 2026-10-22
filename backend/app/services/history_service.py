@@ -89,8 +89,8 @@ class HistoryService:
             seed_val = int(hashlib.md5(filename.encode()).hexdigest()[:6], 16)
             offset_lat = ((seed_val % 1000) / 1000.0 - 0.5) * 0.0030  # ~330m dentro das parcelas
             offset_lng = (((seed_val // 1000) % 1000) / 1000.0 - 0.5) * 0.0040  # ~380m
-            final_lat = round(-28.2585 + offset_lat, 6)
-            final_lng = round(-52.4080 + offset_lng, 6)
+            final_lat = round(-28.2234 + offset_lat, 6)
+            final_lng = round(-52.4076 + offset_lng, 6)
 
         analysis_payload = {
             "image_id": image_id,
