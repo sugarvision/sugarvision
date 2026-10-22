@@ -726,7 +726,91 @@ class TestJWTProtection(unittest.TestCase):
         print("  [PASS] 44 - Upload funciona com token válido e em modo contingência")
 
 
+class TestStorageCleanupSprint7(unittest.TestCase):
+    """Bateria de testes da Sprint 7: Validação da rotina de limpeza de imagens temporárias."""
+
+    SECRET = "segredo-de-teste-com-tamanho-suficiente-32b"
+
+    def setUp(self):
+        self.client = TestClient(app)
+        self.storage = StorageService()
+
+    def _token(self):
+        payload = {"sub": "user-guilherme", "aud": "authenticated", "exp": int(time.time()) + 3600}
+        return jwt.encode(payload, self.SECRET, algorithm="HS256")
+
+    def test_45_storage_cleanup_deletes_expired_files_and_preserves_recent(self):
+        """Sprint 7 - Valida que a rotina remove arquivos com > 7 dias e preserva arquivos recentes."""
+        now = time.time()
+        old_file = TEMP_IMAGES_DIR / "temp_antiga_sprint7.jpg"
+        recent_file = TEMP_IMAGES_DIR / "temp_recente_sprint7.jpg"
+
+        try:
+            # Cria os arquivos físicos de teste
+            old_file.write_bytes(b"conteudo_antigo_10_dias")
+            recent_file.write_bytes(b"conteudo_recente_1_dia")
+
+            # Configura mtime: old_file há 10 dias, recent_file há 1 hora
+            ten_days_ago = now - (10 * 86400)
+            one_hour_ago = now - 3600
+            os.utime(old_file, (ten_days_ago, ten_days_ago))
+            os.utime(recent_file, (one_hour_ago, one_hour_ago))
+
+            # Executa a limpeza com limiar de 7 dias
+            stats = asyncio.run(self.storage.cleanup_temp_images(days=7))
+
+            # Validações
+            self.assertFalse(old_file.exists(), "Arquivo com mais de 7 dias deveria ter sido deletado")
+            self.assertTrue(recent_file.exists(), "Arquivo recente (< 7 dias) deve ser preservado")
+            self.assertIn("temp_antiga_sprint7.jpg", stats["deleted_files"])
+            self.assertGreaterEqual(stats["deleted"], 1)
+            print("  [PASS] 45 - StorageService: arquivos > 7 dias excluídos e recentes preservados")
+        finally:
+            if old_file.exists():
+                old_file.unlink()
+            if recent_file.exists():
+                recent_file.unlink()
+
+    def test_46_storage_cleanup_preserves_protected_files(self):
+        """Sprint 7 - Valida que arquivos essenciais/contingência não são excluídos mesmo com mtime antigo."""
+        now = time.time()
+        protected_file = TEMP_IMAGES_DIR / "cana_teste.jpg"
+        created_dummy = False
+        if not protected_file.exists():
+            protected_file.write_bytes(b"mock_cana")
+            created_dummy = True
+
+        try:
+            # Força data antiga de 30 dias atrás
+            thirty_days_ago = now - (30 * 86400)
+            os.utime(protected_file, (thirty_days_ago, thirty_days_ago))
+
+            stats = asyncio.run(self.storage.cleanup_temp_images(days=7))
+
+            self.assertTrue(protected_file.exists(), "Arquivo protegido não pode ser removido")
+            self.assertNotIn("cana_teste.jpg", stats["deleted_files"])
+            self.assertGreaterEqual(stats["skipped_protected"], 1)
+            print("  [PASS] 46 - StorageService: arquivos protegidos (cana_teste.jpg) permanecem intactos")
+        finally:
+            if created_dummy and protected_file.exists():
+                protected_file.unlink()
+
+    def test_47_storage_cleanup_endpoint(self):
+        """Sprint 7 - Valida endpoint administrativo POST /api/storage/cleanup."""
+        with patch.dict(os.environ, {"AUTH_ENABLED": "True", "SUPABASE_JWT_SECRET": self.SECRET}):
+            headers = {"Authorization": f"Bearer {self._token()}"}
+            response = self.client.post("/api/storage/cleanup?days=7", headers=headers)
+            self.assertEqual(response.status_code, 200)
+            data = response.json()
+            self.assertEqual(data.get("status"), "sucesso")
+            self.assertEqual(data.get("dias_retencao"), 7)
+            self.assertIn("estatisticas", data)
+            print("  [PASS] 47 - Endpoint POST /api/storage/cleanup respondeu 200 OK")
+
+
+
 if __name__ == "__main__":
+
     print("\n" + "=" * 65)
     print("  EXECUTANDO BATERIA DE TESTES - BACKEND SUGARVISION")
     print("=" * 65 + "\n")

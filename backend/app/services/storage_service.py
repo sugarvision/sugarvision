@@ -2,15 +2,25 @@
 
 import asyncio
 import logging
+import time
 from pathlib import Path
 import uuid
-from typing import Optional, Tuple
+from typing import Any, Dict, Optional, Set, Tuple
 
 from fastapi import HTTPException, UploadFile, status
 
 from app.core.config import ALLOWED_IMAGE_EXTENSIONS, MAX_UPLOAD_SIZE_BYTES, MAX_UPLOAD_SIZE_MB, TEMP_IMAGES_DIR
 
 logger = logging.getLogger("sugarvision-storage")
+
+# Arquivos essenciais de contingência, mocks e sistema que não devem ser removidos na limpeza
+PROTECTED_TEMP_FILES: Set[str] = {
+    ".gitkeep",
+    "cana_teste.jpg",
+    "amostra_erva_daninha.jpg",
+    "trigo_teste.png",
+}
+
 
 
 class StorageService:
@@ -147,3 +157,92 @@ class StorageService:
             return False
 
         return await asyncio.to_thread(remove_file)
+ 
+    async def cleanup_temp_images(
+        self,
+        days: int = 7,
+        protected_files: Optional[Set[str]] = None,
+    ) -> Dict[str, Any]:
+        """Varre o diretório temporário de uploads (temp_images) e remove imagens com mais de `days` dias.
+
+        Atende integralmente aos requisitos da Sprint 7:
+        - Varre o diretório temporário usando Path(target_dir).glob("*").
+        - Aplica a regra de expiração para imagens com mais de `days` dias (padrão: 7 dias).
+        - Chama o método assíncrono `delete_image_async` para cada arquivo antigo qualificado.
+        - Preserva arquivos essenciais de sistema, mock e contingência.
+
+        Args:
+            days: Limiar de expiração em dias corridos (padrão: 7).
+            protected_files: Conjunto customizado de arquivos protegidos (opcional).
+
+        Returns:
+            Dict com estatísticas detalhadas da operação (scanned, deleted, skipped_recent, skipped_protected, errors).
+        """
+        now = time.time()
+        max_age_seconds = days * 86400.0
+        protected = set(protected_files) if protected_files is not None else PROTECTED_TEMP_FILES
+
+        stats: Dict[str, Any] = {
+            "scanned": 0,
+            "deleted": 0,
+            "skipped_protected": 0,
+            "skipped_recent": 0,
+            "errors": 0,
+            "deleted_files": [],
+        }
+
+        # Varredura do diretório temporário
+        for item in self.target_dir.glob("*"):
+            if not item.is_file():
+                continue
+
+            stats["scanned"] += 1
+            filename = item.name
+
+            # Preserva arquivos essenciais e ocultos/sistema
+            if filename in protected or filename.startswith("."):
+                stats["skipped_protected"] += 1
+                continue
+
+            try:
+                stat_info = item.stat()
+                file_age_seconds = now - stat_info.st_mtime
+
+                if file_age_seconds > max_age_seconds:
+                    success = await self.delete_image_async(item)
+                    if success:
+                        stats["deleted"] += 1
+                        stats["deleted_files"].append(filename)
+                        logger.info(
+                            "Imagem temporária com mais de %d dias removida: %s (idade: %.1f dias)",
+                            days,
+                            filename,
+                            file_age_seconds / 86400.0,
+                        )
+                    else:
+                        stats["errors"] += 1
+                else:
+                    stats["skipped_recent"] += 1
+            except Exception as exc:
+                stats["errors"] += 1
+                logger.warning("Erro ao verificar/remover arquivo temporário %s: %s", item, exc)
+
+        logger.info(
+            "Limpeza de arquivos temporários concluída (> %d dias): %d escaneados, %d deletados, %d recentes, %d protegidos, %d erros.",
+            days,
+            stats["scanned"],
+            stats["deleted"],
+            stats["skipped_recent"],
+            stats["skipped_protected"],
+            stats["errors"],
+        )
+        return stats
+
+    def cleanup_temp_images_sync(
+        self,
+        days: int = 7,
+        protected_files: Optional[Set[str]] = None,
+    ) -> Dict[str, Any]:
+        """Versão síncrona/utilitária para chamadas diretas via CLI ou scripts standalone."""
+        return asyncio.run(self.cleanup_temp_images(days=days, protected_files=protected_files))
+
