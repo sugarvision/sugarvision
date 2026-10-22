@@ -339,13 +339,15 @@ async def analyze_sample(
 async def upload_image(
     file: UploadFile = File(...),
     custom_name: Optional[str] = Form(None),
+    latitude: Optional[float] = Form(None),
+    longitude: Optional[float] = Form(None),
     background_tasks: BackgroundTasks = None,
     storage_service: StorageService = Depends(get_storage_service),
     ai_service: AIService = Depends(get_ai_service),
     image_service: ImageService = Depends(get_image_service),
     history_service: HistoryService = Depends(get_history_service),
 ) -> dict[str, Any]:
-    """Recebe imagem, preserva o nome original/customizado, detecta IA e salva nas amostras e histórico."""
+    """Recebe imagem, preserva o nome original/customizado, detecta IA e salva nas amostras e histórico com GPS."""
     if not file.filename:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -376,7 +378,7 @@ async def upload_image(
         except Exception as db_err:
             logger.warning("Aviso não-crítico ao salvar imagem na tabela 'images': %s", db_err)
 
-        # 2. Salva no Histórico (tabela analyses)
+        # 2. Salva no Histórico (tabela analyses) com georreferenciamento
         image_id = db_image_record.get("id") if db_image_record else None
         image_url = f"{BASE_URL}/temp_images/{target_path.name}"
         history_record = None
@@ -388,9 +390,12 @@ async def upload_image(
                 image_id=image_id,
                 image_url=image_url,
                 file_size_bytes=file_size,
+                latitude=latitude,
+                longitude=longitude,
             )
         except Exception as hist_err:
             logger.warning("Aviso não-crítico ao salvar histórico: %s", hist_err)
+
 
         return {
             "status": "success",
