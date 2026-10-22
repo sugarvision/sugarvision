@@ -83,7 +83,7 @@ export default function MapaPage() {
                 lineHeight: 1,
               }}
             >
-              Geolocalização de áreas de plantio, densidade de espigas e fotos aéreas de trigo
+              Geolocalização de parcelas experimentais (Embrapa Trigo - RS), densidade de espigas e fotos aéreas
             </p>
           </div>
 

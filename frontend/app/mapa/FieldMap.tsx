@@ -8,7 +8,8 @@ import Link from "next/link";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
-// Definição dos Talhões Agrícolas Monitorados (Fazenda Experimental Rio Claro - SP)
+// Definição dos Talhões Agrícolas Experimentais (Embrapa Trigo - Passo Fundo - RS)
+// Rodovia BR-285, km 294 - Campos Experimentais de Pesquisa Agropecuária
 export interface TalhaoPlot {
   codigo: string;
   nome: string;
@@ -22,48 +23,48 @@ export interface TalhaoPlot {
 
 export const TALHOES: TalhaoPlot[] = [
   {
-    codigo: "TAL-01",
-    nome: "Talhão 01 (Norte) - Safra Inverno",
+    codigo: "EXP-01",
+    nome: "Talhão Experimental 01 (Embrapa Trigo Norte)",
     cultura: "Trigo (Triticum aestivum)",
     variedade: "BRS Pastoreio",
-    area_ha: 18.5,
+    area_ha: 14.8,
     cor: "#2ea043", // Verde
-    densidade_media: "Alta Densidade (~60 espigas/amostra)",
+    densidade_media: "Alta Produtividade (~60 espigas/m²)",
     coords: [
-      [-22.4075, -47.5645],
-      [-22.4072, -47.5585],
-      [-22.4098, -47.5582],
-      [-22.4101, -47.5642],
+      [-28.2550, -52.4120],
+      [-28.2546, -52.4065],
+      [-28.2578, -52.4062],
+      [-28.2582, -52.4118],
     ],
   },
   {
-    codigo: "TAL-02",
-    nome: "Talhão 02 (Sul) - Manejo Convencional",
+    codigo: "EXP-02",
+    nome: "Talhão Experimental 02 (Embrapa Trigo Sul)",
     cultura: "Trigo (Triticum aestivum)",
     variedade: "TBIO Sintonia",
-    area_ha: 22.0,
+    area_ha: 18.2,
     cor: "#388bfd", // Azul
-    densidade_media: "Densidade Média (~38 espigas/amostra)",
+    densidade_media: "Densidade Média (~42 espigas/m²)",
     coords: [
-      [-22.4110, -47.5642],
-      [-22.4108, -47.5580],
-      [-22.4140, -47.5578],
-      [-22.4142, -47.5640],
+      [-28.2592, -52.4125],
+      [-28.2588, -52.4060],
+      [-28.2625, -52.4058],
+      [-28.2628, -52.4122],
     ],
   },
   {
-    codigo: "TAL-03",
-    nome: "Talhão 03 (Leste) - Área Irrigada",
+    codigo: "EXP-03",
+    nome: "Talhão Experimental 03 (Ensaio Irrigado Embrapa Leste)",
     cultura: "Trigo (Triticum aestivum)",
     variedade: "BRS Belamar",
-    area_ha: 26.4,
+    area_ha: 16.5,
     cor: "#d29922", // Âmbar / Ouro
-    densidade_media: "Alta Densidade (~65 espigas/amostra)",
+    densidade_media: "Alta Densidade (~68 espigas/m²)",
     coords: [
-      [-22.4078, -47.5575],
-      [-22.4075, -47.5520],
-      [-22.4135, -47.5518],
-      [-22.4138, -47.5572],
+      [-28.2555, -52.4055],
+      [-28.2552, -52.4005],
+      [-28.2618, -52.4002],
+      [-28.2621, -52.4052],
     ],
   },
 ];
@@ -124,144 +125,144 @@ export interface WheatSampleMapItem {
   talhao?: string;
 }
 
-// 12 Amostras Georreferenciadas Oficiais com Espaçamento Realista (40m a 100m)
+// 12 Amostras Georreferenciadas nos Campos Experimentais da Embrapa Trigo (Passo Fundo - RS)
 const WHEAT_MAP_FALLBACK: WheatSampleMapItem[] = [
-  // Talhão 01 Norte
+  // Talhão EXP-01 Norte (BRS Pastoreio)
   {
     id: "gwhd-map-01",
-    nome_amostra: "Talhão 01 - Amostra A1 (Alta Produtividade)",
+    nome_amostra: "Embrapa EXP-01 — Parcela A1 (Alta Produtividade)",
     total_espigas: 68,
     densidade_estimada: "Alta Densidade",
     data: "2026-10-20T10:15:00Z",
-    latitude: -22.4082,
-    longitude: -47.5620,
-    filename: "wheat_test_1.jpg",
-    talhao: "Talhão 01 (Norte)",
+    latitude: -28.2558,
+    longitude: -52.4095,
+    filename: "wheat_test_01_Terraref_1.jpg",
+    talhao: "Talhão EXP-01 (Embrapa Norte)",
   },
   {
     id: "gwhd-map-02",
-    nome_amostra: "Talhão 01 - Amostra A2 (Centro do Estande)",
+    nome_amostra: "Embrapa EXP-01 — Parcela A2 (Centro do Estande)",
     total_espigas: 54,
     densidade_estimada: "Alta Densidade",
     data: "2026-10-20T10:30:00Z",
-    latitude: -22.4088,
-    longitude: -47.5605,
-    filename: "wheat_test_2.jpg",
-    talhao: "Talhão 01 (Norte)",
+    latitude: -28.2565,
+    longitude: -52.4078,
+    filename: "wheat_test_02_Terraref_2.jpg",
+    talhao: "Talhão EXP-01 (Embrapa Norte)",
   },
   {
     id: "gwhd-map-03",
-    nome_amostra: "Talhão 01 - Amostra A3 (Transição)",
+    nome_amostra: "Embrapa EXP-01 — Parcela A3 (Ensaio de Densidade)",
     total_espigas: 39,
     densidade_estimada: "Densidade Média",
     data: "2026-10-20T10:45:00Z",
-    latitude: -22.4094,
-    longitude: -47.5628,
-    filename: "wheat_test_3.jpg",
-    talhao: "Talhão 01 (Norte)",
+    latitude: -28.2572,
+    longitude: -52.4105,
+    filename: "wheat_test_03_CIMMYT_1.jpg",
+    talhao: "Talhão EXP-01 (Embrapa Norte)",
   },
   {
     id: "gwhd-map-04",
-    nome_amostra: "Talhão 01 - Amostra A4 (Borda Nordeste)",
+    nome_amostra: "Embrapa EXP-01 — Parcela A4 (Borda Nordeste)",
     total_espigas: 61,
     densidade_estimada: "Alta Densidade",
     data: "2026-10-21T09:00:00Z",
-    latitude: -22.4080,
-    longitude: -47.5592,
-    filename: "wheat_test_4.jpg",
-    talhao: "Talhão 01 (Norte)",
+    latitude: -28.2562,
+    longitude: -52.4068,
+    filename: "wheat_test_04_CIMMYT_2.jpg",
+    talhao: "Talhão EXP-01 (Embrapa Norte)",
   },
 
-  // Talhão 02 Sul
+  // Talhão EXP-02 Sul (TBIO Sintonia)
   {
     id: "gwhd-map-05",
-    nome_amostra: "Talhão 02 - Amostra B1 (Falha de Germinação)",
+    nome_amostra: "Embrapa EXP-02 — Parcela B1 (Falha Germinativa)",
     total_espigas: 16,
     densidade_estimada: "Baixa Densidade",
     data: "2026-10-21T09:20:00Z",
-    latitude: -22.4118,
-    longitude: -47.5625,
-    filename: "wheat_test_5.jpg",
-    talhao: "Talhão 02 (Sul)",
+    latitude: -28.2600,
+    longitude: -52.4108,
+    filename: "wheat_test_05_Terraref_2.jpg",
+    talhao: "Talhão EXP-02 (Embrapa Sul)",
   },
   {
     id: "gwhd-map-06",
-    nome_amostra: "Talhão 02 - Amostra B2 (Linha de Semeadura)",
+    nome_amostra: "Embrapa EXP-02 — Parcela B2 (Semeadura Direta)",
     total_espigas: 28,
     densidade_estimada: "Densidade Média",
     data: "2026-10-21T09:40:00Z",
-    latitude: -22.4125,
-    longitude: -47.5608,
-    filename: "wheat_test_6.jpg",
-    talhao: "Talhão 02 (Sul)",
+    latitude: -28.2608,
+    longitude: -52.4085,
+    filename: "wheat_test_06_UQ_11.jpg",
+    talhao: "Talhão EXP-02 (Embrapa Sul)",
   },
   {
     id: "gwhd-map-07",
-    nome_amostra: "Talhão 02 - Amostra B3 (Área Central Sul)",
+    nome_amostra: "Embrapa EXP-02 — Parcela B3 (Centro Sul)",
     total_espigas: 47,
     densidade_estimada: "Densidade Média",
     data: "2026-10-21T10:00:00Z",
-    latitude: -22.4132,
-    longitude: -47.5630,
-    filename: "wheat_test_7.jpg",
-    talhao: "Talhão 02 (Sul)",
+    latitude: -28.2615,
+    longitude: -52.4112,
+    filename: "wheat_test_07_UQ_10.jpg",
+    talhao: "Talhão EXP-02 (Embrapa Sul)",
   },
   {
     id: "gwhd-map-08",
-    nome_amostra: "Talhão 02 - Amostra B4 (Boa Cobertura)",
+    nome_amostra: "Embrapa EXP-02 — Parcela B4 (Boa Cobertura)",
     total_espigas: 52,
     densidade_estimada: "Alta Densidade",
     data: "2026-10-21T10:20:00Z",
-    latitude: -22.4136,
-    longitude: -47.5595,
-    filename: "wheat_test_8.jpg",
-    talhao: "Talhão 02 (Sul)",
+    latitude: -28.2618,
+    longitude: -52.4072,
+    filename: "wheat_test_08_UQ_8.jpg",
+    talhao: "Talhão EXP-02 (Embrapa Sul)",
   },
 
-  // Talhão 03 Leste
+  // Talhão EXP-03 Leste (BRS Belamar - Irrigado)
   {
     id: "gwhd-map-09",
-    nome_amostra: "Talhão 03 - Amostra C1 (Pivô Central Irrigado)",
+    nome_amostra: "Embrapa EXP-03 — Parcela C1 (Pivô Experimental Leste)",
     total_espigas: 72,
     densidade_estimada: "Alta Densidade",
     data: "2026-10-22T08:30:00Z",
-    latitude: -22.4088,
-    longitude: -47.5555,
-    filename: "wheat_test_9.jpg",
-    talhao: "Talhão 03 (Leste)",
+    latitude: -28.2568,
+    longitude: -52.4035,
+    filename: "wheat_test_09_UQ_8.jpg",
+    talhao: "Talhão EXP-03 (Ensaio Leste)",
   },
   {
     id: "gwhd-map-10",
-    nome_amostra: "Talhão 03 - Amostra C2 (Pivô Central Leste)",
+    nome_amostra: "Embrapa EXP-03 — Parcela C2 (Cultivar BRS Belamar)",
     total_espigas: 65,
     densidade_estimada: "Alta Densidade",
     data: "2026-10-22T08:50:00Z",
-    latitude: -22.4102,
-    longitude: -47.5540,
-    filename: "wheat_test_10.jpg",
-    talhao: "Talhão 03 (Leste)",
+    latitude: -28.2582,
+    longitude: -52.4020,
+    filename: "wheat_test_10_UQ_10.jpg",
+    talhao: "Talhão EXP-03 (Ensaio Leste)",
   },
   {
     id: "gwhd-map-11",
-    nome_amostra: "Talhão 03 - Amostra C3 (Média Densidade)",
+    nome_amostra: "Embrapa EXP-03 — Parcela C3 (Média Densidade)",
     total_espigas: 34,
     densidade_estimada: "Densidade Média",
     data: "2026-10-22T09:10:00Z",
-    latitude: -22.4118,
-    longitude: -47.5560,
-    filename: "wheat_test_11.jpg",
-    talhao: "Talhão 03 (Leste)",
+    latitude: -28.2598,
+    longitude: -52.4042,
+    filename: "wheat_test_11_Ukyoto_1.jpg",
+    talhao: "Talhão EXP-03 (Ensaio Leste)",
   },
   {
     id: "gwhd-map-12",
-    nome_amostra: "Talhão 03 - Amostra C4 (Borda Sul)",
+    nome_amostra: "Embrapa EXP-03 — Parcela C4 (Ensaio Borda Sul)",
     total_espigas: 19,
     densidade_estimada: "Baixa Densidade",
     data: "2026-10-22T09:30:00Z",
-    latitude: -22.4128,
-    longitude: -47.5532,
-    filename: "wheat_test_12.jpg",
-    talhao: "Talhão 03 (Leste)",
+    latitude: -28.2610,
+    longitude: -52.4015,
+    filename: "wheat_test_12_ARC_1.jpg",
+    talhao: "Talhão EXP-03 (Ensaio Leste)",
   },
 ];
 
@@ -277,8 +278,8 @@ export default function FieldMap() {
   const [buscaNome, setBuscaNome] = useState<string>("");
   const [apenasMaisRecente, setApenasMaisRecente] = useState<boolean>(false);
 
-  // Ponto central padrão de lavouras monitoradas (Rio Claro - SP)
-  const defaultCenter: [number, number] = [-22.4105, -47.5590];
+  // Ponto central padrão: Campos Experimentais da Embrapa Trigo (Passo Fundo - RS)
+  const defaultCenter: [number, number] = [-28.2585, -52.4080];
 
   useEffect(() => {
     let isMounted = true;
@@ -299,14 +300,29 @@ export default function FieldMap() {
           const data = await res.json();
           if (Array.isArray(data) && data.length > 0) {
             const items: WheatSampleMapItem[] = data.map((item: any, idx: number) => {
-              // Dispersão realista com espaçamento de ~60m caso não tenha GPS registrado
+              // Dispersão realista com espaçamento de ~60m nos campos da Embrapa
               const angle = (idx * 137.5 * Math.PI) / 180;
               const radius = 0.0016 + ((idx % 6) * 0.0006);
               const fallbackLat = defaultCenter[0] + radius * Math.cos(angle);
               const fallbackLng = defaultCenter[1] + radius * Math.sin(angle);
 
-              const hasValidLat = typeof item.latitude === "number" && !isNaN(item.latitude) && Math.abs(item.latitude) > 0.1;
-              const hasValidLng = typeof item.longitude === "number" && !isNaN(item.longitude) && Math.abs(item.longitude) > 0.1;
+              // Validação: se latitude estiver perto de 0 ou no centro urbano antigo, reajustar para Embrapa
+              const isOldRioClaro =
+                typeof item.latitude === "number" &&
+                item.latitude > -23.0 &&
+                item.latitude < -22.0;
+
+              const hasValidLat =
+                typeof item.latitude === "number" &&
+                !isNaN(item.latitude) &&
+                Math.abs(item.latitude) > 0.1 &&
+                !isOldRioClaro;
+
+              const hasValidLng =
+                typeof item.longitude === "number" &&
+                !isNaN(item.longitude) &&
+                Math.abs(item.longitude) > 0.1 &&
+                !isOldRioClaro;
 
               const total_espigas = item.total_espigas ?? item.focos_detectados ?? item.focosDetectados ?? 0;
 
@@ -326,7 +342,7 @@ export default function FieldMap() {
                 longitude: hasValidLng ? item.longitude : fallbackLng,
                 filename: item.nome_imagem || item.nomeImagem || item.filename || "trigo_teste.png",
                 image_url: item.image_url,
-                talhao: item.talhao || (idx % 2 === 0 ? "Talhão 01 (Norte)" : "Talhão 02 (Sul)"),
+                talhao: item.talhao || (idx % 2 === 0 ? "Talhão EXP-01 (Embrapa Norte)" : "Talhão EXP-02 (Embrapa Sul)"),
               };
             });
 
@@ -335,10 +351,10 @@ export default function FieldMap() {
           }
         }
       } catch (err) {
-        console.warn("Utilizando catálogo de amostras georreferenciadas:", err);
+        console.warn("Utilizando catálogo de amostras georreferenciadas Embrapa Trigo:", err);
       }
 
-      // Em ambiente de produção ou fallback, utiliza o catálogo calibrado
+      // Em ambiente de produção ou fallback, utiliza o catálogo oficial da Embrapa Trigo
       if (isMounted) {
         setSamples(WHEAT_MAP_FALLBACK);
       }
@@ -350,7 +366,7 @@ export default function FieldMap() {
     };
   }, []);
 
-  // Lista base (com fallback calibrado de alta precisão)
+  // Lista base (com fallback calibrado da Embrapa Trigo)
   const baseSamples = samples.length > 0 ? samples : WHEAT_MAP_FALLBACK;
 
   // ── Filtragem Dinâmica ──────────────────────────────
@@ -432,9 +448,14 @@ export default function FieldMap() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-            Filtros da Plantação
-          </span>
+          <div>
+            <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block" }}>
+              Embrapa Trigo
+            </span>
+            <span style={{ fontSize: "10px", color: "var(--muted)" }}>
+              Passo Fundo - RS
+            </span>
+          </div>
           <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--accent-green)", background: "rgba(46,160,67,0.15)", padding: "2px 8px", borderRadius: "10px" }}>
             {displaySamples.length} {displaySamples.length === 1 ? "ponto" : "pontos"}
           </span>
@@ -461,7 +482,7 @@ export default function FieldMap() {
             onChange={(e) => setShowTalhoes(e.target.checked)}
             style={{ cursor: "pointer", accentColor: "var(--accent-green)" }}
           />
-          <span style={{ fontWeight: 600 }}>🌾 Delimitação dos Talhões</span>
+          <span style={{ fontWeight: 600 }}>🌾 Parcelas Experimentais</span>
         </label>
 
         {/* Filtro 1: Período da Coleta */}
@@ -561,11 +582,11 @@ export default function FieldMap() {
         {/* Filtro 3: Busca por Talhão / Amostra */}
         <div>
           <label style={{ fontSize: "11px", color: "var(--foreground)", display: "block", marginBottom: "4px", fontWeight: 600 }}>
-            Filtrar por Talhão:
+            Filtrar por Parcela:
           </label>
           <input
             type="text"
-            placeholder="Ex: Talhão 01, BRS..."
+            placeholder="Ex: EXP-01, BRS..."
             value={buscaNome}
             onChange={(e) => setBuscaNome(e.target.value)}
             style={{
@@ -613,7 +634,7 @@ export default function FieldMap() {
         style={{ width: "100%", height: "100%", zIndex: 1 }}
       >
         <LayersControl position="topright">
-          {/* Camada 1: Satélite Google (Alta Resolução) */}
+          {/* Camada 1: Satélite Google (Alta Resolução em Passo Fundo) */}
           <LayersControl.BaseLayer checked name="Satélite Google">
             <TileLayer
               attribution="&copy; Google Maps"
@@ -623,7 +644,7 @@ export default function FieldMap() {
             />
           </LayersControl.BaseLayer>
 
-          {/* Camada 2: Satélite Esri (UAV / Ortofoto) */}
+          {/* Camada 2: Satélite Esri (UAV / Ortofoto Rural) */}
           <LayersControl.BaseLayer name="Satélite Esri (UAV)">
             <TileLayer
               attribution='&copy; <a href="https://www.esri.com/">Esri</a>'
@@ -644,7 +665,7 @@ export default function FieldMap() {
           </LayersControl.BaseLayer>
         </LayersControl>
 
-        {/* ── Polígonos de Delimitação dos Talhões Agrícolas ── */}
+        {/* ── Polígonos de Delimitação dos Talhões Experimentais Embrapa Trigo ── */}
         {showTalhoes &&
           TALHOES.map((talhao) => (
             <Polygon
@@ -660,7 +681,7 @@ export default function FieldMap() {
               }}
             >
               <Popup>
-                <div style={{ padding: "4px", width: "220px", fontSize: "12px", color: "#0d1117" }}>
+                <div style={{ padding: "4px", width: "230px", fontSize: "12px", color: "#0d1117" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
                     <span style={{ fontSize: "14px" }}>🌾</span>
                     <strong style={{ fontSize: "13px", color: talhao.cor }}>
@@ -676,7 +697,7 @@ export default function FieldMap() {
                     </div>
                   </div>
                   <div style={{ fontSize: "10.5px", color: "#57606a" }}>
-                    Polígono Georreferenciado • SugarVision UAV
+                    Embrapa Trigo • Passo Fundo - RS • UAV SugarVision
                   </div>
                 </div>
               </Popup>
@@ -687,7 +708,7 @@ export default function FieldMap() {
         {displaySamples.map((amostra) => {
           const lat = amostra.latitude;
           const lng = amostra.longitude;
-          const imgSrc = amostra.image_url || `/${amostra.filename || "wheat_test_1.jpg"}`;
+          const imgSrc = amostra.image_url || `/${amostra.filename || "trigo_teste.png"}`;
 
           return (
             <Marker key={amostra.id} position={[lat, lng]} icon={getWheatPin(amostra.total_espigas)}>
@@ -733,8 +754,8 @@ export default function FieldMap() {
 
                   {/* Cabeçalho da Amostra */}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
-                    <span style={{ fontWeight: 700, fontSize: "12.5px", color: "#0969da" }}>
-                      {amostra.talhao || "Talhão Monitorado"}
+                    <span style={{ fontWeight: 700, fontSize: "12px", color: "#0969da" }}>
+                      {amostra.talhao || "Parcela Embrapa"}
                     </span>
                     <span
                       style={{

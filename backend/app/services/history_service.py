@@ -84,13 +84,13 @@ class HistoryService:
         final_lng = longitude if longitude is not None else summary.get("longitude")
 
         if final_lat is None or final_lng is None:
-            # Ponto de referência padrão (Fazenda Boa Vista / Rio Claro - SP) com offset de talhão
+            # Ponto de referência padrão: Campos Experimentais da Embrapa Trigo (Passo Fundo - RS)
             import hashlib
             seed_val = int(hashlib.md5(filename.encode()).hexdigest()[:6], 16)
-            offset_lat = ((seed_val % 1000) / 1000.0 - 0.5) * 0.0035  # ~380m
-            offset_lng = (((seed_val // 1000) % 1000) / 1000.0 - 0.5) * 0.0040  # ~410m
-            final_lat = round(-22.4105 + offset_lat, 6)
-            final_lng = round(-47.5610 + offset_lng, 6)
+            offset_lat = ((seed_val % 1000) / 1000.0 - 0.5) * 0.0030  # ~330m dentro das parcelas
+            offset_lng = (((seed_val // 1000) % 1000) / 1000.0 - 0.5) * 0.0040  # ~380m
+            final_lat = round(-28.2585 + offset_lat, 6)
+            final_lng = round(-52.4080 + offset_lng, 6)
 
         analysis_payload = {
             "image_id": image_id,
@@ -98,10 +98,10 @@ class HistoryService:
             "image_url": image_url or f"{BASE_URL}/temp_images/{filename}",
             "tamanho_arquivo": tam_str,
             "formato": ext,
-            "talhao_id": "talhao-01",
+            "talhao_id": "exp-01",
             "talhao_nome": talhao_nome or f"Amostra {clean_display_name.rsplit('.', 1)[0]}",
-            "cidade": "Rio Claro - SP",
-            "variedade": "CTC-9001 (Plena Safra)",
+            "cidade": "Passo Fundo - RS (Embrapa Trigo)",
+            "variedade": "BRS Pastoreio",
             "area_amostra_m2": area_amostra,
             "area_infestacao_m2": area_infestada,
             "percentual_infestacao": percentual,

@@ -23,6 +23,7 @@ import {
   computeFieldMetrics,
   formatNumberBR,
 } from "./utils/geoMath";
+import { extractGpsFromImage } from "./utils/exifReader";
 import type { WeedDetection } from "./ImageDetectionViewer";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
@@ -462,6 +463,21 @@ function HomeContent() {
     const localPreviewUrl = URL.createObjectURL(file);
     const formData = new FormData();
     formData.append("file", file);
+
+    // Tentativa de leitura de coordenadas GPS nativas (EXIF do drone ou celular)
+    try {
+      const gpsCoords = await extractGpsFromImage(file);
+      if (gpsCoords) {
+        formData.append("latitude", String(gpsCoords.latitude));
+        formData.append("longitude", String(gpsCoords.longitude));
+        toast.info(
+          `📍 GPS identificado na foto: ${gpsCoords.latitude.toFixed(4)}, ${gpsCoords.longitude.toFixed(4)}`,
+          { position: "top-right", autoClose: 3500, theme: "dark" }
+        );
+      }
+    } catch (e) {
+      console.debug("Sem metadados EXIF GPS na imagem enviada:", e);
+    }
 
     try {
       // 1. Obter a sessão atual do Supabase
