@@ -1,5 +1,6 @@
 "use client";
 
+import { createClient } from "../lib/supabase/client";
 import { useState, useRef, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -462,8 +463,22 @@ function HomeContent() {
     formData.append("file", file);
 
     try {
+      // 1. Obter a sessão atual do Supabase
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      // Se não houver token, bloqueia o upload no frontend
+      if (!token) {
+        throw new Error("Sessão expirada ou utilizador não autenticado.");
+      }
+
+      // 2. Fazer o fetch com o cabeçalho Authorization
       const response = await fetch(`${API_URL}/upload`, {
         method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        },
         body: formData,
       });
 
