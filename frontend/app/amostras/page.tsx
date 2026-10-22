@@ -5,6 +5,7 @@ import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast, ToastContainer } from "react-toastify";
+import { authFetch } from "../../lib/supabase/client";
 import "react-toastify/dist/ReactToastify.css";
 import {
   Sidebar,
@@ -326,7 +327,7 @@ export default function BancoDeAmostrasPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_URL}/api/images`, {
+      const response = await authFetch(`${API_URL}/api/images`, {
         headers: { Accept: "application/json" },
         cache: "no-store",
       });

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Sidebar, IconLeaf, IconScan } from "../components/Sidebar";
 import { formatNumberBR } from "../utils/geoMath";
+import { authFetch } from "../../lib/supabase/client";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -39,7 +40,7 @@ export default function HistoricoPage() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(`${API_URL}/api/historico`);
+      const res = await authFetch(`${API_URL}/api/historico`);
       if (!res.ok) {
         throw new Error("Falha ao carregar histórico do servidor.");
       }
@@ -63,7 +64,7 @@ export default function HistoricoPage() {
     if (!confirmou) return;
 
     try {
-      const res = await fetch(`${API_URL}/api/historico/${id}`, {
+      const res = await authFetch(`${API_URL}/api/historico/${id}`, {
         method: "DELETE",
       });
       if (res.ok) {
