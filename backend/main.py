@@ -75,8 +75,23 @@ from fastapi.staticfiles import StaticFiles
 app.mount("/temp_images", StaticFiles(directory=TEMP_IMAGES_DIR), name="temp_images")
 
 
+@app.on_event("startup")
+async def startup_cleanup_routine() -> None:
+    """Rotina de inicialização (Sprint 7): limpa imagens temporárias de inferência com mais de 7 dias."""
+    try:
+        storage = StorageService()
+        stats = await storage.cleanup_temp_images(days=7)
+        logger.info(
+            "Rotina de inicialização da API executada. Limpeza de temp_images: %s",
+            stats,
+        )
+    except Exception as exc:
+        logger.error("Falha na rotina de inicialização para limpeza de temp_images: %s", exc)
+
+
 @app.get("/")
 async def read_root() -> dict[str, str]:
+
     """Endpoint raiz para verificar disponibilidade da API."""
     return {"status": "servidor online"}
 
@@ -395,7 +410,22 @@ async def upload_image(
         await file.close()
 
 
+@app.post("/api/storage/cleanup", dependencies=PROTECTED)
+async def cleanup_storage_endpoint(
+    days: int = Query(7, ge=1, description="Idade mínima em dias para expiração dos arquivos temporários"),
+    storage_service: StorageService = Depends(get_storage_service),
+) -> dict[str, Any]:
+    """Dispara a limpeza de imagens temporárias de upload com mais de `days` dias."""
+    stats = await storage_service.cleanup_temp_images(days=days)
+    return {
+        "status": "sucesso",
+        "dias_retencao": days,
+        "estatisticas": stats,
+    }
+
+
 if __name__ == "__main__":
+
     import uvicorn
 
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
