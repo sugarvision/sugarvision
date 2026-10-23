@@ -4,6 +4,7 @@ from functools import lru_cache
 
 from app.services.ai_service import AIService
 from app.services.anomaly_service import AnomalyService
+from app.services.health_service import HealthService
 from app.services.image_service import ImageService
 from app.services.history_service import HistoryService
 from app.services.storage_service import StorageService
@@ -37,3 +38,9 @@ def get_image_service() -> ImageService:
 def get_history_service() -> HistoryService:
     """Provedor singleton do serviço de histórico de análises."""
     return HistoryService()
+
+
+@lru_cache(maxsize=1)
+def get_health_service() -> HealthService:
+    """Provedor singleton do healthcheck (modelo, RAM e banco), compartilhando os demais singletons."""
+    return HealthService(get_ai_service(), get_anomaly_service())

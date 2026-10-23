@@ -4,18 +4,20 @@ import logging
 import os
 from typing import Any, List, Optional
 from pydantic import BaseModel
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Response, UploadFile, status
 
 from ai_engine import DEFAULT_MODEL_PATH
 from app.core.config import AI_DELAY_SECONDS, BASE_DIR, TEMP_IMAGES_DIR
 from app.core.dependencies import (
     get_ai_service,
     get_anomaly_service,
+    get_health_service,
     get_image_service,
     get_storage_service,
 )
 from app.services.ai_service import AIService
 from app.services.anomaly_service import AnomalyService
+from app.services.health_service import HealthService
 from app.services.image_service import ImageService
 from app.services.storage_service import StorageService
 
@@ -46,6 +48,17 @@ async def health_check(
         "api": "online",
         "database": db_status,
     }
+
+
+@api_router.get("/api/health")
+async def api_health_check(
+    response: Response,
+    health_service: HealthService = Depends(get_health_service),
+) -> dict[str, Any]:
+    """Healthcheck de produção: modelo de IA, RAM livre e conectividade com o banco."""
+    payload, http_status = await health_service.get_status()
+    response.status_code = http_status
+    return payload
 
 
 @api_router.get("/api/anomalies", response_model=List[dict[str, Any]])

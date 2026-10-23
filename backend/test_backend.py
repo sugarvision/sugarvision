@@ -726,6 +726,114 @@ class TestJWTProtection(unittest.TestCase):
         print("  [PASS] 44 - Upload funciona com token válido e em modo contingência")
 
 
+class TestHealthEndpoint(unittest.TestCase):
+    """Valida GET /api/health: modelo, RAM livre e conectividade com o banco."""
+
+    def setUp(self):
+        from app.core.dependencies import get_health_service
+        self._get_health_service = get_health_service
+        self.client = TestClient(app)
+
+    def tearDown(self):
+        app.dependency_overrides.pop(self._get_health_service, None)
+
+    def _override(self, model_status="available", db="connected", min_free_ram_gb=0.0, db_timeout=1.0):
+        from app.services.health_service import HealthService
+
+        ai = MagicMock()
+        ai.get_model_status.return_value = {
+            "status": model_status, "name": "best.pt", "loaded_in_memory": model_status == "loaded",
+            "file_size_mb": 130.5 if model_status != "missing" else None,
+        }
+        anomaly = MagicMock()
+        if db == "timeout":
+            async def _slow():
+                await asyncio.sleep(1.0)
+            anomaly.check_health_async = _slow
+        elif db == "error":
+            anomaly.check_health_async = AsyncMock(side_effect=RuntimeError("segredo-do-banco"))
+        else:
+            anomaly.check_health_async = AsyncMock(return_value={
+                "status": db, "supabase_url": "https://segredo.supabase.co", "db_host": "db.segredo",
+                "postgres_direct": {"status": db, "message": "senha=123"},
+                "supabase_api": {"status": db, "message": "chave=abc"},
+            })
+        service = HealthService(ai, anomaly, min_free_ram_gb=min_free_ram_gb, db_timeout_seconds=db_timeout)
+        app.dependency_overrides[self._get_health_service] = lambda: service
+
+    def test_45_health_ok_com_modelo_ram_e_banco(self):
+        self._override()
+        response = self.client.get("/api/health")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["status"], "ok")
+        self.assertEqual(data["model"]["status"], "available")
+        self.assertGreater(data["memory"]["free_gb"], 0)
+        self.assertGreater(data["memory"]["total_gb"], data["memory"]["free_gb"] - 0.001)
+        self.assertEqual(data["database"]["status"], "connected")
+        print("  [PASS] 45 - /api/health retorna modelo, RAM livre e banco (status ok)")
+
+    def test_46_health_publico_sem_token(self):
+        self._override()
+        with patch.dict(os.environ, {"AUTH_ENABLED": "True"}):
+            self.assertEqual(self.client.get("/api/health").status_code, 200)
+            self.assertEqual(self.client.get("/api/anomalies").status_code, 401)
+        print("  [PASS] 46 - /api/health é público (sem JWT) e demais rotas seguem protegidas")
+
+    def test_47_health_nao_vaza_segredos_do_banco(self):
+        self._override()
+        body = self.client.get("/api/health").text
+        for segredo in ("segredo", "senha=123", "chave=abc", "supabase.co"):
+            self.assertNotIn(segredo, body)
+        print("  [PASS] 47 - /api/health não expõe URL/host/mensagens do banco")
+
+    def test_48_health_degradado_banco_indisponivel(self):
+        for db in ("error", "timeout", "unconfigured"):
+            self._override(db=db, db_timeout=0.05)
+            response = self.client.get("/api/health")
+            self.assertEqual(response.status_code, 200, db)
+            data = response.json()
+            self.assertEqual(data["status"], "degraded", db)
+            self.assertNotEqual(data["database"]["status"], "connected")
+            self.assertNotIn("segredo-do-banco", response.text)
+        print("  [PASS] 48 - Banco em erro/timeout/não configurado resulta em 'degraded' (200)")
+
+    def test_49_health_degradado_ram_baixa(self):
+        self._override(min_free_ram_gb=10 ** 6)
+        data = self.client.get("/api/health").json()
+        self.assertEqual(data["status"], "degraded")
+        self.assertEqual(data["memory"]["status"], "low")
+        print("  [PASS] 49 - RAM livre abaixo do mínimo resulta em 'degraded'")
+
+    def test_50_health_unhealthy_modelo_ausente_retorna_503(self):
+        self._override(model_status="missing")
+        response = self.client.get("/api/health")
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()["status"], "unhealthy")
+        self.assertEqual(response.json()["model"]["status"], "missing")
+        print("  [PASS] 50 - Pesos do modelo ausentes retornam 503 'unhealthy'")
+
+    def test_51_ai_service_status_do_modelo_sem_carregar(self):
+        service = AIService()
+        status_before = service.get_model_status()
+        self.assertEqual(status_before["status"], "available")
+        self.assertFalse(status_before["loaded_in_memory"])
+        self.assertFalse(service._model_cache)  # healthcheck não pode carregar os 136 MB
+        service._model_cache[str(DEFAULT_MODEL_PATH.resolve())] = object()
+        self.assertEqual(service.get_model_status()["status"], "loaded")
+        missing = service.get_model_status(DEFAULT_MODEL_PATH.parent / "inexistente.pt")
+        self.assertEqual(missing["status"], "missing")
+        print("  [PASS] 51 - AIService.get_model_status: available/loaded/missing sem carregar o modelo")
+
+    def test_52_health_real_sem_overrides(self):
+        data_response = self.client.get("/api/health")
+        self.assertIn(data_response.status_code, (200, 503))
+        data = data_response.json()
+        for chave in ("status", "api", "timestamp", "uptime_seconds", "model", "memory", "database"):
+            self.assertIn(chave, data)
+        print(f"  [PASS] 52 - /api/health real respondeu {data_response.status_code} ({data['status']})")
+
+
 if __name__ == "__main__":
     print("\n" + "=" * 65)
     print("  EXECUTANDO BATERIA DE TESTES - BACKEND SUGARVISION")

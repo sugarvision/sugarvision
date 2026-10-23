@@ -24,12 +24,14 @@ from app.core.dependencies import (
     get_ai_service,
     get_anomaly_service,
     get_history_service,
+    get_health_service,
     get_image_service,
     get_storage_service,
 )
 from app.services.ai_service import AIService
 from app.services.anomaly_service import AnomalyService
 from app.services.history_service import HistoryService
+from app.services.health_service import HealthService
 from app.services.image_service import ImageService
 from app.services.storage_service import StorageService
 from app.core.security import verify_token
@@ -91,6 +93,21 @@ async def health_check(
         "api": "online",
         "database": db_status,
     }
+
+
+@app.get("/api/health")
+async def api_health_check(
+    response: Response,
+    health_service: HealthService = Depends(get_health_service),
+) -> dict[str, Any]:
+    """Healthcheck de produção: estado do modelo de IA, RAM livre e conectividade com o banco.
+
+    Rota pública (usada pelo script de inicialização e pelo monitor do túnel). Retorna 200 com
+    status 'ok' ou 'degraded'; 503 ('unhealthy') se os pesos do modelo estiverem ausentes.
+    """
+    payload, http_status = await health_service.get_status()
+    response.status_code = http_status
+    return payload
 
 
 PROTECTED = [Depends(verify_token)]

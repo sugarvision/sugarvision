@@ -24,6 +24,23 @@ class AIService:
         self.default_model_path = default_model_path
         self._model_cache: dict[str, Any] = {}
 
+    def get_model_status(self, model_path: Optional[Path] = None) -> dict[str, Any]:
+        """Descreve o estado do modelo YOLO sem carregá-lo (seguro para healthchecks).
+
+        - ``loaded``: instância já em cache na RAM, pronta para inferir.
+        - ``available``: pesos presentes em disco; carga sob demanda na 1ª inferência.
+        - ``missing``: arquivo de pesos ausente (API incapaz de inferir).
+        """
+        target_path = (model_path or self.default_model_path).resolve()
+        exists = target_path.exists()
+        loaded = str(target_path) in self._model_cache
+        return {
+            "status": "loaded" if loaded else ("available" if exists else "missing"),
+            "name": target_path.name,
+            "loaded_in_memory": loaded,
+            "file_size_mb": round(target_path.stat().st_size / (1024 * 1024), 1) if exists else None,
+        }
+
     def get_or_load_model(self, model_path: Optional[Path] = None) -> Any:
         """Carrega e armazena o modelo YOLO em memória (Singleton Cache).
 
