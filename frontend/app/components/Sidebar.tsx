@@ -293,6 +293,7 @@ export const navItems: NavItem[] = [
 
   { id: "amostras", href: "/amostras", label: "Banco de Amostras", icon: IconLayers },
   { id: "mapa", href: "/mapa", label: "Mapa de Campo", icon: IconMap },
+  { id: "flyer", href: "/flyer", label: "Flyer Comercial", icon: IconChart },
 ];
 
 export function Sidebar({
