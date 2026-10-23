@@ -57,11 +57,11 @@ export function getActiveAuthToken(): string | null {
 
 /**
  * Helper fetch que anexa automaticamente o cabeçalho Authorization: Bearer <token>.
- * Atende ao requisito de repassar o token JWT nas chamadas que exigem autenticação.
+ * Inclui timeout padrão de 3s para evitar travamento da UI em backends offline ou inacessíveis.
  */
 export async function authFetch(
   input: RequestInfo | URL,
-  init?: RequestInit
+  init?: RequestInit & { timeoutMs?: number }
 ): Promise<Response> {
   const token = getActiveAuthToken();
   const headers = new Headers(init?.headers || {});
@@ -70,8 +70,19 @@ export async function authFetch(
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  return fetch(input, {
-    ...init,
-    headers,
-  });
+  const timeoutMs = init?.timeoutMs ?? 3000;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const signal = init?.signal || controller.signal;
+
+  try {
+    return await fetch(input, {
+      ...init,
+      headers,
+      signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
+

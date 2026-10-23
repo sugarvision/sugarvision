@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SugarVision AI — One-Pager Comercial & Pitch Deck</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #090d13;
+      color: #e6edf3;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px;
+    }
+    .action-bar {
+      width: 100%;
+      max-width: 1080px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      background: rgba(22, 27, 34, 0.9);
+      padding: 12px 20px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .btn-print {
+      background: #2ea043;
+      color: #fff;
+      font-weight: 700;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .btn-print:hover { background: #3fb950; }
+    .flyer {
+      width: 100%;
+      max-width: 1080px;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 16px;
+      padding: 28px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      padding-bottom: 14px;
+    }
+    .brand-row { display: flex; align-items: center; gap: 14px; }
+    .brand-logo {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, #2ea043, #196c2e);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+    }
+    .brand-title { font-size: 24px; font-weight: 800; color: #fff; }
+    .badge-seed {
+      font-size: 10.5px;
+      font-weight: 800;
+      color: #d29922;
+      background: rgba(210,153,34,0.15);
+      border: 1px solid rgba(210,153,34,0.35);
+      padding: 2px 8px;
+      border-radius: 12px;
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 16px;
+    }
+    .hero-img-box {
+      border-radius: 12px;
+      overflow: hidden;
+      height: 195px;
+      position: relative;
+      border: 1px solid #30363d;
+    }
+    .hero-img-box img { width: 100%; height: 100%; object-fit: cover; }
+    .hero-chip {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      background: rgba(13,17,23,0.9);
+      color: #3fb950;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(63,185,80,0.3);
+    }
+    .pain-box {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .pain-title { font-size: 11px; font-weight: 800; color: #ff7b72; letter-spacing: 0.5px; }
+    .sol-title { font-size: 11px; font-weight: 800; color: #3fb950; letter-spacing: 0.5px; }
+    .desc-text { font-size: 11.5px; line-height: 1.45; color: #c9d1d9; }
+    .desc-text strong { color: #fff; }
+    .metrics-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    .metric-card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      padding: 10px 14px;
+    }
+    .metric-num { font-size: 24px; font-weight: 900; }
+    .pillars {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr 1fr;
+      gap: 14px;
+    }
+    .pillar-card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+    .pillar-h3 {
+      font-size: 12px;
+      font-weight: 800;
+      color: #fff;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      padding-bottom: 6px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+    .pillar-card ul { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+    .pillar-card li { font-size: 10.8px; color: #8b949e; line-height: 1.35; }
+    .pillar-card li strong { color: #e6edf3; }
+    .mockup-img { width: 100%; height: 155px; object-fit: cover; border-radius: 8px; }
+    .market-box {
+      display: grid;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 14px;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      padding: 12px 16px;
+    }
+    .tam-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .tam-item {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      padding: 8px;
+    }
+    .tam-item.high { border-color: rgba(46,160,67,0.5); background: rgba(46,160,67,0.08); }
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #11151c;
+      border: 1px solid rgba(46,160,67,0.35);
+      border-radius: 12px;
+      padding: 12px 18px;
+    }
+    .qr-box {
+      width: 58px;
+      height: 58px;
+      background: #fff;
+      border-radius: 6px;
+      padding: 4px;
+    }
+    @media print {
+      .action-bar { display: none !important; }
+      body { background: #fff !important; color: #000 !important; padding: 0 !important; }
+      .flyer { border: none !important; box-shadow: none !important; padding: 8mm 10mm !important; }
+      @page { size: A4 portrait; margin: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="action-bar">
+    <div style="font-size: 13px; font-weight: 600; color: #8b949e;">
+      SugarVision AI • Documento Executivo de Captação e Proposta de Valor
+    </div>
+    <div>
+      <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Salvar PDF (A4)</button>
+    </div>
+  </div>
+
+  <div class="flyer">
+    <!-- Header -->
+    <div class="header">
+      <div class="brand-row">
+        <div class="brand-logo">🌾</div>
+        <div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span class="brand-title">SugarVision AI</span>
+            <span style="color: #2ea043; font-weight: 700; font-size: 13px;">MyAgro Precision</span>
+            <span class="badge-seed">RODADA SEED 2026</span>
+          </div>
+          <div style="font-size: 12.5px; color: #8b949e; margin-top: 4px;">
+            Visão Computacional & IA para Monitoramento de Estande e Produtividade de Grãos
+          </div>
+        </div>
+      </div>
+      <div style="text-align: right; background: rgba(255,255,255,0.03); padding: 8px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.07);">
+        <div style="font-size: 11px; color: #3fb950; font-weight: 700;">🟢 MVP EM PRODUÇÃO</div>
+        <div style="font-size: 11px; color: #8b949e; font-family: monospace;">sugarvision-sikq.vercel.app</div>
+      </div>
+    </div>
+
+    <!-- Hero -->
+    <div class="hero-grid">
+      <div class="hero-img-box">
+        <img src="/flyer_hero.jpg" alt="SugarVision AI Drone Telemetry">
+        <div class="hero-chip">YOLOv8x + SAHI Drone Telemetry • GPS Sub-Métrico</div>
+      </div>
+      <div class="pain-box">
+        <div>
+          <div class="pain-title">⚠️ O PROBLEMA DE US$ 210 BILHÕES</div>
+          <p class="desc-text">
+            A contagem de espigas de trigo ainda depende de <strong>amostragem manual com aro</strong>. Cobre menos de <strong>1% do talhão</strong>, consome dias e gera desvios de até <strong>18% na estimativa de colheita</strong>, causando perdas financeiras em insumos e quebra de contratos futuros.
+          </p>
+        </div>
+        <div>
+          <div class="sol-title">💡 NOSSA SOLUÇÃO PROPRIETÁRIA</div>
+          <p class="desc-text">
+            Transformamos fotos de drone ou smartphone em um <strong>censo automatizado de espigas</strong>. Combinamos <strong>YOLOv8x calibrado</strong>, <strong>tiling adaptativo (SAHI)</strong> e <strong>georreferenciamento oficial da Embrapa Trigo</strong> para emitir laudos de estande em segundos.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Métricas -->
+    <div class="metrics-row">
+      <div class="metric-card">
+        <div class="metric-num" style="color: #3fb950;">96.4%</div>
+        <div style="font-size: 11px; font-weight: 700; color: #fff;">Precisão (mAP@50)</div>
+        <div style="font-size: 10px; color: #8b949e;">Global Wheat Head Consortium</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-num" style="color: #58a6ff;">&lt; 1.8s</div>
+        <div style="font-size: 11px; font-weight: 700; color: #fff;">Tempo de Resposta</div>
+        <div style="font-size: 10px; color: #8b949e;">Processamento 4K em tempo real</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-num" style="color: #d29922;">-90%</div>
+        <div style="font-size: 11px; font-weight: 700; color: #fff;">Tempo em Campo</div>
+        <div style="font-size: 10px; color: #8b949e;">De 4 dias para 15 minutos</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-num" style="color: #3fb950;">+14%</div>
+        <div style="font-size: 11px; font-weight: 700; color: #fff;">Margem Agronômica</div>
+        <div style="font-size: 10px; color: #8b949e;">Otimização de colheita e estande</div>
+      </div>
+    </div>
+
+    <!-- Pilares -->
+    <div class="pillars">
+      <div class="pillar-card">
+        <div class="pillar-h3">⚙️ Pipeline Tecnológico</div>
+        <ul>
+          <li><strong>1. Captura com Drone / Celular:</strong> Leitura automática de GPS nativo EXIF no navegador.</li>
+          <li><strong>2. Tiling SAHI:</strong> Fatiamento dinâmico para espigas densas por m².</li>
+          <li><strong>3. Classificação de Densidade:</strong> Agrupamento agronômico (Alta &gt;50, Média 20-50, Baixa &lt;20).</li>
+          <li><strong>4. GIS & Embrapa Trigo:</strong> Projeção cartográfica com parcelas de pesquisa agronômica.</li>
+        </ul>
+      </div>
+
+      <div class="pillar-card" style="padding: 6px;">
+        <img src="/flyer_app_mockup.jpg" alt="Interface Móvel em Campo na Embrapa" class="mockup-img">
+        <div style="font-size: 9.5px; color: #3fb950; text-align: center; font-weight: 600; margin-top: 6px;">
+          🌾 Validado nos Campos da Embrapa Trigo (Passo Fundo - RS)
+        </div>
+      </div>
+
+      <div class="pillar-card">
+        <div class="pillar-h3">💼 Modelo de Negócio B2B</div>
+        <div style="font-size: 10.8px; color: #8b949e; display: flex; flex-direction: column; gap: 8px;">
+          <div><strong style="color: #fff;">SaaS por Hectare:</strong> R$ 6,50 a R$ 12,00 / ha / safra para médios e grandes produtores.</div>
+          <div><strong style="color: #fff;">Enterprise / Cooperativas:</strong> Licença anual para cooperativas (Coamo, Castrolanda, Copacol).</div>
+          <div><strong style="color: #fff;">API & Drones:</strong> Módulo white-label para fabricantes UAV (DJI Agras, Pix4D).</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mercado -->
+    <div class="market-box">
+      <div>
+        <div style="font-size: 10.5px; font-weight: 800; color: #8b949e; margin-bottom: 8px;">OPORTUNIDADE DE MERCADO GLOBAL</div>
+        <div class="tam-grid">
+          <div class="tam-item">
+            <div style="font-size: 16px; font-weight: 800; color: #fff;">US$ 12.8B</div>
+            <div style="font-size: 9.5px; color: #8b949e;">TAM Global Drones no Agro (2028)</div>
+          </div>
+          <div class="tam-item">
+            <div style="font-size: 16px; font-weight: 800; color: #fff;">US$ 1.4B</div>
+            <div style="font-size: 9.5px; color: #8b949e;">SAM Grãos América Latina</div>
+          </div>
+          <div class="tam-item high">
+            <div style="font-size: 16px; font-weight: 800; color: #3fb950;">R$ 180M</div>
+            <div style="font-size: 9.5px; color: #8b949e;">SOM Inicial (Cinturão PR/RS/Cerrado)</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size: 10.5px; font-weight: 800; color: #8b949e; margin-bottom: 8px;">DIFERENCIAIS COMPETITIVOS</div>
+        <div style="display: flex; flex-direction: column; gap: 4px; font-size: 10.5px; color: #c9d1d9;">
+          <div style="background: rgba(255,255,255,0.04); padding: 4px 8px; border-radius: 6px;">✓ 100% Web Cloud (Zero Instalação)</div>
+          <div style="background: rgba(255,255,255,0.04); padding: 4px 8px; border-radius: 6px;">✓ Otimizado para Trigo Tropical & Temperado</div>
+          <div style="background: rgba(255,255,255,0.04); padding: 4px 8px; border-radius: 6px;">✓ Integração Nativa Supabase + Vercel</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div>
+        <div style="font-size: 11.5px; color: #c9d1d9;">
+          <strong>Equipe SugarVision</strong> • Projeto de Inovação & IA para o Agronegócio
+        </div>
+        <div style="font-size: 9.5px; color: #8b949e; margin: 4px 0;">
+          Tech Stack: Next.js 16 • FastAPI • YOLOv8x • PyTorch • Supabase • Leaflet Satellite GIS
+        </div>
+        <div style="font-size: 10.5px; color: #8b949e;">
+          Contato Comercial: <strong style="color: #fff;">contato@sugarvision.ag</strong> • Passo Fundo - RS
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 12px; background: rgba(0,0,0,0.4); padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);">
+        <div class="qr-box">
+          <svg viewBox="0 0 100 100" style="width: 100%; height: 100%;">
+            <rect width="100" height="100" fill="white" rx="6" />
+            <rect x="8" y="8" width="28" height="28" fill="#0d1117" />
+            <rect x="12" y="12" width="20" height="20" fill="white" />
+            <rect x="16" y="16" width="12" height="12" fill="#2ea043" />
+            <rect x="64" y="8" width="28" height="28" fill="#0d1117" />
+            <rect x="68" y="12" width="20" height="20" fill="white" />
+            <rect x="72" y="16" width="12" height="12" fill="#2ea043" />
+            <rect x="8" y="64" width="28" height="28" fill="#0d1117" />
+            <rect x="12" y="68" width="20" height="20" fill="white" />
+            <rect x="16" y="72" width="12" height="12" fill="#2ea043" />
+            <rect x="42" y="10" width="8" height="8" fill="#0d1117" />
+            <rect x="44" y="42" width="14" height="14" fill="#2ea043" />
+            <rect x="68" y="66" width="22" height="8" fill="#0d1117" />
+          </svg>
+        </div>
+        <div>
+          <div style="font-size: 11px; font-weight: 800; color: #fff;">TESTE A DEMO ONLINE</div>
+          <div style="font-size: 9.5px; color: #8b949e;">Aponte a câmera do celular</div>
+          <a href="https://sugarvision-sikq.vercel.app/" target="_blank" style="color: #2ea043; font-size: 10px; font-weight: 700; text-decoration: none;">sugarvision-sikq.vercel.app ↗</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

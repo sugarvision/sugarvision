@@ -726,6 +726,88 @@ class TestJWTProtection(unittest.TestCase):
         print("  [PASS] 44 - Upload funciona com token válido e em modo contingência")
 
 
+class TestStorageCleanupSprint7(unittest.TestCase):
+    """Bateria de testes da Sprint 7: Validação da rotina de limpeza de imagens temporárias."""
+
+    SECRET = "segredo-de-teste-com-tamanho-suficiente-32b"
+
+    def setUp(self):
+        self.client = TestClient(app)
+        self.storage = StorageService()
+
+    def _token(self):
+        payload = {"sub": "user-guilherme", "aud": "authenticated", "exp": int(time.time()) + 3600}
+        return jwt.encode(payload, self.SECRET, algorithm="HS256")
+
+    def test_45_storage_cleanup_deletes_expired_files_and_preserves_recent(self):
+        """Sprint 7 - Valida que a rotina remove arquivos com > 7 dias e preserva arquivos recentes."""
+        now = time.time()
+        old_file = TEMP_IMAGES_DIR / "temp_antiga_sprint7.jpg"
+        recent_file = TEMP_IMAGES_DIR / "temp_recente_sprint7.jpg"
+
+        try:
+            # Cria os arquivos físicos de teste
+            old_file.write_bytes(b"conteudo_antigo_10_dias")
+            recent_file.write_bytes(b"conteudo_recente_1_dia")
+
+            # Configura mtime: old_file há 10 dias, recent_file há 1 hora
+            ten_days_ago = now - (10 * 86400)
+            one_hour_ago = now - 3600
+            os.utime(old_file, (ten_days_ago, ten_days_ago))
+            os.utime(recent_file, (one_hour_ago, one_hour_ago))
+
+            # Executa a limpeza com limiar de 7 dias
+            stats = asyncio.run(self.storage.cleanup_temp_images(days=7))
+
+            # Validações
+            self.assertFalse(old_file.exists(), "Arquivo com mais de 7 dias deveria ter sido deletado")
+            self.assertTrue(recent_file.exists(), "Arquivo recente (< 7 dias) deve ser preservado")
+            self.assertIn("temp_antiga_sprint7.jpg", stats["deleted_files"])
+            self.assertGreaterEqual(stats["deleted"], 1)
+            print("  [PASS] 45 - StorageService: arquivos > 7 dias excluídos e recentes preservados")
+        finally:
+            if old_file.exists():
+                old_file.unlink()
+            if recent_file.exists():
+                recent_file.unlink()
+
+    def test_46_storage_cleanup_preserves_protected_files(self):
+        """Sprint 7 - Valida que arquivos essenciais/contingência não são excluídos mesmo com mtime antigo."""
+        now = time.time()
+        protected_file = TEMP_IMAGES_DIR / "cana_teste.jpg"
+        created_dummy = False
+        if not protected_file.exists():
+            protected_file.write_bytes(b"mock_cana")
+            created_dummy = True
+
+        try:
+            # Força data antiga de 30 dias atrás
+            thirty_days_ago = now - (30 * 86400)
+            os.utime(protected_file, (thirty_days_ago, thirty_days_ago))
+
+            stats = asyncio.run(self.storage.cleanup_temp_images(days=7))
+
+            self.assertTrue(protected_file.exists(), "Arquivo protegido não pode ser removido")
+            self.assertNotIn("cana_teste.jpg", stats["deleted_files"])
+            self.assertGreaterEqual(stats["skipped_protected"], 1)
+            print("  [PASS] 46 - StorageService: arquivos protegidos (cana_teste.jpg) permanecem intactos")
+        finally:
+            if created_dummy and protected_file.exists():
+                protected_file.unlink()
+
+    def test_47_storage_cleanup_endpoint(self):
+        """Sprint 7 - Valida endpoint administrativo POST /api/storage/cleanup."""
+        with patch.dict(os.environ, {"AUTH_ENABLED": "True", "SUPABASE_JWT_SECRET": self.SECRET}):
+            headers = {"Authorization": f"Bearer {self._token()}"}
+            response = self.client.post("/api/storage/cleanup?days=7", headers=headers)
+            self.assertEqual(response.status_code, 200)
+            data = response.json()
+            self.assertEqual(data.get("status"), "sucesso")
+            self.assertEqual(data.get("dias_retencao"), 7)
+            self.assertIn("estatisticas", data)
+            print("  [PASS] 47 - Endpoint POST /api/storage/cleanup respondeu 200 OK")
+
+
 class TestHealthEndpoint(unittest.TestCase):
     """Valida GET /api/health: modelo, RAM livre e conectividade com o banco."""
 
@@ -761,7 +843,7 @@ class TestHealthEndpoint(unittest.TestCase):
         service = HealthService(ai, anomaly, min_free_ram_gb=min_free_ram_gb, db_timeout_seconds=db_timeout)
         app.dependency_overrides[self._get_health_service] = lambda: service
 
-    def test_45_health_ok_com_modelo_ram_e_banco(self):
+    def test_48_health_ok_com_modelo_ram_e_banco(self):
         self._override()
         response = self.client.get("/api/health")
         self.assertEqual(response.status_code, 200)
@@ -771,23 +853,23 @@ class TestHealthEndpoint(unittest.TestCase):
         self.assertGreater(data["memory"]["free_gb"], 0)
         self.assertGreater(data["memory"]["total_gb"], data["memory"]["free_gb"] - 0.001)
         self.assertEqual(data["database"]["status"], "connected")
-        print("  [PASS] 45 - /api/health retorna modelo, RAM livre e banco (status ok)")
+        print("  [PASS] 48 - /api/health retorna modelo, RAM livre e banco (status ok)")
 
-    def test_46_health_publico_sem_token(self):
+    def test_49_health_publico_sem_token(self):
         self._override()
         with patch.dict(os.environ, {"AUTH_ENABLED": "True"}):
             self.assertEqual(self.client.get("/api/health").status_code, 200)
             self.assertEqual(self.client.get("/api/anomalies").status_code, 401)
-        print("  [PASS] 46 - /api/health é público (sem JWT) e demais rotas seguem protegidas")
+        print("  [PASS] 49 - /api/health é público (sem JWT) e demais rotas seguem protegidas")
 
-    def test_47_health_nao_vaza_segredos_do_banco(self):
+    def test_50_health_nao_vaza_segredos_do_banco(self):
         self._override()
         body = self.client.get("/api/health").text
         for segredo in ("segredo", "senha=123", "chave=abc", "supabase.co"):
             self.assertNotIn(segredo, body)
-        print("  [PASS] 47 - /api/health não expõe URL/host/mensagens do banco")
+        print("  [PASS] 50 - /api/health não expõe URL/host/mensagens do banco")
 
-    def test_48_health_degradado_banco_indisponivel(self):
+    def test_51_health_degradado_banco_indisponivel(self):
         for db in ("error", "timeout", "unconfigured"):
             self._override(db=db, db_timeout=0.05)
             response = self.client.get("/api/health")
@@ -796,24 +878,24 @@ class TestHealthEndpoint(unittest.TestCase):
             self.assertEqual(data["status"], "degraded", db)
             self.assertNotEqual(data["database"]["status"], "connected")
             self.assertNotIn("segredo-do-banco", response.text)
-        print("  [PASS] 48 - Banco em erro/timeout/não configurado resulta em 'degraded' (200)")
+        print("  [PASS] 51 - Banco em erro/timeout/não configurado resulta em 'degraded' (200)")
 
-    def test_49_health_degradado_ram_baixa(self):
+    def test_52_health_degradado_ram_baixa(self):
         self._override(min_free_ram_gb=10 ** 6)
         data = self.client.get("/api/health").json()
         self.assertEqual(data["status"], "degraded")
         self.assertEqual(data["memory"]["status"], "low")
-        print("  [PASS] 49 - RAM livre abaixo do mínimo resulta em 'degraded'")
+        print("  [PASS] 52 - RAM livre abaixo do mínimo resulta em 'degraded'")
 
-    def test_50_health_unhealthy_modelo_ausente_retorna_503(self):
+    def test_53_health_unhealthy_modelo_ausente_retorna_503(self):
         self._override(model_status="missing")
         response = self.client.get("/api/health")
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.json()["status"], "unhealthy")
         self.assertEqual(response.json()["model"]["status"], "missing")
-        print("  [PASS] 50 - Pesos do modelo ausentes retornam 503 'unhealthy'")
+        print("  [PASS] 53 - Pesos do modelo ausentes retornam 503 'unhealthy'")
 
-    def test_51_ai_service_status_do_modelo_sem_carregar(self):
+    def test_54_ai_service_status_do_modelo_sem_carregar(self):
         service = AIService()
         status_before = service.get_model_status()
         self.assertEqual(status_before["status"], "available")
@@ -823,18 +905,20 @@ class TestHealthEndpoint(unittest.TestCase):
         self.assertEqual(service.get_model_status()["status"], "loaded")
         missing = service.get_model_status(DEFAULT_MODEL_PATH.parent / "inexistente.pt")
         self.assertEqual(missing["status"], "missing")
-        print("  [PASS] 51 - AIService.get_model_status: available/loaded/missing sem carregar o modelo")
+        print("  [PASS] 54 - AIService.get_model_status: available/loaded/missing sem carregar o modelo")
 
-    def test_52_health_real_sem_overrides(self):
+    def test_55_health_real_sem_overrides(self):
         data_response = self.client.get("/api/health")
         self.assertIn(data_response.status_code, (200, 503))
         data = data_response.json()
         for chave in ("status", "api", "timestamp", "uptime_seconds", "model", "memory", "database"):
             self.assertIn(chave, data)
-        print(f"  [PASS] 52 - /api/health real respondeu {data_response.status_code} ({data['status']})")
+        print(f"  [PASS] 55 - /api/health real respondeu {data_response.status_code} ({data['status']})")
+
 
 
 if __name__ == "__main__":
+
     print("\n" + "=" * 65)
     print("  EXECUTANDO BATERIA DE TESTES - BACKEND SUGARVISION")
     print("=" * 65 + "\n")

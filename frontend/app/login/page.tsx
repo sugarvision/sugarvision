@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "react-toastify";
+// 1. Importação do Supabase adicionada aqui
+import { createClient } from "../../lib/supabase/client";
 
 function LoginForm() {
   const router = useRouter();
@@ -69,19 +71,28 @@ function LoginForm() {
     }
   };
 
+  // 2. Função handleDemoLogin atualizada para Login Anônimo
   const handleDemoLogin = async () => {
     setIsDemoLoading(true);
     setErrorMessage(null);
     try {
-      await signInDemo("pesquisador@sugarvision.agro", "Dr. Roberto Silva (UAV)");
-      toast.success("Sessão autorizada! Acessando painel de trigo...", {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInAnonymously();
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      toast.success("Sessão de demonstração autorizada! Acessando painel...", {
         position: "top-right",
         autoClose: 1800,
         theme: "dark",
       });
+      
       router.push(redirectTo);
     } catch (err: any) {
-      setErrorMessage("Erro ao iniciar sessão de demonstração.");
+      console.error("Erro no login anônimo:", err);
+      setErrorMessage("Erro ao iniciar sessão de demonstração. Verifique se o login anônimo está ativado no Supabase.");
     } finally {
       setIsDemoLoading(false);
     }

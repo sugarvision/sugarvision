@@ -77,8 +77,23 @@ from fastapi.staticfiles import StaticFiles
 app.mount("/temp_images", StaticFiles(directory=TEMP_IMAGES_DIR), name="temp_images")
 
 
+@app.on_event("startup")
+async def startup_cleanup_routine() -> None:
+    """Rotina de inicialização (Sprint 7): limpa imagens temporárias de inferência com mais de 7 dias."""
+    try:
+        storage = StorageService()
+        stats = await storage.cleanup_temp_images(days=7)
+        logger.info(
+            "Rotina de inicialização da API executada. Limpeza de temp_images: %s",
+            stats,
+        )
+    except Exception as exc:
+        logger.error("Falha na rotina de inicialização para limpeza de temp_images: %s", exc)
+
+
 @app.get("/")
 async def read_root() -> dict[str, str]:
+
     """Endpoint raiz para verificar disponibilidade da API."""
     return {"status": "servidor online"}
 
@@ -341,13 +356,15 @@ async def analyze_sample(
 async def upload_image(
     file: UploadFile = File(...),
     custom_name: Optional[str] = Form(None),
+    latitude: Optional[float] = Form(None),
+    longitude: Optional[float] = Form(None),
     background_tasks: BackgroundTasks = None,
     storage_service: StorageService = Depends(get_storage_service),
     ai_service: AIService = Depends(get_ai_service),
     image_service: ImageService = Depends(get_image_service),
     history_service: HistoryService = Depends(get_history_service),
 ) -> dict[str, Any]:
-    """Recebe imagem, preserva o nome original/customizado, detecta IA e salva nas amostras e histórico."""
+    """Recebe imagem, preserva o nome original/customizado, detecta IA e salva nas amostras e histórico com GPS."""
     if not file.filename:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -378,7 +395,7 @@ async def upload_image(
         except Exception as db_err:
             logger.warning("Aviso não-crítico ao salvar imagem na tabela 'images': %s", db_err)
 
-        # 2. Salva no Histórico (tabela analyses)
+        # 2. Salva no Histórico (tabela analyses) com georreferenciamento
         image_id = db_image_record.get("id") if db_image_record else None
         image_url = f"{BASE_URL}/temp_images/{target_path.name}"
         history_record = None
@@ -390,9 +407,12 @@ async def upload_image(
                 image_id=image_id,
                 image_url=image_url,
                 file_size_bytes=file_size,
+                latitude=latitude,
+                longitude=longitude,
             )
         except Exception as hist_err:
             logger.warning("Aviso não-crítico ao salvar histórico: %s", hist_err)
+
 
         return {
             "status": "success",
@@ -412,7 +432,22 @@ async def upload_image(
         await file.close()
 
 
+@app.post("/api/storage/cleanup", dependencies=PROTECTED)
+async def cleanup_storage_endpoint(
+    days: int = Query(7, ge=1, description="Idade mínima em dias para expiração dos arquivos temporários"),
+    storage_service: StorageService = Depends(get_storage_service),
+) -> dict[str, Any]:
+    """Dispara a limpeza de imagens temporárias de upload com mais de `days` dias."""
+    stats = await storage_service.cleanup_temp_images(days=days)
+    return {
+        "status": "sucesso",
+        "dias_retencao": days,
+        "estatisticas": stats,
+    }
+
+
 if __name__ == "__main__":
+
     import uvicorn
 
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
