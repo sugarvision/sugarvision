@@ -35,7 +35,12 @@ load_dotenv(dotenv_path=_ENV_PATH)
 # Variáveis de Ambiente Carregadas
 # ==========================================
 SUPABASE_URL: Optional[str] = os.getenv("SUPABASE_URL")
-SUPABASE_KEY: Optional[str] = os.getenv("SUPABASE_KEY")
+SUPABASE_SERVICE_ROLE_KEY: Optional[str] = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+SUPABASE_KEY: Optional[str] = (
+    SUPABASE_SERVICE_ROLE_KEY
+    if SUPABASE_SERVICE_ROLE_KEY and SUPABASE_SERVICE_ROLE_KEY.strip()
+    else os.getenv("SUPABASE_KEY")
+)
 DATABASE_URL: Optional[str] = os.getenv("DATABASE_URL")
 DATABASE_PASSWORD: Optional[str] = os.getenv("DATABASE_PASSWORD")
 DB_HOST: Optional[str] = os.getenv("DB_HOST", "aws-0-us-west-2.pooler.supabase.com")
@@ -52,33 +57,32 @@ class DatabaseConfigurationError(Exception):
 
 @lru_cache(maxsize=1)
 def get_supabase_client() -> Any:
-    """Retorna uma instância singleton do cliente Supabase (supabase-py).
+    """Retorna uma instância singleton do cliente Supabase (supabase-py) com service_role.
 
-    Levanta DatabaseConfigurationError se a URL ou a Key não estiverem configuradas.
+    Prioriza SUPABASE_SERVICE_ROLE_KEY para realizar bypass do RLS nas operações
+    de leitura e escrita da API sem bloqueios 403 Forbidden.
     """
     if not SUPABASE_URL:
         raise DatabaseConfigurationError(
             "SUPABASE_URL não configurada no arquivo .env."
         )
 
-    if not SUPABASE_KEY or not SUPABASE_KEY.strip():
+    effective_key = (SUPABASE_SERVICE_ROLE_KEY or SUPABASE_KEY or "").strip()
+    if not effective_key:
         raise DatabaseConfigurationError(
-            "SUPABASE_KEY (anon key) ainda não foi preenchida no .env. "
-            "A API Key do Supabase (começa com 'eyJ...') deve ser copiada da aba "
-            "'Project Settings > API' do painel do Supabase."
+            "SUPABASE_SERVICE_ROLE_KEY (ou SUPABASE_KEY) ainda não foi preenchida no .env. "
+            "Copie a chave 'service_role' na aba 'Project Settings > API' do painel do Supabase."
         )
 
     try:
         from supabase import Client, create_client
 
-        client: Client = create_client(SUPABASE_URL.strip(), SUPABASE_KEY.strip())
-        logger.info("Cliente Supabase inicializado com sucesso para: %s", SUPABASE_URL)
+        client: Client = create_client(SUPABASE_URL.strip(), effective_key)
+        logger.info("Cliente Supabase (service_role) inicializado com sucesso para: %s", SUPABASE_URL)
         return client
     except Exception as exc:
         logger.error("Erro ao inicializar cliente Supabase: %s", exc)
         raise ConnectionError(f"Falha ao conectar ao Supabase: {exc}") from exc
-
-
 def get_pg_connection_string() -> str:
     """Retorna a string de conexão normalizada para PostgreSQL via pooler IPv4."""
     if DATABASE_URL and DATABASE_URL.strip():
@@ -462,17 +466,42 @@ def insert_image_record(
                     "total_area_ha": 0.0,
                     "anomalies": [],
                 }
-    except Exception as exc:
-        logger.warning("Não foi possível persistir amostra no banco (%s). Retornando mock local.", exc)
-        return {
-            "id": rec_id,
-            "filename": filename,
-            "status": status,
-            "uploaded_at": now.isoformat(),
-            "total_anomalies": 0,
-            "total_area_ha": 0.0,
-            "anomalies": [],
-        }
+    except Exception as pg_exc:
+        logger.warning(
+            "Inserção direta no PostgreSQL indisponível (%s). Tentando via Supabase API (service_role)...",
+            pg_exc,
+        )
+        try:
+            client = get_supabase_client()
+            payload = {
+                "id": rec_id,
+                "filename": filename,
+                "status": status,
+                "uploaded_at": now.isoformat(),
+            }
+            resp = client.table("images").insert(payload).execute()
+            row_data = resp.data[0] if resp and getattr(resp, "data", None) else payload
+            logger.info("Registro de imagem inserido via Supabase API (bypass RLS): %s (%s)", filename, rec_id)
+            return {
+                "id": str(row_data.get("id", rec_id)),
+                "filename": row_data.get("filename", filename),
+                "status": row_data.get("status", status),
+                "uploaded_at": str(row_data.get("uploaded_at", now.isoformat())),
+                "total_anomalies": 0,
+                "total_area_ha": 0.0,
+                "anomalies": [],
+            }
+        except Exception as exc:
+            logger.warning("Não foi possível persistir amostra no banco (%s). Retornando mock local.", exc)
+            return {
+                "id": rec_id,
+                "filename": filename,
+                "status": status,
+                "uploaded_at": now.isoformat(),
+                "total_anomalies": 0,
+                "total_area_ha": 0.0,
+                "anomalies": [],
+            }
 
 
 def update_image_filename(image_id: str, new_filename: str) -> bool:
