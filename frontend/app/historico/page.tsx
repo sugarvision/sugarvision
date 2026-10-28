@@ -6,7 +6,7 @@ import { Sidebar, IconLeaf, IconScan } from "../components/Sidebar";
 import { formatNumberBR } from "../utils/geoMath";
 import { authFetch } from "../../lib/supabase/client";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+import { API_URL } from "../../lib/env";
 
 interface AnaliseHistorico {
   id: string;

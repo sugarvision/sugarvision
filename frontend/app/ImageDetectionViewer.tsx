@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { authFetch } from '../lib/supabase/client';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+import { API_URL } from '../lib/env';
 
 export interface WeedDetection {
   id: string | number;
@@ -51,7 +51,7 @@ export default function ImageDetectionViewer({
 
     async function fetchDetections() {
       try {
-        const res = await fetch(`${API_URL}/api/anomalies`).catch(() => null);
+        const res = await authFetch(`${API_URL}/api/anomalies`).catch(() => null);
         if (res && res.ok) {
           const data = await res.json();
           const list = Array.isArray(data) ? data : data.detections || data.anomalies || [];

@@ -26,7 +26,7 @@ import {
 import { extractGpsFromImage } from "./utils/exifReader";
 import type { WeedDetection } from "./ImageDetectionViewer";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+import { API_URL } from "../lib/env";
 
 const ImageDetectionViewer = dynamic(() => import("./ImageDetectionViewer"), {
   ssr: false,
@@ -373,7 +373,7 @@ function HomeContent() {
             (result as any).image_url || `${API_URL}/temp_images/${filename}`;
 
           if (rawPreviewUrl.startsWith("http://localhost:8000")) {
-            rawPreviewUrl = rawPreviewUrl.replace("http://localhost:8000", "http://127.0.0.1:8000");
+            rawPreviewUrl = rawPreviewUrl.replace("http://localhost:8000", API_URL).replace("http://127.0.0.1:8000", API_URL);
           }
 
           const cacheBuster = `cb=${Date.now()}`;
