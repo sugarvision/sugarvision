@@ -25,6 +25,7 @@ import {
 } from "./utils/geoMath";
 import { extractGpsFromImage } from "./utils/exifReader";
 import type { WeedDetection } from "./ImageDetectionViewer";
+import AgronomicAccuracyCard from "./components/AgronomicAccuracyCard";
 
 import { API_URL } from "../lib/env";
 
@@ -949,6 +950,9 @@ function HomeContent() {
             gap: "16px",
           }}
         >
+          {/* ── 🌾 CARD RESUMO DE VALIDAÇÃO AGRONÔMICA E ACURÁCIA (SPRINT 11) ── */}
+          <AgronomicAccuracyCard />
+
           {/* ── 📊 4 CARDS COM MÉTRICAS OFICIAIS DE TRIGO ───────────── */}
           {(() => {
             const hasModelData = Boolean(uploadSuccessData);
