@@ -1,7 +1,8 @@
 """Microserviço de Inteligência Artificial e Visão Computacional do SugarVision.
 
-Implementa cache em memória singleton do modelo YOLO (evitando reinstanciação a cada foto)
-e execução assíncrona não-bloqueante de inferência com proteção por semáforo e controle de fila (Sprint 9).
+Implementa cache em memória singleton do modelo YOLO (evitando reinstanciação a cada foto),
+calibração fina de parâmetros NMS (IoU) e limiar de confiança (Sprint 10), telemetria de latência
+(inference_time_ms) e execução assíncrona não-bloqueante protegida por semáforo de concorrência (Sprint 9).
 """
 
 import asyncio
@@ -10,11 +11,12 @@ from functools import lru_cache
 import logging
 import os
 from pathlib import Path
+import time
 from typing import Any, Optional
 
 from fastapi import HTTPException, status
 
-from app.core.config import DEFAULT_MODEL_PATH
+from app.core.config import DEFAULT_CONF_THRESHOLD, DEFAULT_IOU_THRESHOLD, DEFAULT_MODEL_PATH
 from ai_engine import DEFAULT_AREA_ENQUADRAMENTO_M2, diagnostico_agronomico, extract_yolo_detections
 
 logger = logging.getLogger("sugarvision-ai")
@@ -116,24 +118,44 @@ class AIService:
         self,
         model: Any,
         image_path: Path,
-        conf_threshold: float = 0.40,
+        conf_threshold: float = DEFAULT_CONF_THRESHOLD,
+        iou_threshold: float = DEFAULT_IOU_THRESHOLD,
         area_m2: float = DEFAULT_AREA_ENQUADRAMENTO_M2,
     ) -> tuple[int, list[dict[str, Any]], dict[str, Any]]:
-        """Executa a predição síncrona do YOLO (chamada dentro de worker thread)."""
+        """Executa a predição síncrona do YOLO com supressão NMS calibrada (Sprint 10)."""
+        t_start = time.perf_counter()
         try:
-            preds = model.predict(source=str(image_path), conf=conf_threshold, save=False, verbose=False)
+            preds = model.predict(
+                source=str(image_path),
+                conf=conf_threshold,
+                iou=iou_threshold,
+                save=False,
+                verbose=False,
+            )
+        except TypeError:
+            # Compatibilidade defensiva caso mocks ou backends legados não aceitem iou
+            try:
+                preds = model.predict(source=str(image_path), conf=conf_threshold, save=False, verbose=False)
+            except Exception as exc:
+                logger.warning("Falha na inferência síncrona da IA: %s", exc)
+                preds = []
         except Exception as exc:
             logger.warning("Falha na inferência síncrona da IA: %s", exc)
             preds = []
 
-        detections, summary = extract_yolo_detections(preds, model)
+        detections, summary = extract_yolo_detections(preds, model, area_m2=area_m2)
+        inference_time_ms = round((time.perf_counter() - t_start) * 1000.0, 2)
+        summary["inference_time_ms"] = inference_time_ms
+        summary["conf_threshold"] = conf_threshold
+        summary["iou_threshold"] = iou_threshold
         return summary["total_cabecas_trigo"], detections, summary
 
     async def detect_image_async(
         self,
         image_path: Path | str,
         model_path: Optional[Path] = None,
-        conf_threshold: float = 0.40,
+        conf_threshold: float = DEFAULT_CONF_THRESHOLD,
+        iou_threshold: float = DEFAULT_IOU_THRESHOLD,
         area_m2: float = DEFAULT_AREA_ENQUADRAMENTO_M2,
     ) -> dict[str, Any]:
         """Executa a predição imediata sem delay para resposta síncrona/direta da API."""
@@ -142,6 +164,7 @@ class AIService:
             delay_seconds=0.0,
             model_path=model_path,
             conf_threshold=conf_threshold,
+            iou_threshold=iou_threshold,
             area_m2=area_m2,
         )
 
@@ -150,7 +173,8 @@ class AIService:
         image_path: Path | str,
         delay_seconds: float = 1.0,
         model_path: Optional[Path] = None,
-        conf_threshold: float = 0.40,
+        conf_threshold: float = DEFAULT_CONF_THRESHOLD,
+        iou_threshold: float = DEFAULT_IOU_THRESHOLD,
         area_m2: float = DEFAULT_AREA_ENQUADRAMENTO_M2,
     ) -> dict[str, Any]:
         """Rotina assíncrona de inferência com semáforo protetor e controle de fila (Sprint 9).
@@ -182,6 +206,7 @@ class AIService:
             "image_path": str(path_obj),
             "model_path": str(caminho_modelo),
             "status": "pending",
+            "inference_time_ms": 0.0,
             "detections": [],
             "summary": {},
         }
@@ -232,19 +257,41 @@ class AIService:
                 modelo = self.get_or_load_model(caminho_modelo)
 
                 if modelo is not None:
-                    logger.info("[IA] Executando predição assíncrona com Ultralytics YOLO (conf >= %.2f)...", conf_threshold)
-                    # Executa predição em threadpool para não travar o loop do FastAPI
-                    total_deteccoes, detections, summary = await asyncio.to_thread(
-                        self._run_inference_sync, modelo, path_obj, conf_threshold, area_m2
+                    logger.info(
+                        "[IA] Executando predição assíncrona com Ultralytics YOLO (conf >= %.2f, iou=%.2f)...",
+                        conf_threshold,
+                        iou_threshold,
                     )
+                    t_loop_start = time.perf_counter()
+                    # Executa predição em threadpool para não travar o loop do FastAPI
+                    # Suporta mocks síncronos e assíncronos (legados de testes de concorrência)
+                    try:
+                        raw_res = await asyncio.to_thread(
+                            self._run_inference_sync, modelo, path_obj, conf_threshold, iou_threshold, area_m2
+                        )
+                    except TypeError:
+                        raw_res = await asyncio.to_thread(
+                            self._run_inference_sync, modelo, path_obj, conf_threshold, area_m2
+                        )
+
+                    if asyncio.iscoroutine(raw_res):
+                        raw_res = await raw_res
+
+                    total_deteccoes, detections, summary = raw_res
+
+                    inf_ms = summary.get("inference_time_ms")
+                    if inf_ms is None or inf_ms <= 0:
+                        inf_ms = round((time.perf_counter() - t_loop_start) * 1000.0, 2)
+                        summary["inference_time_ms"] = inf_ms
 
                     resultado["status"] = "completed"
                     resultado["engine"] = "ultralytics"
+                    resultado["inference_time_ms"] = inf_ms
                     resultado["detections_count"] = total_deteccoes
                     resultado["detections"] = detections
                     resultado["summary"] = summary
-                    resultado["densidade_estimada"] = summary["densidade_estimada"]
-                    resultado["classificacao_densidade"] = summary["classificacao_densidade"]
+                    resultado["densidade_estimada"] = summary.get("densidade_estimada", 0.0)
+                    resultado["classificacao_densidade"] = summary.get("classificacao_densidade", "Baixa")
                 else:
                     # Pipeline seguro de contingência quando ultralytics não estiver instalado
                     logger.info(
@@ -253,6 +300,7 @@ class AIService:
                     )
                     resultado["status"] = "completed"
                     resultado["engine"] = "mock_pipeline"
+                    resultado["inference_time_ms"] = 0.0
                     resultado["detections_count"] = 0
                     resultado["detections"] = []
                     diagnostico = diagnostico_agronomico(0, area_m2)
@@ -265,17 +313,21 @@ class AIService:
                         "total_cana": 0,
                         "total_espigas": 0,
                         "taxa_infestacao_percent": 0.0,
+                        "inference_time_ms": 0.0,
+                        "conf_threshold": conf_threshold,
+                        "iou_threshold": iou_threshold,
                         **diagnostico,
                         "modelo": caminho_modelo.name,
-                        "tamanho_modelo_bytes": caminho_modelo.stat().st_size,
-                        "tamanho_imagem_bytes": path_obj.stat().st_size,
+                        "tamanho_modelo_bytes": caminho_modelo.stat().st_size if caminho_modelo.exists() else 0,
+                        "tamanho_imagem_bytes": path_obj.stat().st_size if path_obj.exists() else 0,
                         "status_analise": "concluida_com_sucesso",
                     }
 
                 logger.info(
-                    "[IA] Avaliação da foto '%s' concluída com sucesso! (Status: %s)",
+                    "[IA] Avaliação da foto '%s' concluída com sucesso! (Status: %s, Tempo: %.2f ms)",
                     path_obj.name,
                     resultado["status"],
+                    resultado["inference_time_ms"],
                 )
                 return resultado
 

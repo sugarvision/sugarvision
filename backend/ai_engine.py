@@ -167,6 +167,14 @@ def extract_yolo_detections(
         h_px = max(y2 - y1, 1.0)
         confidences.append(conf)
 
+        area_pct = ((w_px * h_px) / max(img_w * img_h, 1.0)) * 100.0
+        if area_pct < 3.0:
+            severity = "baixa"
+        elif area_pct < 10.0:
+            severity = "media"
+        else:
+            severity = "alta"
+
         box_pct = {
             "x": round((x1 / max(img_w, 1.0)) * 100.0, 2),
             "y": round((y1 / max(img_h, 1.0)) * 100.0, 2),
@@ -179,6 +187,7 @@ def extract_yolo_detections(
             "label": label,
             "type": "wheat_head",
             "confidence": round(conf, 4),
+            "severity": severity,
             "box": box_pct,
             "box_pixels": {
                 "x1": round(x1, 2), "y1": round(y1, 2),

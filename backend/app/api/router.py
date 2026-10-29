@@ -177,6 +177,8 @@ async def analyze_sample(
     else:
         image_url = f"/{chosen_path.name}"
 
+    inf_time_ms = ai_result.get("inference_time_ms") or ai_result.get("summary", {}).get("inference_time_ms", 0.0)
+
     return {
         "status": "success",
         "message": f"Amostra '{target_filename}' analisada com sucesso pelo modelo best.pt.",
@@ -185,6 +187,7 @@ async def analyze_sample(
         "image_url": image_url,
         "saved_path": str(chosen_path),
         "size_bytes": file_size,
+        "inference_time_ms": inf_time_ms,
         "detections": ai_result.get("detections", []),
         "summary": ai_result.get("summary", {}),
     }
@@ -207,7 +210,7 @@ async def upload_image(
         # Gravação assíncrona não-bloqueante
         target_path, file_size = await storage_service.save_image_async(file)
 
-        # Executa a inferência direta para gerar as bounding boxes de ervas daninhas para o frontend
+        # Executa a inferência direta para gerar as bounding boxes de trigo para o frontend
         ai_result = await ai_service.detect_image_async(target_path)
 
         # Disparo assíncrono do microserviço de IA
@@ -222,6 +225,8 @@ async def upload_image(
                 target_path.name,
             )
 
+        inf_time_ms = ai_result.get("inference_time_ms") or ai_result.get("summary", {}).get("inference_time_ms", 0.0)
+
         return {
             "status": "success",
             "message": "Imagem enviada e processada com sucesso.",
@@ -231,6 +236,7 @@ async def upload_image(
             "size_bytes": file_size,
             "saved_path": str(target_path),
             "ai_status": "enqueued" if background_tasks is not None else "skipped",
+            "inference_time_ms": inf_time_ms,
             "detections": ai_result.get("detections", []),
             "summary": ai_result.get("summary", {}),
         }

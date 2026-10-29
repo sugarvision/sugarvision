@@ -1038,6 +1038,83 @@ class TestInferenceQueueConcurrency(unittest.IsolatedAsyncioTestCase):
         self.assertIn("max_safe_queue_size", queue_info)
         print("  [PASS] 59 - /api/health inclui telemetria de concorrência e fila de inferência")
 
+    def test_60_inference_time_ms_in_ai_service(self):
+        """Checklist Sprint 10: Valida se AIService inclui tempo exato de inferência em ms."""
+        from app.services.ai_service import AIService
+        service = AIService()
+        test_img = TEMP_IMAGES_DIR / "sprint10_test_timing.png"
+        test_img.touch()
+        try:
+            loop = asyncio.new_event_loop()
+            res = loop.run_until_complete(service.detect_image_async(test_img))
+            loop.close()
+
+            self.assertIn("inference_time_ms", res)
+            self.assertIsInstance(res["inference_time_ms"], (int, float))
+            self.assertGreaterEqual(res["inference_time_ms"], 0.0)
+            self.assertIn("inference_time_ms", res.get("summary", {}))
+            print("  [PASS] 60 - AIService reporta inference_time_ms no payload e no summary")
+        finally:
+            if test_img.exists():
+                test_img.unlink()
+
+    def test_61_inference_time_ms_in_analyze_sample(self):
+        """Checklist Sprint 10: Valida se /api/analyze-sample retorna inference_time_ms."""
+        # Cria imagem temporária para testar análise
+        test_img = TEMP_IMAGES_DIR / "amostra_sprint10_timing.jpg"
+        test_img.touch()
+        try:
+            with patch.dict(os.environ, {"AUTH_ENABLED": "False"}):
+                response = self.client.post("/api/analyze-sample", json={"filename": "amostra_sprint10_timing.jpg"})
+            self.assertEqual(response.status_code, 200)
+            data = response.json()
+            self.assertIn("inference_time_ms", data)
+            self.assertIsInstance(data["inference_time_ms"], (int, float))
+            self.assertIn("inference_time_ms", data.get("summary", {}))
+            print("  [PASS] 61 - /api/analyze-sample inclui inference_time_ms na resposta")
+        finally:
+            if test_img.exists():
+                test_img.unlink()
+
+    def test_62_inference_time_ms_in_upload(self):
+        """Checklist Sprint 10: Valida se /upload retorna inference_time_ms no payload."""
+        png_bytes = (
+            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+            b"\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00"
+            b"\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+        )
+        file_payload = {"file": ("trigo_timing_test.png", io.BytesIO(png_bytes), "image/png")}
+        with patch.dict(os.environ, {"AUTH_ENABLED": "False"}):
+            response = self.client.post("/upload", files=file_payload)
+        self.assertEqual(response.status_code, 201)
+        data = response.json()
+        self.assertIn("inference_time_ms", data)
+        self.assertIsInstance(data["inference_time_ms"], (int, float))
+        self.assertIn("inference_time_ms", data.get("summary", {}))
+        print("  [PASS] 62 - /upload inclui inference_time_ms na resposta")
+
+    def test_63_custom_conf_and_iou_thresholds_accepted(self):
+        """Checklist Sprint 10: Valida se conf_threshold e iou_threshold customizados são aceitos."""
+        from app.services.ai_service import AIService
+        service = AIService()
+        test_img = TEMP_IMAGES_DIR / "sprint10_thresholds.png"
+        test_img.touch()
+        try:
+            loop = asyncio.new_event_loop()
+            res = loop.run_until_complete(
+                service.detect_image_async(test_img, conf_threshold=0.35, iou_threshold=0.50)
+            )
+            loop.close()
+
+            self.assertEqual(res["status"], "completed")
+            summary = res.get("summary", {})
+            self.assertEqual(summary.get("conf_threshold"), 0.35)
+            self.assertEqual(summary.get("iou_threshold"), 0.50)
+            print("  [PASS] 63 - AIService aceita e propaga parâmetros calibrados conf e iou")
+        finally:
+            if test_img.exists():
+                test_img.unlink()
+
 
 if __name__ == "__main__":
 

@@ -324,6 +324,7 @@ async def analyze_sample(
     ai_result = await ai_service.detect_image_async(chosen_path, model_path=MODEL_PATH)
     file_size = chosen_path.stat().st_size
     image_url = f"{BASE_URL}/temp_images/{chosen_path.name}"
+    inf_time_ms = ai_result.get("inference_time_ms") or ai_result.get("summary", {}).get("inference_time_ms", 0.0)
 
     # Salva automaticamente no Histórico
     history_record = None
@@ -346,6 +347,7 @@ async def analyze_sample(
         "image_url": image_url,
         "saved_path": str(chosen_path),
         "size_bytes": file_size,
+        "inference_time_ms": inf_time_ms,
         "detections": ai_result.get("detections", []),
         "summary": ai_result.get("summary", {}),
         "history_record": history_record,
@@ -413,6 +415,7 @@ async def upload_image(
         except Exception as hist_err:
             logger.warning("Aviso não-crítico ao salvar histórico: %s", hist_err)
 
+        inf_time_ms = ai_result.get("inference_time_ms") or ai_result.get("summary", {}).get("inference_time_ms", 0.0)
 
         return {
             "status": "success",
@@ -423,6 +426,7 @@ async def upload_image(
             "content_type": file.content_type,
             "size_bytes": file_size,
             "saved_path": str(target_path),
+            "inference_time_ms": inf_time_ms,
             "detections": ai_result.get("detections", []),
             "summary": ai_result.get("summary", {}),
             "database_record": db_image_record,

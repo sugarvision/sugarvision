@@ -32,6 +32,8 @@ MAX_UPLOAD_SIZE_BYTES: int = MAX_UPLOAD_SIZE_MB * 1024 * 1024
 
 # Configurações de Inteligência Artificial
 AI_DELAY_SECONDS: float = float(os.getenv("AI_DELAY_SECONDS", "1.0"))
+DEFAULT_CONF_THRESHOLD: float = float(os.getenv("YOLO_CONF_THRESHOLD", "0.35"))
+DEFAULT_IOU_THRESHOLD: float = float(os.getenv("YOLO_IOU_THRESHOLD", "0.60"))
 
 # Healthcheck (GET /api/health)
 HEALTH_MIN_FREE_RAM_GB: float = float(os.getenv("HEALTH_MIN_FREE_RAM_GB", "1.0"))
