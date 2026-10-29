@@ -254,13 +254,10 @@ interface BackendUploadResponse {
   ai_status?: string;
   detections?: WeedDetection[];
   summary?: {
-    total_detecoes?: number;
-    total_ervas_daninhas?: number;
-    total_cana?: number;
+    total_espigas?: number;
+    densidade_estimada?: number;
+    area_amostra_m2?: number;
     taxa_infestacao_percent?: number;
-    area_infestada_m2?: number;
-    area_infestada_ha?: number;
-    distribuicao_severidade_ervas?: Record<string, number>;
   };
 }
 
@@ -308,7 +305,7 @@ function HomeContent() {
 
           const imgUrl = data.image_url || `${API_URL}/temp_images/${data.nome_imagem}`;
           const detections = data.detections || [];
-          const weedCount = data.focos_detectados ?? detections.length;
+          const wheatCount = data.total_espigas ?? data.focos_detectados ?? detections.length;
 
           setUploadSuccessData({
             backend: {
@@ -321,9 +318,8 @@ function HomeContent() {
               saved_path: "",
               detections: detections,
               summary: {
-                total_ervas_daninhas: weedCount,
-                taxa_infestacao_percent: data.percentual_infestacao || 0,
-                area_infestada_m2: data.area_infestacao_m2 || 0,
+                total_espigas: wheatCount,
+                densidade_estimada: data.densidade_estimada || 0,
               },
             },
             localPreview: imgUrl,
@@ -332,7 +328,7 @@ function HomeContent() {
           setActiveDetections(detections);
           setIsViewingSavedHistory(true);
 
-          toast.info(`Exibindo análise salva: ${data.nome_imagem} (${weedCount} cabeças detectadas)`, {
+          toast.info(`Exibindo análise salva: ${data.nome_imagem} (${wheatCount} espigas detectadas)`, {
             position: "top-right",
             autoClose: 3500,
             theme: "dark",
@@ -393,10 +389,8 @@ function HomeContent() {
           setIsModalOpen(true);
 
           const wheatCount =
-            result.summary?.total_ervas_daninhas ??
-            (result.detections
-              ? result.detections.filter((d) => d.type !== "cana_de_acucar").length
-              : 0);
+            result.summary?.total_espigas ??
+            (result.detections ? result.detections.length : 0);
 
           toast.success(
             `Amostra '${filename}' analisada: ${wheatCount} espigas de trigo identificadas!`,
@@ -519,11 +513,11 @@ function HomeContent() {
       }
       setIsModalOpen(true);
 
-      const weedCount =
-        result.summary?.total_ervas_daninhas ??
-        (result.detections ? result.detections.filter((d) => d.type !== "cana_de_acucar").length : 0);
+      const wheatCount =
+        result.summary?.total_espigas ??
+        (result.detections ? result.detections.length : 0);
 
-      toast.success(`Análise concluída: ${weedCount} cabeças de trigo identificadas!`, {
+      toast.success(`Análise concluída: ${wheatCount} espigas identificadas!`, {
         position: "top-right",
         autoClose: 4000,
         theme: "dark",
@@ -748,16 +742,16 @@ function HomeContent() {
                 </div>
               )}
               <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--sidebar-border)", paddingBottom: "8px" }}>
-                <span style={{ color: "var(--muted)" }}>Cabeças de Trigo:</span>
-                <span style={{ fontWeight: 700, color: "#f85149" }}>
-                  {uploadSuccessData.backend.summary?.total_ervas_daninhas ?? (uploadSuccessData.backend.detections ? uploadSuccessData.backend.detections.filter(d => d.type !== 'cana_de_acucar').length : 0)} cabeças identificadas
+                <span style={{ color: "var(--muted)" }}>Total de Espigas:</span>
+                <span style={{ fontWeight: 700, color: "#ffa657" }}>
+                  {uploadSuccessData.backend.summary?.total_espigas ?? (uploadSuccessData.backend.detections ? uploadSuccessData.backend.detections.length : 0)} identificadas
                 </span>
               </div>
               {uploadSuccessData.backend.detections !== undefined && (
                 <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--sidebar-border)", paddingBottom: "8px" }}>
-                  <span style={{ color: "var(--muted)" }}>Área marcada pelas caixas:</span>
+                  <span style={{ color: "var(--muted)" }}>Área abrangida:</span>
                   <span style={{ fontWeight: 700, color: "#58a6ff" }}>
-                    {formatNumberBR(calculateMarkedAreaPercent(uploadSuccessData.backend.detections.filter((d) => d.type !== "cana_de_acucar")), 1)}%
+                    {formatNumberBR(calculateMarkedAreaPercent(uploadSuccessData.backend.detections), 1)}%
                   </span>
                 </div>
               )}
@@ -954,8 +948,10 @@ function HomeContent() {
             const hasModelData = Boolean(uploadSuccessData);
             const modelSummary = uploadSuccessData?.backend?.summary;
             const modelDetections = uploadSuccessData?.backend?.detections ?? activeDetections;
-            const headDetections = modelDetections?.filter((d) => d.type !== "cana_de_acucar");
-            const totalEspigas = modelSummary?.total_ervas_daninhas ?? headDetections?.length ?? 0;
+            
+            // Lendo dados diretamente (sem filtros do modelo antigo da cana)
+            const headDetections = modelDetections;
+            const totalEspigas = modelSummary?.total_espigas ?? headDetections?.length ?? 0;
             const meanConfidence = headDetections ? calculateMeanConfidence(headDetections) : null;
 
             // Densidade estimada de espigas com base na contagem e área aproximada

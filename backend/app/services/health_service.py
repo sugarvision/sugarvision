@@ -12,7 +12,7 @@ from typing import Any
 
 from app.core.config import HEALTH_DB_TIMEOUT_SECONDS, HEALTH_MIN_FREE_RAM_GB
 from app.services.ai_service import AIService
-from app.services.anomaly_service import AnomalyService
+from app.services.detection_service import DetectionService
 
 try:  # psutil acompanha o ultralytics, mas não é garantido
     import psutil
@@ -31,12 +31,12 @@ class HealthService:
     def __init__(
         self,
         ai_service: AIService,
-        anomaly_service: AnomalyService,
+        detection_service: DetectionService,
         min_free_ram_gb: float = HEALTH_MIN_FREE_RAM_GB,
         db_timeout_seconds: float = HEALTH_DB_TIMEOUT_SECONDS,
     ):
         self.ai_service = ai_service
-        self.anomaly_service = anomaly_service
+        self.detection_service = detection_service
         self.min_free_ram_gb = min_free_ram_gb
         self.db_timeout_seconds = db_timeout_seconds
 
@@ -59,7 +59,7 @@ class HealthService:
         """Conectividade com o banco, com timeout para o healthcheck nunca travar."""
         try:
             raw = await asyncio.wait_for(
-                self.anomaly_service.check_health_async(),
+                self.detection_service.check_health_async(),
                 timeout=self.db_timeout_seconds,
             )
         except asyncio.TimeoutError:

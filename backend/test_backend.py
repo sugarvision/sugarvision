@@ -29,7 +29,7 @@ from ai_engine import carregar_modelo_yolo, processar_imagem_ia, DEFAULT_MODEL_P
 from database import get_all_anomalies, FALLBACK_ANOMALIES
 from app.core.dependencies import get_ai_service, get_anomaly_service, get_storage_service
 from app.services.ai_service import AIService
-from app.services.anomaly_service import AnomalyService
+from backend.app.services.detection_service import AnomalyService
 from app.services.storage_service import StorageService
 
 

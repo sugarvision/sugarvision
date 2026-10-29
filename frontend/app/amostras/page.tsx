@@ -170,9 +170,9 @@ export interface ImageSample {
   filename: string;
   status: string;
   uploaded_at: string | null;
-  total_anomalies: number;
+  total_detections: number;
   total_area_ha: number;
-  anomalies: ImageAnomaly[];
+  detections: any[];
 }
 
 export default function BancoDeAmostrasPage() {
@@ -337,11 +337,11 @@ export default function BancoDeAmostrasPage() {
       filename: "trigo_teste.png",
       status: "completed",
       uploaded_at: "2026-10-21T09:30:00.000000+00:00",
-      total_anomalies: 42,
+      total_detections: 42,
       total_area_ha: 1.25,
-      anomalies: [
-        { id: "w-01", anomaly_type: "wheat", area_hectares: 0.85, created_at: "2026-10-21T09:30:01+00:00" },
-        { id: "w-02", anomaly_type: "wheat", area_hectares: 0.40, created_at: "2026-10-21T09:30:02+00:00" },
+      detections: [
+        { id: "w-01", detection_type: "wheat", area_hectares: 0.85, created_at: "2026-10-21T09:30:01+00:00" },
+        { id: "w-02", detection_type: "wheat", area_hectares: 0.40, created_at: "2026-10-21T09:30:02+00:00" },
       ],
     },
     {
@@ -349,11 +349,11 @@ export default function BancoDeAmostrasPage() {
       filename: "wheat_test_01_Terraref_1.jpg",
       status: "completed",
       uploaded_at: "2026-10-21T10:15:00.000000+00:00",
-      total_anomalies: 77,
+      total_detections: 77,
       total_area_ha: 2.10,
-      anomalies: [
-        { id: "w-03", anomaly_type: "wheat", area_hectares: 1.50, created_at: "2026-10-21T10:15:01+00:00" },
-        { id: "w-04", anomaly_type: "wheat", area_hectares: 0.60, created_at: "2026-10-21T10:15:02+00:00" },
+      detections: [
+        { id: "w-03", detection_type: "wheat", area_hectares: 1.50, created_at: "2026-10-21T10:15:01+00:00" },
+        { id: "w-04", detection_type: "wheat", area_hectares: 0.60, created_at: "2026-10-21T10:15:02+00:00" },
       ],
     },
     {
@@ -361,10 +361,10 @@ export default function BancoDeAmostrasPage() {
       filename: "wheat_test_03_CIMMYT_1.jpg",
       status: "completed",
       uploaded_at: "2026-10-21T11:40:00.000000+00:00",
-      total_anomalies: 64,
+      total_detections: 64,
       total_area_ha: 1.80,
-      anomalies: [
-        { id: "w-05", anomaly_type: "wheat", area_hectares: 1.80, created_at: "2026-10-21T11:40:01+00:00" },
+      detections: [
+        { id: "w-05", detection_type: "wheat", area_hectares: 1.80, created_at: "2026-10-21T11:40:01+00:00" },
       ],
     },
     {
@@ -372,10 +372,10 @@ export default function BancoDeAmostrasPage() {
       filename: "wheat_test_06_UQ_11.jpg",
       status: "completed",
       uploaded_at: "2026-10-21T14:05:00.000000+00:00",
-      total_anomalies: 53,
+      total_detections: 53,
       total_area_ha: 1.45,
-      anomalies: [
-        { id: "w-06", anomaly_type: "wheat", area_hectares: 1.45, created_at: "2026-10-21T14:05:01+00:00" },
+      detections: [
+        { id: "w-06", detection_type: "wheat", area_hectares: 1.45, created_at: "2026-10-21T14:05:01+00:00" },
       ],
     },
     {
@@ -383,10 +383,10 @@ export default function BancoDeAmostrasPage() {
       filename: "wheat_test_10_UQ_10.jpg",
       status: "completed",
       uploaded_at: "2026-10-21T16:20:00.000000+00:00",
-      total_anomalies: 81,
+      total_detections: 81,
       total_area_ha: 2.30,
-      anomalies: [
-        { id: "w-07", anomaly_type: "wheat", area_hectares: 2.30, created_at: "2026-10-21T16:20:01+00:00" },
+      detections: [
+        { id: "w-07", detection_type: "wheat", area_hectares: 2.30, created_at: "2026-10-21T16:20:01+00:00" },
       ],
     },
     {
@@ -394,10 +394,10 @@ export default function BancoDeAmostrasPage() {
       filename: "wheat_test_12_ARC_1.jpg",
       status: "completed",
       uploaded_at: "2026-10-21T17:10:00.000000+00:00",
-      total_anomalies: 59,
+      total_detections: 59,
       total_area_ha: 1.65,
-      anomalies: [
-        { id: "w-08", anomaly_type: "wheat", area_hectares: 1.65, created_at: "2026-10-21T17:10:01+00:00" },
+      detections: [
+        { id: "w-08", detection_type: "wheat", area_hectares: 1.65, created_at: "2026-10-21T17:10:01+00:00" },
       ],
     },
   ];
@@ -407,27 +407,14 @@ export default function BancoDeAmostrasPage() {
     setLoading(true);
     setError(null);
 
-    // Em produção na Vercel (HTTPS), se a URL do backend apontar para localhost/127.0.0.1,
-    // o navegador bloqueará imediatamente por Mixed Content ou aguardará timeout TCP.
-    // Carregamos a contingência oficial de trigo instantaneamente sem delay!
-    const isHttpsProduction =
-      typeof window !== "undefined" && window.location.protocol === "https:";
-    const isLocalhostBackend =
-      API_URL.includes("localhost") || API_URL.includes("127.0.0.1");
-
-    if (isHttpsProduction && isLocalhostBackend) {
-      setSamples(WHEAT_SAMPLES_FALLBACK);
-      setIsLiveConnected(false);
-      setLastSynced(new Date().toLocaleTimeString("pt-BR"));
-      setLoading(false);
-      return;
-    }
+    // O bloqueio automático (Mixed Content) foi removido
+    // Queremos que a API tente buscar os dados reais sempre!
 
     try {
       const response = await authFetch(`${API_URL}/api/images`, {
         headers: { Accept: "application/json" },
         cache: "no-store",
-        timeoutMs: 2500,
+        timeoutMs: 15000, // <--- Aumentado para 15s aqui também!
       });
 
       if (!response.ok) {
@@ -457,14 +444,14 @@ export default function BancoDeAmostrasPage() {
   const metrics = useMemo(() => {
     const totalAmostras = samples.length;
     const concluidas = samples.filter((s) => s.status === "completed").length;
-    const totalAnomalias = samples.reduce((acc, curr) => acc + (curr.total_anomalies || 0), 0);
+    const totalDetections = samples.reduce((acc, curr) => acc + (curr.total_detections || 0), 0);
     const areaTotalHa = samples.reduce((acc, curr) => acc + (curr.total_area_ha || 0), 0);
 
     return {
       totalAmostras,
       concluidas,
       taxaConclusao: totalAmostras > 0 ? (concluidas / totalAmostras) * 100 : 100,
-      totalAnomalias,
+      totalDetections,
       areaTotalHa,
     };
   }, [samples]);
@@ -476,7 +463,7 @@ export default function BancoDeAmostrasPage() {
         sample.filename.toLowerCase().includes(searchTerm.toLowerCase()) ||
         sample.id.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === "all" || sample.status === statusFilter;
-      const totalEspigas = sample.total_anomalies || 0;
+      const totalEspigas = sample.total_detections || 0;
       const matchesEspigas =
         espigasFilter === "all" ||
         (espigasFilter === "com_espigas" && totalEspigas > 0) ||
@@ -489,7 +476,9 @@ export default function BancoDeAmostrasPage() {
   const formatDate = (isoStr: string | null) => {
     if (!isoStr) return "Data N/D";
     try {
-      const d = new Date(isoStr);
+      // Remove a etiqueta de fuso horário para o navegador não subtrair 3 horas
+      const localIso = isoStr.replace("Z", "").split("+")[0];
+      const d = new Date(localIso);
       return d.toLocaleDateString("pt-BR", {
         day: "2-digit",
         month: "2-digit",
@@ -837,7 +826,7 @@ export default function BancoDeAmostrasPage() {
               </div>
               <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
                 <span style={{ fontSize: "28px", fontWeight: 700, color: "#ffa657" }}>
-                  {loading ? "..." : metrics.totalAnomalias}
+                  {loading ? "..." : metrics.totalDetections}
                 </span>
                 <span style={{ fontSize: "13px", color: "var(--muted)" }}>espigas</span>
               </div>
@@ -1283,7 +1272,7 @@ export default function BancoDeAmostrasPage() {
                       <div>
                         <span style={{ fontSize: "10px", color: "var(--muted)", display: "block" }}>Espigas</span>
                         <span style={{ fontSize: "14px", fontWeight: 700, color: "#ffa657" }}>
-                          {sample.total_anomalies} espigas
+                          {sample.total_detections} espigas
                         </span>
                       </div>
                       <div>
@@ -1295,9 +1284,9 @@ export default function BancoDeAmostrasPage() {
                     </div>
 
                     {/* Tags de Detecções */}
-                    {sample.anomalies && sample.anomalies.length > 0 && (
+                    {sample.detections && sample.detections.length > 0 && (
                       <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
-                        {sample.anomalies.map((anom, idx) => (
+                        {sample.detections.map((detection, idx) => (
                           <span
                             key={idx}
                             style={{
@@ -1309,7 +1298,7 @@ export default function BancoDeAmostrasPage() {
                               border: "1px solid rgba(46, 160, 67, 0.3)",
                             }}
                           >
-                            {getDetectionLabel(anom.anomaly_type)}
+                            {getDetectionLabel(detection.detection_type)}
                           </span>
                         ))}
                       </div>
@@ -1519,7 +1508,7 @@ export default function BancoDeAmostrasPage() {
                           {formatDate(sample.uploaded_at)}
                         </td>
                         <td style={{ padding: "12px 16px" }}>
-                          <span style={{ fontWeight: 600, color: "#ffa657" }}>{sample.total_anomalies}</span>
+                          <span style={{ fontWeight: 600, color: "#ffa657" }}>{sample.total_detections}</span>
                         </td>
                         <td style={{ padding: "12px 16px", fontWeight: 600, color: "var(--foreground)" }}>
                           {sample.total_area_ha} ha
@@ -1874,15 +1863,15 @@ export default function BancoDeAmostrasPage() {
                 {/* Detecções Registradas no Banco */}
                 <div>
                   <h4 style={{ fontSize: "13px", fontWeight: 600, margin: "0 0 8px 0", color: "var(--foreground)" }}>
-                    Detecções Registradas da Imagem ({selectedSample.anomalies.length}):
+                    Detecções Registradas da Imagem ({selectedSample.detections.length}):
                   </h4>
-                  {selectedSample.anomalies.length === 0 ? (
+                  {selectedSample.detections.length === 0 ? (
                     <p style={{ fontSize: "12px", color: "var(--muted)", margin: 0 }}>
                       Nenhuma detecção vinculada a esta imagem no banco.
                     </p>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                      {selectedSample.anomalies.map((anom, idx) => (
+                      {selectedSample.detections.map((detection, idx) => (
                         <div
                           key={idx}
                           style={{
@@ -1903,14 +1892,14 @@ export default function BancoDeAmostrasPage() {
                                 color: "var(--accent-green)",
                               }}
                             >
-                              {getDetectionLabel(anom.anomaly_type)}
+                              {getDetectionLabel(detection.detection_type)}
                             </span>
                             <span style={{ display: "block", fontSize: "10px", color: "var(--muted)" }}>
-                              ID: {anom.id.slice(0, 16)}...
+                              ID: {detection.id.slice(0, 16)}...
                             </span>
                           </div>
                           <span style={{ fontWeight: 700, color: "var(--foreground)" }}>
-                            {anom.area_hectares} ha
+                            {detection.area_hectares} ha
                           </span>
                         </div>
                       ))}
@@ -2103,12 +2092,12 @@ export default function BancoDeAmostrasPage() {
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
                   <span style={{ color: "var(--muted)" }}>Espigas Registradas:</span>
-                  <span style={{ fontWeight: 600, color: "#ffa657" }}>{sampleToDelete.total_anomalies} espigas</span>
+                  <span style={{ fontWeight: 600, color: "#ffa657" }}>{sampleToDelete.total_detections} espigas</span>
                 </div>
               </div>
 
               <p style={{ fontSize: "12px", color: "var(--muted)", margin: 0, lineHeight: 1.5 }}>
-                Tem certeza de que deseja excluir esta foto de campo? A amostra será removida da tabela <code>images</code> e o arquivo local correspondente será limpo.
+                Tem certeza de que deseja excluir esta foto de field? A amostra será removida da tabela <code>images</code> e o arquivo local correspondente será limpo.
               </p>
 
               <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "4px" }}>
