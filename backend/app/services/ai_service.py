@@ -1,20 +1,59 @@
 """Microserviço de Inteligência Artificial e Visão Computacional do SugarVision.
 
 Implementa cache em memória singleton do modelo YOLO (evitando reinstanciação a cada foto)
-e execução assíncrona não-bloqueante de inferência.
+e execução assíncrona não-bloqueante de inferência com proteção por semáforo e controle de fila (Sprint 9).
 """
 
 import asyncio
 from datetime import datetime
 from functools import lru_cache
 import logging
+import os
 from pathlib import Path
 from typing import Any, Optional
+
+from fastapi import HTTPException, status
 
 from app.core.config import DEFAULT_MODEL_PATH
 from ai_engine import DEFAULT_AREA_ENQUADRAMENTO_M2, diagnostico_agronomico, extract_yolo_detections
 
 logger = logging.getLogger("sugarvision-ai")
+
+# Semáforo global e controle de concorrência da fila de inferência (Sprint 9)
+sem = asyncio.Semaphore(1)
+_waiting_in_queue: int = 0
+MAX_SAFE_QUEUE_SIZE: int = int(os.getenv("MAX_INFERENCE_QUEUE", "1"))
+
+
+class InferenceOverloadException(HTTPException):
+    """Exceção HTTP 429 levantada quando a fila do motor de inferência excede a capacidade segura."""
+
+    def __init__(
+        self,
+        detail: str = "Processador ocupado, tente em alguns segundos",
+        retry_after: int = 3,
+    ):
+        super().__init__(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=detail,
+            headers={"Retry-After": str(retry_after)},
+        )
+
+
+def get_inference_queue_status() -> dict[str, Any]:
+    """Retorna a telemetria atual do semáforo e da fila de inferência."""
+    return {
+        "is_locked": sem.locked(),
+        "waiting_in_queue": _waiting_in_queue,
+        "max_safe_queue_size": MAX_SAFE_QUEUE_SIZE,
+    }
+
+
+def reset_inference_queue() -> None:
+    """Restaura o semáforo e zera o contador da fila (usado em testes para garantir isolamento)."""
+    global sem, _waiting_in_queue
+    sem = asyncio.Semaphore(1)
+    _waiting_in_queue = 0
 
 
 class AIService:
@@ -114,10 +153,11 @@ class AIService:
         conf_threshold: float = 0.40,
         area_m2: float = DEFAULT_AREA_ENQUADRAMENTO_M2,
     ) -> dict[str, Any]:
-        """Rotina assíncrona de inferência que não trava o Event Loop.
+        """Rotina assíncrona de inferência com semáforo protetor e controle de fila (Sprint 9).
 
-        Aguarda o tempo estipulado de forma não-bloqueante (await asyncio.sleep)
-        e despacha a computação de tensores para uma thread separada.
+        Aguarda o tempo estipulado de forma não-bloqueante (await asyncio.sleep),
+        garante que apenas uma imagem pesada de trigo seja inferida por vez na CPU
+        e rejeita sobrecargas com HTTP 429 caso a fila exceda o limite seguro.
         """
         path_obj = Path(image_path).resolve()
         caminho_modelo = (model_path or self.default_model_path).resolve()
@@ -160,61 +200,92 @@ class AIService:
             resultado["error"] = msg_erro
             return resultado
 
-        try:
-            # 3. Obtém instância em cache do modelo
-            modelo = self.get_or_load_model(caminho_modelo)
+        # 3. Controle de concorrência e fila segura contra sobrecarga de CPU/RAM (Sprint 9)
+        global _waiting_in_queue
+        queue_incremented = False
 
-            if modelo is not None:
-                logger.info("[IA] Executando predição assíncrona com Ultralytics YOLO (conf >= %.2f)...", conf_threshold)
-                # Executa predição em threadpool para não travar o loop do FastAPI
-                total_deteccoes, detections, summary = await asyncio.to_thread(
-                    self._run_inference_sync, modelo, path_obj, conf_threshold, area_m2
+        if sem.locked():
+            if _waiting_in_queue >= MAX_SAFE_QUEUE_SIZE:
+                logger.warning(
+                    "[IA Fila] Sobrecarga detectada: motor ocupado e fila segura excedida "
+                    "(%d aguardando, limite: %d). Rejeitando requisição com HTTP 429.",
+                    _waiting_in_queue,
+                    MAX_SAFE_QUEUE_SIZE,
                 )
-
-                resultado["status"] = "completed"
-                resultado["engine"] = "ultralytics"
-                resultado["detections_count"] = total_deteccoes
-                resultado["detections"] = detections
-                resultado["summary"] = summary
-                resultado["densidade_estimada"] = summary["densidade_estimada"]
-                resultado["classificacao_densidade"] = summary["classificacao_densidade"]
-            else:
-                # Pipeline seguro de contingência quando ultralytics não estiver instalado
-                logger.info(
-                    "[IA] Modelo '%s' validado e pronto. Simulação de inferência concluída.",
-                    caminho_modelo.name,
-                )
-                resultado["status"] = "completed"
-                resultado["engine"] = "mock_pipeline"
-                resultado["detections_count"] = 0
-                resultado["detections"] = []
-                diagnostico = diagnostico_agronomico(0, area_m2)
-                resultado["densidade_estimada"] = diagnostico["densidade_estimada"]
-                resultado["classificacao_densidade"] = diagnostico["classificacao_densidade"]
-                resultado["summary"] = {
-                    "falhas_identificadas": 0,
-                    "total_detecoes": 0,
-                    "total_ervas_daninhas": 0,
-                    "total_cana": 0,
-                    "total_espigas": 0,
-                    "taxa_infestacao_percent": 0.0,
-                    **diagnostico,
-                    "modelo": caminho_modelo.name,
-                    "tamanho_modelo_bytes": caminho_modelo.stat().st_size,
-                    "tamanho_imagem_bytes": path_obj.stat().st_size,
-                    "status_analise": "concluida_com_sucesso",
-                }
-
+                raise InferenceOverloadException()
+            _waiting_in_queue += 1
+            queue_incremented = True
             logger.info(
-                "[IA] Avaliação da foto '%s' concluída com sucesso! (Status: %s)",
-                path_obj.name,
-                resultado["status"],
+                "[IA Fila] Motor ocupado. Requisição entrou na fila de espera (%d/%d).",
+                _waiting_in_queue,
+                MAX_SAFE_QUEUE_SIZE,
             )
-            return resultado
 
+        try:
+            # Envolve a execução da inferência com async with sem:
+            async with sem:
+                if queue_incremented:
+                    _waiting_in_queue -= 1
+                    queue_incremented = False
 
+                # 4. Obtém instância em cache do modelo
+                modelo = self.get_or_load_model(caminho_modelo)
+
+                if modelo is not None:
+                    logger.info("[IA] Executando predição assíncrona com Ultralytics YOLO (conf >= %.2f)...", conf_threshold)
+                    # Executa predição em threadpool para não travar o loop do FastAPI
+                    total_deteccoes, detections, summary = await asyncio.to_thread(
+                        self._run_inference_sync, modelo, path_obj, conf_threshold, area_m2
+                    )
+
+                    resultado["status"] = "completed"
+                    resultado["engine"] = "ultralytics"
+                    resultado["detections_count"] = total_deteccoes
+                    resultado["detections"] = detections
+                    resultado["summary"] = summary
+                    resultado["densidade_estimada"] = summary["densidade_estimada"]
+                    resultado["classificacao_densidade"] = summary["classificacao_densidade"]
+                else:
+                    # Pipeline seguro de contingência quando ultralytics não estiver instalado
+                    logger.info(
+                        "[IA] Modelo '%s' validado e pronto. Simulação de inferência concluída.",
+                        caminho_modelo.name,
+                    )
+                    resultado["status"] = "completed"
+                    resultado["engine"] = "mock_pipeline"
+                    resultado["detections_count"] = 0
+                    resultado["detections"] = []
+                    diagnostico = diagnostico_agronomico(0, area_m2)
+                    resultado["densidade_estimada"] = diagnostico["densidade_estimada"]
+                    resultado["classificacao_densidade"] = diagnostico["classificacao_densidade"]
+                    resultado["summary"] = {
+                        "falhas_identificadas": 0,
+                        "total_detecoes": 0,
+                        "total_ervas_daninhas": 0,
+                        "total_cana": 0,
+                        "total_espigas": 0,
+                        "taxa_infestacao_percent": 0.0,
+                        **diagnostico,
+                        "modelo": caminho_modelo.name,
+                        "tamanho_modelo_bytes": caminho_modelo.stat().st_size,
+                        "tamanho_imagem_bytes": path_obj.stat().st_size,
+                        "status_analise": "concluida_com_sucesso",
+                    }
+
+                logger.info(
+                    "[IA] Avaliação da foto '%s' concluída com sucesso! (Status: %s)",
+                    path_obj.name,
+                    resultado["status"],
+                )
+                return resultado
+
+        except HTTPException:
+            raise
         except Exception as exc:
             logger.exception("[IA] Erro durante a avaliação assíncrona da imagem %s: %s", path_obj.name, exc)
             resultado["status"] = "error"
             resultado["error"] = str(exc)
             return resultado
+        finally:
+            if queue_incremented:
+                _waiting_in_queue -= 1

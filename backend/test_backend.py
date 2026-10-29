@@ -917,6 +917,128 @@ class TestHealthEndpoint(unittest.TestCase):
 
 
 
+class TestInferenceQueueConcurrency(unittest.IsolatedAsyncioTestCase):
+    """Bateria de testes da Sprint 9: Proteção contra Sobrecarga no Motor de Inferência (Controle de Fila)."""
+
+    def setUp(self):
+        from app.services.ai_service import reset_inference_queue
+        reset_inference_queue()
+        self.client = TestClient(app)
+
+    def tearDown(self):
+        from app.services.ai_service import reset_inference_queue
+        reset_inference_queue()
+
+    async def test_56_telemetria_fila_inferencia_inicial(self):
+        """Valida que o estado inicial do semáforo é destravado e com fila zerada."""
+        from app.services.ai_service import get_inference_queue_status
+        status_info = get_inference_queue_status()
+        self.assertFalse(status_info["is_locked"])
+        self.assertEqual(status_info["waiting_in_queue"], 0)
+        self.assertGreaterEqual(status_info["max_safe_queue_size"], 1)
+        print("  [PASS] 56 - Telemetria inicial do semáforo: destravado e fila zerada")
+
+    async def test_57_processamento_sequencial_com_semaforo(self):
+        """Valida que o semáforo asyncio.Semaphore(1) garante execução isolada por vez."""
+        from app.services.ai_service import AIService
+        service = AIService()
+
+        executing = []
+        concurrency_spikes = 0
+
+        async def mock_run_inference_sync(model, image_path, conf_threshold, area_m2):
+            nonlocal concurrency_spikes
+            executing.append(True)
+            if len(executing) > 1:
+                concurrency_spikes += 1
+            await asyncio.sleep(0.05)
+            executing.pop()
+            return 10, [], {"total_cabecas_trigo": 10, "densidade_estimada": 10.0, "classificacao_densidade": "Baixa"}
+
+        test_img = TEMP_IMAGES_DIR / "trigo_fila_test_1.png"
+        test_img.touch()
+        try:
+            with patch.object(service, "get_or_load_model", return_value=MagicMock()), \
+                 patch.object(service, "_run_inference_sync", side_effect=mock_run_inference_sync):
+
+                task1 = asyncio.create_task(service.process_image_async(test_img, delay_seconds=0))
+                task2 = asyncio.create_task(service.process_image_async(test_img, delay_seconds=0))
+                res1, res2 = await asyncio.gather(task1, task2)
+
+                self.assertEqual(res1["status"], "completed")
+                self.assertEqual(res2["status"], "completed")
+                self.assertEqual(concurrency_spikes, 0, "Houve concorrência simultânea indevida na inferência!")
+            print("  [PASS] 57 - Semáforo garantiu execução serial sem concorrência destrutiva na CPU/RAM")
+        finally:
+            if test_img.exists():
+                test_img.unlink()
+
+    async def test_58_disparo_tres_requisicoes_simultaneas_com_protecao_429(self):
+        """Checklist Sprint 9: Dispara 3 requisições simultâneas de fotos de trigo.
+
+        Comprova que o servidor não sofre crash por falta de memória:
+        - Requisição 1: processa imediatamente no semáforo.
+        - Requisição 2: enfileira na fila segura (limite = 1).
+        - Requisição 3: excede o limite seguro da fila e recebe HTTP 429 com mensagem amigável:
+          'Processador ocupado, tente em alguns segundos'.
+        """
+        from app.services.ai_service import AIService, InferenceOverloadException
+        service = AIService()
+
+        test_img = TEMP_IMAGES_DIR / "trigo_fila_test_3req.png"
+        test_img.touch()
+
+        release_event = asyncio.Event()
+
+        async def slow_inference(model, image_path, conf_threshold, area_m2):
+            await release_event.wait()
+            return 15, [], {"total_cabecas_trigo": 15, "densidade_estimada": 15.0, "classificacao_densidade": "Baixa"}
+
+        try:
+            with patch.object(service, "get_or_load_model", return_value=MagicMock()), \
+                 patch.object(service, "_run_inference_sync", side_effect=slow_inference):
+
+                t1 = asyncio.create_task(service.process_image_async(test_img, delay_seconds=0))
+                await asyncio.sleep(0.01)
+
+                t2 = asyncio.create_task(service.process_image_async(test_img, delay_seconds=0))
+                await asyncio.sleep(0.01)
+
+                t3 = asyncio.create_task(service.process_image_async(test_img, delay_seconds=0))
+
+                with self.assertRaises(InferenceOverloadException) as ctx:
+                    await t3
+
+                self.assertEqual(ctx.exception.status_code, 429)
+                self.assertEqual(ctx.exception.detail, "Processador ocupado, tente em alguns segundos")
+                self.assertEqual(ctx.exception.headers.get("Retry-After"), "3")
+
+                release_event.set()
+                res1 = await t1
+                res2 = await t2
+
+                self.assertEqual(res1["status"], "completed")
+                self.assertEqual(res2["status"], "completed")
+
+            print("  [PASS] 58 - Teste de 3 requisições simultâneas: HTTP 429 disparado e proteção contra crash comprovada")
+        finally:
+            release_event.set()
+            if test_img.exists():
+                test_img.unlink()
+
+    def test_59_health_inclui_telemetria_da_fila(self):
+        """Valida se GET /api/health expõe o estado atual da fila de inferência."""
+        response = self.client.get("/api/health")
+        self.assertIn(response.status_code, (200, 503))
+        data = response.json()
+        self.assertIn("inference_queue", data)
+        queue_info = data["inference_queue"]
+        self.assertIn("is_locked", queue_info)
+        self.assertIn("waiting_in_queue", queue_info)
+        self.assertIn("max_safe_queue_size", queue_info)
+        print("  [PASS] 59 - /api/health inclui telemetria de concorrência e fila de inferência")
+
+
 if __name__ == "__main__":
 
     print("\n" + "=" * 65)
