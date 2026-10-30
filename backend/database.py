@@ -51,17 +51,12 @@ DB_NAME: str = os.getenv("DB_NAME", "postgres")
 
 class DatabaseConfigurationError(Exception):
     """Exceção para credenciais ou variáveis ausentes."""
-
     pass
 
 
 @lru_cache(maxsize=1)
 def get_supabase_client() -> Any:
-    """Retorna uma instância singleton do cliente Supabase (supabase-py) com service_role.
-
-    Prioriza SUPABASE_SERVICE_ROLE_KEY para realizar bypass do RLS nas operações
-    de leitura e escrita da API sem bloqueios 403 Forbidden.
-    """
+    """Retorna uma instância singleton do cliente Supabase (supabase-py) com service_role."""
     if not SUPABASE_URL:
         raise DatabaseConfigurationError(
             "SUPABASE_URL não configurada no arquivo .env."
@@ -83,11 +78,11 @@ def get_supabase_client() -> Any:
     except Exception as exc:
         logger.error("Erro ao inicializar cliente Supabase: %s", exc)
         raise ConnectionError(f"Falha ao conectar ao Supabase: {exc}") from exc
+
+
 def get_pg_connection_string() -> str:
     """Retorna a string de conexão normalizada para PostgreSQL via pooler IPv4."""
     if DATABASE_URL and DATABASE_URL.strip():
-        # Se a URL aponta para db.*.supabase.co (que só tem IPv6 e falha em redes IPv4),
-        # redireciona automaticamente para o pooler IPv4 oficial do projeto
         url = DATABASE_URL.strip()
         if "db.hbropsjrbebbuiwcjrcu.supabase.co" in url:
             url = url.replace(
@@ -96,7 +91,6 @@ def get_pg_connection_string() -> str:
             )
         return url
 
-    # Constrói a partir dos parâmetros individuais
     user = DB_USER or "postgres.hbropsjrbebbuiwcjrcu"
     raw_pwd = DATABASE_PASSWORD or "Sug@rCarne67!"
     pwd = urllib.parse.quote_plus(raw_pwd)
@@ -144,10 +138,7 @@ def _is_conn_healthy(conn: Any) -> bool:
 
 @contextmanager
 def get_db_connection(autocommit: bool = False) -> Generator[Any, None, None]:
-    """Context manager para conexões seguras com PostgreSQL usando psycopg2 (com pool).
-
-    Com autocommit=True (consultas de leitura) evita os round-trips extras de BEGIN/ROLLBACK.
-    """
+    """Context manager para conexões seguras com PostgreSQL usando psycopg2 (com pool)."""
     try:
         import psycopg2
         import psycopg2.extras
@@ -175,9 +166,9 @@ def get_db_connection(autocommit: bool = False) -> Generator[Any, None, None]:
             try:
                 if not conn.closed:
                     if conn.autocommit:
-                        conn.autocommit = False  # sem round-trip: não há transação aberta
+                        conn.autocommit = False
                     else:
-                        conn.rollback()  # encerra transação aberta antes de devolver ao pool
+                        conn.rollback()
                     _conn_last_used[id(conn)] = time.monotonic()
                 pool.putconn(conn, close=broken or bool(conn.closed))
             except Exception:
@@ -193,7 +184,6 @@ def check_connection() -> dict[str, Any]:
         "db_port": DB_PORT,
     }
 
-    # Verifica conexão direta PostgreSQL
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
@@ -208,7 +198,6 @@ def check_connection() -> dict[str, Any]:
             "message": str(pg_err),
         }
 
-    # Verifica o cliente supabase-py (REST)
     try:
         client = get_supabase_client()
         session = client.auth.get_session()
@@ -227,7 +216,6 @@ def check_connection() -> dict[str, Any]:
             "message": str(err),
         }
 
-    # Status geral
     if status.get("postgres_direct", {}).get("status") == "connected" or status["supabase_api"]["status"] == "connected":
         status["status"] = "connected"
     elif status["database_url_configured"]:
@@ -238,7 +226,6 @@ def check_connection() -> dict[str, Any]:
     return status
 
 
-# Tentativa de inicialização de conveniência
 try:
     if SUPABASE_URL and SUPABASE_KEY and SUPABASE_KEY.strip():
         supabase = get_supabase_client()
@@ -248,13 +235,13 @@ except Exception:
     supabase = None
 
 
-# Dados de contingência com formato compatível com o mapa (PolygonGeometry)
-FALLBACK_ANOMALIES: List[dict[str, Any]] = [
+# Dados de contingência refatorados para deteção de espigas de trigo
+FALLBACK_DETECTIONS: List[dict[str, Any]] = [
     {
-        "id": "falha-01",
-        "name": "Falha de Plantio 01",
-        "type": "falha_plantio",
-        "severity": "alta",
+        "id": "det-01",
+        "name": "Espigas Detectadas 01",
+        "type": "wheat_head",
+        "severity": "baixa",
         "coordinates": [
             [-22.4085, -47.5625],
             [-22.4095, -47.5615],
@@ -262,90 +249,32 @@ FALLBACK_ANOMALIES: List[dict[str, Any]] = [
             [-22.4098, -47.5635],
         ],
         "customAreaM2": 12500,
-    },
-    {
-        "id": "falha-02",
-        "name": "Falha de Plantio 02",
-        "type": "falha_plantio",
-        "severity": "media",
-        "coordinates": [
-            [-22.4120, -47.5590],
-            [-22.4130, -47.5580],
-            [-22.4138, -47.5592],
-            [-22.4128, -47.5602],
-        ],
-        "customAreaM2": 8200,
-    },
+    }
 ]
 
-# Dados de contingência para amostras de imagens caso a conexão esteja offline
 FALLBACK_IMAGES: List[dict[str, Any]] = [
     {
         "id": "5e0fac58-359f-4eb6-8d62-9491a0b867f0",
-        "filename": "teste agro2.jpeg",
+        "filename": "amostra_trigo_01.jpeg",
         "status": "completed",
         "uploaded_at": "2026-08-20T14:10:27.686432+00:00",
-        "total_anomalies": 2,
+        "total_detections": 120,
         "total_area_ha": 18.71,
-        "anomalies": [
-            {"id": "b5d4779c-ba71-4a0d-a9d8-41187bb2544e", "anomaly_type": "healthy_cane", "area_hectares": 14.16, "created_at": "2026-08-20T14:10:28.696344+00:00"},
-            {"id": "e3c07f03-f3a3-4dd3-93d7-698cbf9413be", "anomaly_type": "white_leaf_disease", "area_hectares": 4.55, "created_at": "2026-08-20T14:10:29.132159+00:00"},
+        "detections": [
+            {"id": "b5d4779c-ba71-4a0d-a9d8-41187bb2544e", "detection_type": "wheat_head", "area_hectares": 14.16, "created_at": "2026-08-20T14:10:28.696344+00:00"},
         ],
-    },
-    {
-        "id": "fdb31da6-45d6-4247-9b35-556fe6e4eabe",
-        "filename": "testefoto1myagro.png",
-        "status": "completed",
-        "uploaded_at": "2026-08-20T11:23:44.448945+00:00",
-        "total_anomalies": 2,
-        "total_area_ha": 43.97,
-        "anomalies": [
-            {"id": "747f6775-ccfb-4272-b903-9c51ea8f0ef4", "anomaly_type": "healthy_cane", "area_hectares": 40.95, "created_at": "2026-08-20T11:23:45.348035+00:00"},
-            {"id": "88197500-430b-45f6-bdef-af160637d2bb", "anomaly_type": "white_leaf_disease", "area_hectares": 3.02, "created_at": "2026-08-20T11:23:45.762599+00:00"},
-        ],
-    },
-    {
-        "id": "c19b15bd-a40a-f93c-1b5b-856930196888",
-        "filename": "amostra_erva_daninha.jpg",
-        "status": "completed",
-        "uploaded_at": "2026-08-20T11:03:05.828398+00:00",
-        "total_anomalies": 32,
-        "total_area_ha": 25.56,
-        "anomalies": [
-            {"id": "bb8c19b1-5bda-40af-93c1-b5b856930196", "anomaly_type": "erva_daninha", "area_hectares": 23.28, "created_at": "2026-08-20T11:03:06.888132+00:00"},
-            {"id": "92a4f9e9-2a78-4cf7-97f3-3e1930a8d74c", "anomaly_type": "white_leaf_disease", "area_hectares": 2.28, "created_at": "2026-08-20T11:03:07.814602+00:00"},
-        ],
-    },
-    {
-        "id": "a784cf79-7f33-e193-0a8d-74cbb8c19b15",
-        "filename": "cana_teste.jpg",
-        "status": "completed",
-        "uploaded_at": "2026-08-19T09:15:20.112000+00:00",
-        "total_anomalies": 5,
-        "total_area_ha": 12.30,
-        "anomalies": [
-            {"id": "d1930a8d-74cb-b8c1-9b15-bda40af93c1b", "anomaly_type": "healthy_cane", "area_hectares": 12.30, "created_at": "2026-08-19T09:15:21.000000+00:00"},
-        ],
-    },
+    }
 ]
 
 
 def get_all_images() -> List[dict[str, Any]]:
-    """Consulta e retorna todas as amostras cadastradas na tabela 'images' do banco de dados.
-
-    Realiza consulta no PostgreSQL via psycopg2 ou Supabase client, trazendo os metadados
-    completos da imagem (ID, nome de arquivo, status, data de upload) e correlacionando
-    com as anomalias detectadas registradas na tabela 'anomalies'.
-
-    Returns:
-        Lista estruturada de amostras de imagens com métricas associadas.
-    """
+    """Consulta amostras cadastradas na tabela 'images' e cruza com os resultados em 'analyses'."""
     try:
         import psycopg2.extras
 
         with get_db_connection() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                # Busca as imagens ordenadas pelas mais recentes
+                # Cruza as imagens com a tabela analyses (onde a IA grava os focos)
                 cur.execute(
                     """
                     SELECT 
@@ -353,62 +282,33 @@ def get_all_images() -> List[dict[str, Any]]:
                         i.filename,
                         i.status,
                         i.uploaded_at,
-                        COUNT(a.id) AS total_anomalies,
-                        COALESCE(SUM(a.area_hectares), 0) AS total_area_ha
+                        COALESCE(MAX(a.focos_detectados), 0) AS total_detections,
+                        COALESCE(MAX(a.area_amostra_m2) / 10000.0, 0) AS total_area_ha
                     FROM images i
-                    LEFT JOIN anomalies a ON a.image_id = i.id
+                    LEFT JOIN analyses a ON a.image_id = i.id
                     GROUP BY i.id, i.filename, i.status, i.uploaded_at
                     ORDER BY i.uploaded_at DESC
                     """
                 )
                 image_rows = cur.fetchall()
 
-                # Busca todas as anomalias vinculadas
-                cur.execute(
-                    """
-                    SELECT id, image_id, anomaly_type, area_hectares, created_at
-                    FROM anomalies
-                    WHERE image_id IS NOT NULL
-                    """
-                )
-                anomaly_rows = cur.fetchall()
-
-                anomalies_by_image: dict[str, List[dict[str, Any]]] = {}
-                for a in anomaly_rows:
-                    img_id = str(a["image_id"])
-                    if img_id not in anomalies_by_image:
-                        anomalies_by_image[img_id] = []
-                    anomalies_by_image[img_id].append({
-                        "id": str(a["id"]),
-                        "anomaly_type": a["anomaly_type"],
-                        "area_hectares": float(a["area_hectares"]) if a["area_hectares"] is not None else 0.0,
-                        "created_at": a["created_at"].isoformat() if a["created_at"] else None,
-                    })
-
                 results: List[dict[str, Any]] = []
                 for row in image_rows:
-                    item_id = str(row["id"])
                     results.append({
-                        "id": item_id,
+                        "id": str(row["id"]),
                         "filename": row["filename"],
                         "status": row["status"] or "completed",
                         "uploaded_at": row["uploaded_at"].isoformat() if row["uploaded_at"] else None,
-                        "total_anomalies": int(row["total_anomalies"]),
+                        "total_detections": int(row["total_detections"]),
                         "total_area_ha": round(float(row["total_area_ha"]), 2),
-                        "anomalies": anomalies_by_image.get(item_id, []),
+                        "detections": [], 
                     })
 
-                logger.info(
-                    "SELECT executado com sucesso na tabela 'images': %d registros retornados.",
-                    len(results),
-                )
+                logger.info("SELECT executado com sucesso na tabela 'images': %d registros retornados.", len(results))
                 return results
 
     except Exception as exc:
-        logger.warning(
-            "Consulta direta ao PostgreSQL 'images' indisponível (%s). Tentando Supabase API...",
-            exc,
-        )
+        logger.warning("Consulta PostgreSQL 'images' indisponível (%s). Tentando API Supabase...", exc)
         try:
             client = get_supabase_client()
             resp = client.table("images").select("*").order("uploaded_at", desc=True).execute()
@@ -420,16 +320,13 @@ def get_all_images() -> List[dict[str, Any]]:
                         "filename": img.get("filename"),
                         "status": img.get("status") or "completed",
                         "uploaded_at": str(img.get("uploaded_at")),
-                        "total_anomalies": 0,
+                        "total_detections": 0,
                         "total_area_ha": 0.0,
-                        "anomalies": [],
+                        "detections": [],
                     })
                 return images_data
         except Exception as sup_exc:
-            logger.warning(
-                "Consulta via Supabase API também falhou (%s). Retornando amostras de contingência.",
-                sup_exc,
-            )
+            logger.warning("Consulta via API falhou (%s). Retornando contingência.", sup_exc)
 
         return FALLBACK_IMAGES
 
@@ -456,84 +353,60 @@ def insert_image_record(
                 )
                 conn.commit()
                 row = cur.fetchone()
-                logger.info("Registro de imagem inserido no banco: %s (%s)", filename, rec_id)
+                logger.info("Registro inserido: %s", filename)
                 return {
                     "id": str(row[0]),
                     "filename": row[1],
                     "status": row[2],
                     "uploaded_at": row[3].isoformat() if row[3] else now.isoformat(),
-                    "total_anomalies": 0,
+                    "total_detections": 0,
                     "total_area_ha": 0.0,
-                    "anomalies": [],
+                    "detections": [],
                 }
     except Exception as pg_exc:
-        logger.warning(
-            "Inserção direta no PostgreSQL indisponível (%s). Tentando via Supabase API (service_role)...",
-            pg_exc,
-        )
+        logger.warning("Inserção direta indisponível (%s). Tentando API...", pg_exc)
         try:
             client = get_supabase_client()
-            payload = {
-                "id": rec_id,
-                "filename": filename,
-                "status": status,
-                "uploaded_at": now.isoformat(),
-            }
+            payload = {"id": rec_id, "filename": filename, "status": status, "uploaded_at": now.isoformat()}
             resp = client.table("images").insert(payload).execute()
             row_data = resp.data[0] if resp and getattr(resp, "data", None) else payload
-            logger.info("Registro de imagem inserido via Supabase API (bypass RLS): %s (%s)", filename, rec_id)
             return {
                 "id": str(row_data.get("id", rec_id)),
                 "filename": row_data.get("filename", filename),
                 "status": row_data.get("status", status),
                 "uploaded_at": str(row_data.get("uploaded_at", now.isoformat())),
-                "total_anomalies": 0,
+                "total_detections": 0,
                 "total_area_ha": 0.0,
-                "anomalies": [],
+                "detections": [],
             }
         except Exception as exc:
-            logger.warning("Não foi possível persistir amostra no banco (%s). Retornando mock local.", exc)
+            logger.warning("Não foi possível persistir amostra (%s). Retornando mock.", exc)
             return {
-                "id": rec_id,
-                "filename": filename,
-                "status": status,
-                "uploaded_at": now.isoformat(),
-                "total_anomalies": 0,
-                "total_area_ha": 0.0,
-                "anomalies": [],
+                "id": rec_id, "filename": filename, "status": status, "uploaded_at": now.isoformat(),
+                "total_detections": 0, "total_area_ha": 0.0, "detections": []
             }
 
 
 def update_image_filename(image_id: str, new_filename: str) -> bool:
-    """Atualiza o nome de exibição de uma imagem cadastrada na tabela 'images' do Supabase."""
     clean_name = new_filename.strip()
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    "UPDATE images SET filename = %s WHERE id = %s",
-                    (clean_name, image_id),
-                )
-                cur.execute(
-                    "UPDATE analyses SET nome_imagem = %s WHERE image_id = %s",
-                    (clean_name, image_id),
-                )
+                cur.execute("UPDATE images SET filename = %s WHERE id = %s", (clean_name, image_id))
+                cur.execute("UPDATE analyses SET nome_imagem = %s WHERE image_id = %s", (clean_name, image_id))
                 conn.commit()
-                logger.info("Amostra '%s' renomeada para '%s' no Supabase", image_id, clean_name)
                 return True
     except Exception as exc:
-        logger.error("Erro ao renomear imagem no banco (%s): %s", image_id, exc)
+        logger.error("Erro ao renomear imagem (%s): %s", image_id, exc)
         return False
 
 
 import json
 
-# Arquivo de segurança local caso a conexão direta falhe sem o painel
 LOCAL_HISTORY_FILE = _BASE_DIR / "analyses_history.json"
 
 
 def init_db():
-    """Tenta criar a tabela 'analyses' diretamente no banco via Python."""
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
@@ -562,17 +435,13 @@ def init_db():
                     """
                 )
                 conn.commit()
-                logger.info("Tabela 'analyses' verificada/criada com sucesso no Supabase!")
     except Exception as exc:
-        logger.warning("Supabase não executou DDL direta (%s). Operando com contingência local.", exc)
+        logger.warning("Supabase DDL ignorado (%s).", exc)
 
-
-# Executa a verificação assim que o módulo carregar
 init_db()
 
 
 def _load_local_analyses() -> List[dict[str, Any]]:
-    """Carrega análises do arquivo local caso o banco esteja inacessível."""
     if LOCAL_HISTORY_FILE.exists():
         try:
             with open(LOCAL_HISTORY_FILE, "r", encoding="utf-8") as f:
@@ -583,7 +452,6 @@ def _load_local_analyses() -> List[dict[str, Any]]:
 
 
 def _save_local_analyses(data: List[dict[str, Any]]) -> None:
-    """Salva análises no arquivo local."""
     try:
         with open(LOCAL_HISTORY_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
@@ -592,12 +460,10 @@ def _save_local_analyses(data: List[dict[str, Any]]) -> None:
 
 
 def _ordenar_mais_recentes(items: List[dict[str, Any]]) -> List[dict[str, Any]]:
-    """Ordena as análises da mais recente para a mais antiga (campo created_at ISO)."""
     return sorted(items, key=lambda a: str(a.get("created_at") or ""), reverse=True)
 
 
 def _enriquecer_analise(item: dict[str, Any]) -> dict[str, Any]:
-    """Garante no retorno: data, nome da amostra, total de espigas, densidade e coordenadas."""
     summary = item.get("summary") if isinstance(item.get("summary"), dict) else {}
     total = summary.get("total_espigas")
     if total is None:
@@ -606,6 +472,7 @@ def _enriquecer_analise(item: dict[str, Any]) -> dict[str, Any]:
         total = item.get("focos_detectados") or item.get("focosDetectados") or 0
     lat = item.get("latitude") if item.get("latitude") is not None else summary.get("latitude")
     lon = item.get("longitude") if item.get("longitude") is not None else summary.get("longitude")
+    
     item["data"] = item.get("created_at")
     item["nome_amostra"] = item.get("nome_imagem") or item.get("nomeImagem")
     item["total_espigas"] = int(total)
@@ -616,19 +483,16 @@ def _enriquecer_analise(item: dict[str, Any]) -> dict[str, Any]:
 
 
 def get_analyses_page(limit: int, offset: int = 0) -> tuple[List[dict[str, Any]], int]:
-    """Retorna (itens_da_página, total) do histórico, do mais recente para o mais antigo."""
     total_holder: list[int] = []
     items = get_all_analyses(limit=limit, offset=offset, _total_out=total_holder)
     if total_holder:
         return items, total_holder[0]
-    # Contingência local (Supabase indisponível): total vem do arquivo local
     return items, len(_load_local_analyses())
 
 
 def get_all_analyses(
     limit: Optional[int] = None, offset: int = 0, _total_out: Optional[list] = None
 ) -> List[dict[str, Any]]:
-    """Consulta histórico no Supabase. Se falhar, busca do arquivo local seguro."""
     try:
         import psycopg2.extras
         with get_db_connection(autocommit=True) as conn:
@@ -651,9 +515,10 @@ def get_all_analyses(
                 if _total_out is not None:
                     if rows:
                         _total_out.append(int(rows[0]["_total"]))
-                    else:  # página além do fim: total real precisa de COUNT
+                    else:
                         cur.execute("SELECT COUNT(*) AS total FROM analyses")
                         _total_out.append(int(cur.fetchone()["total"]))
+                
                 results = []
                 for r in rows:
                     created_dt = r.get("created_at")
@@ -687,7 +552,7 @@ def get_all_analyses(
                         "talhao_nome": r.get("talhao_nome") or "Amostra Geral",
                         "talhaoNome": r.get("talhao_nome") or "Amostra Geral",
                         "cidade": r.get("cidade") or "Rio Claro - SP",
-                        "variedade": r.get("variedade") or "CTC-9001",
+                        "variedade": r.get("variedade") or "Trigo",
                         "area_amostra_m2": round(float(r.get("area_amostra_m2") or 0), 2),
                         "areaAmostraM2": round(float(r.get("area_amostra_m2") or 0), 2),
                         "area_infestacao_m2": round(float(r.get("area_infestacao_m2") or 0), 2),
@@ -705,13 +570,12 @@ def get_all_analyses(
                     })
                 return [_enriquecer_analise(r) for r in results]
     except Exception as exc:
-        logger.warning("Supabase offline ou tabela inexistente (%s). Usando contingência local.", exc)
+        logger.warning("Supabase offline ou tabela inexistente (%s). Usando local.", exc)
         local = [_enriquecer_analise(a) for a in _ordenar_mais_recentes(_load_local_analyses())]
         return local[offset:offset + limit] if limit is not None else local
 
 
 def insert_analysis(data: dict[str, Any]) -> dict[str, Any]:
-    """Salva análise no Supabase com trava anti-duplicação (evita registros gêmeos do React)."""
     analysis_id = data.get("id") or str(uuid.uuid4())
     nome_imagem = data.get("nome_imagem") or data.get("nomeImagem") or "amostra.jpg"
     image_url = data.get("image_url") or ""
@@ -720,26 +584,24 @@ def insert_analysis(data: dict[str, Any]) -> dict[str, Any]:
     talhao_id = data.get("talhao_id") or data.get("talhaoId") or "talhao-01"
     talhao_nome = data.get("talhao_nome") or data.get("talhaoNome") or "Amostra de Campo"
     cidade = data.get("cidade") or "Rio Claro - SP"
-    variedade = data.get("variedade") or "CTC-9001"
+    variedade = data.get("variedade") or "Trigo"
     area_amostra_m2 = float(data.get("area_amostra_m2") or data.get("areaAmostraM2") or 2.5)
     area_infestacao_m2 = float(data.get("area_infestacao_m2") or data.get("areaInfestacaoM2") or 0.0)
     percentual_infestacao = float(data.get("percentual_infestacao") or data.get("percentualInfestacao") or 0.0)
     focos_detectados = int(data.get("focos_detectados") or data.get("focosDetectados") or 0)
     status = data.get("status") or "Concluído"
     detections_json = data.get("detections_json") or json.dumps(data.get("detections", []))
+    
     _summary_dict = data.get("summary") if isinstance(data.get("summary"), dict) else {}
     _summary_dict = dict(_summary_dict)
     for _coord in ("latitude", "longitude"):
         if data.get(_coord) is not None and _summary_dict.get(_coord) is None:
             _summary_dict[_coord] = float(data[_coord])
     summary_json = data.get("summary_json") or json.dumps(_summary_dict)
+    
     image_id = data.get("image_id")
     now_iso = datetime.now().isoformat()
 
-    # -------------------------------------------------------------
-    # TRAVA ANTI-DUPLICAÇÃO: Verifica se já existe análise idêntica
-    # criada há menos de 5 segundos no Supabase
-    # -------------------------------------------------------------
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
@@ -753,49 +615,33 @@ def insert_analysis(data: dict[str, Any]) -> dict[str, Any]:
                 )
                 existing = cur.fetchone()
                 if existing:
-                    logger.info("Análise duplicada ignorada (duplo disparo em < 5s): %s", nome_imagem)
                     return {**data, "id": str(existing[0]), "created_at": existing[1].isoformat()}
     except Exception:
         pass
 
-    # Checagem na contingência local também
     local_data = _load_local_analyses()
     if local_data and local_data[0].get("nome_imagem") == nome_imagem:
         try:
             last_time = datetime.fromisoformat(local_data[0].get("created_at", ""))
             if (datetime.now() - last_time).total_seconds() < 5:
-                logger.info("Análise duplicada ignorada no backup local: %s", nome_imagem)
                 return local_data[0]
         except Exception:
             pass
 
     record = {
         **data,
-        "id": analysis_id,
-        "nomeImagem": nome_imagem,
-        "nome_imagem": nome_imagem,
-        "tamanhoArquivo": tamanho_arquivo,
-        "formato": formato,
-        "talhaoNome": talhao_nome,
-        "talhaoId": talhao_id,
-        "cidade": cidade,
-        "variedade": variedade,
-        "areaAmostraM2": area_amostra_m2,
-        "areaInfestacaoM2": area_infestacao_m2,
-        "percentualInfestacao": percentual_infestacao,
-        "focosDetectados": focos_detectados,
-        "status": status,
-        "image_url": image_url,
-        "dataCaptura": datetime.now().strftime("%d/%m/%Y"),
-        "horaCaptura": datetime.now().strftime("%H:%M"),
-        "created_at": now_iso,
+        "id": analysis_id, "nomeImagem": nome_imagem, "nome_imagem": nome_imagem,
+        "tamanhoArquivo": tamanho_arquivo, "formato": formato, "talhaoNome": talhao_nome,
+        "talhaoId": talhao_id, "cidade": cidade, "variedade": variedade,
+        "areaAmostraM2": area_amostra_m2, "areaInfestacaoM2": area_infestacao_m2,
+        "percentualInfestacao": percentual_infestacao, "focosDetectados": focos_detectados,
+        "status": status, "image_url": image_url, "dataCaptura": datetime.now().strftime("%d/%m/%Y"),
+        "horaCaptura": datetime.now().strftime("%H:%M"), "created_at": now_iso,
     }
 
-    # Salva na cópia local
     local_data.insert(0, record)
     _save_local_analyses(local_data)
 
-    # Persiste no Supabase
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
@@ -819,7 +665,6 @@ def insert_analysis(data: dict[str, Any]) -> dict[str, Any]:
                 conn.commit()
                 row = cur.fetchone()
                 record["created_at"] = row[1].isoformat()
-                logger.info("Análise gravada uma única vez no Supabase: %s", nome_imagem)
     except Exception as exc:
         logger.warning("Falha ao salvar no Supabase (%s), mantido apenas no local.", exc)
 
@@ -827,7 +672,6 @@ def insert_analysis(data: dict[str, Any]) -> dict[str, Any]:
 
 
 def delete_analysis(analysis_id: str) -> bool:
-    """Exclui análise do Supabase e do arquivo local."""
     local_data = _load_local_analyses()
     updated = [a for a in local_data if a.get("id") != analysis_id]
     _save_local_analyses(updated)
@@ -839,92 +683,52 @@ def delete_analysis(analysis_id: str) -> bool:
                 conn.commit()
                 return True
     except Exception as exc:
-        logger.warning("Falha ao deletar no Supabase (%s), excluído apenas localmente.", exc)
+        logger.warning("Falha ao deletar no Supabase (%s).", exc)
         return True
 
 
 def delete_image_record(image_id: str) -> bool:
-    """Exclui uma amostra da tabela 'images' e suas anomalias associadas no banco de dados."""
+    """Exclui amostra da tabela 'images' e as suas deteções associadas."""
     global FALLBACK_IMAGES
     FALLBACK_IMAGES = [img for img in FALLBACK_IMAGES if img.get("id") != image_id]
 
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                # Remove anomalias vinculadas por chave estrangeira image_id
-                cur.execute("DELETE FROM anomalies WHERE image_id = %s", (image_id,))
-                # Remove a amostra da tabela images
+                cur.execute("DELETE FROM detections WHERE image_id = %s", (image_id,))
                 cur.execute("DELETE FROM images WHERE id = %s", (image_id,))
                 conn.commit()
-                logger.info("Registro de imagem deletado do PostgreSQL: %s (linhas afetadas: %d)", image_id, cur.rowcount)
                 return True
     except Exception as exc:
-        logger.warning("Falha ao deletar amostra no PostgreSQL (%s). Tentando via Supabase API...", exc)
+        logger.warning("Falha ao deletar via psycopg2 (%s). Tentando API Supabase...", exc)
         try:
             client = get_supabase_client()
-            client.table("anomalies").delete().eq("image_id", image_id).execute()
+            client.table("detections").delete().eq("image_id", image_id).execute()
             client.table("images").delete().eq("id", image_id).execute()
-            logger.info("Registro de imagem deletado via Supabase API: %s", image_id)
             return True
         except Exception as sup_exc:
-            logger.warning("Falha ao deletar via Supabase API (%s). Remoção persistida no estado em memória.", sup_exc)
+            logger.warning("Falha ao deletar via Supabase API (%s).", sup_exc)
             return True
 
 
-def get_all_anomalies() -> list[dict[str, Any]]:
-    """Consulta e retorna todas as anomalias/falhas de plantio cadastradas no banco de dados.
-
-    Executa um SELECT na tabela 'anomalies' do Supabase. Caso ocorra erro de conexão
-    ou credenciais ausentes, retorna lista de contingência garantindo resiliência.
-    """
+def get_all_detections() -> list[dict[str, Any]]:
+    """Substitui get_all_anomalies(). Retorna todas as espigas/detecções cadastradas."""
     try:
         client = get_supabase_client()
-        response = client.table("anomalies").select("*").execute()
+        response = client.table("detections").select("*").execute()
         if response and hasattr(response, "data") and response.data is not None:
-            logger.info(
-                "SELECT executado com sucesso na tabela 'anomalies': %d registros retornados.",
-                len(response.data),
-            )
             return response.data
         return []
     except Exception as exc:
-        logger.warning(
-            "Consulta ao Supabase indisponível (%s). Retornando anomalias de contingência.",
-            exc,
-        )
-        return FALLBACK_ANOMALIES
+        logger.warning("Consulta 'detections' falhou (%s). Retornando contingência.", exc)
+        return FALLBACK_DETECTIONS
 
-
-if __name__ == "__main__":
-    print("=" * 60)
-    print("  SugarVision - Teste de Configuração de Banco de Dados")
-    print("=" * 60)
-    print(f"Arquivo .env: {_ENV_PATH}")
-    print(f"SUPABASE_URL: {SUPABASE_URL}")
-    print(f"DATABASE_URL: {DATABASE_URL}")
-    print(f"DB_HOST:      {DB_HOST}:{DB_PORT}")
-    print("-" * 60)
-    print("Diagnóstico:")
-    diagnostico = check_connection()
-    for k, v in diagnostico.items():
-        print(f"  {k}: {v}")
-    print("-" * 60)
-    print("Consultando 'images'...")
-    imgs = get_all_images()
-    print(f"Total de amostras retornadas: {len(imgs)}")
-    for im in imgs:
-        print(f"  - [{im['id']}] {im['filename']} | Status: {im['status']} | Anomalias: {im['total_anomalies']} | Área: {im['total_area_ha']} ha")
-    print("=" * 60)
 
 def salvar_deteccao_trigo(nome_amostra, data, total_espigas, densidade, lat, lon, bounding_boxes_json):
-    """
-    Guarda os resultados do processamento de trigo na tabela 'anomalies' usando tipos primitivos.
-    """
+    """Guarda resultados do processamento de trigo na nova tabela 'detections'."""
     try:
-        # 1. Utilizamos a ligação segura que já existe no teu ficheiro
         client = get_supabase_client()
         
-        # 2. O payload funciona como um mapa direto para as colunas numéricas
         payload = {
             "nome_amostra": nome_amostra,
             "data": data,
@@ -933,11 +737,10 @@ def salvar_deteccao_trigo(nome_amostra, data, total_espigas, densidade, lat, lon
             "latitude": float(lat) if lat is not None else None,
             "longitude": float(lon) if lon is not None else None,
             "bounding_boxes": bounding_boxes_json,
-            "anomaly_type": "trigo"
+            "detection_type": "trigo"
         }
 
-        # 3. Inserção na base de dados
-        response = client.table("anomalies").insert(payload).execute()
+        response = client.table("detections").insert(payload).execute()
         
         if response.data:
             novo_id = response.data[0].get("id")
@@ -947,5 +750,5 @@ def salvar_deteccao_trigo(nome_amostra, data, total_espigas, densidade, lat, lon
         return None
 
     except Exception as e:
-        logger.error("Ocorreu um desvio no caminho ao guardar o trigo: %s", e)
+        logger.error("Falha ao guardar o trigo na tabela detections: %s", e)
         return None

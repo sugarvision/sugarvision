@@ -16,7 +16,7 @@ from app.core.dependencies import (
     get_storage_service,
 )
 from app.services.ai_service import AIService
-from app.services.anomaly_service import AnomalyService
+from backend.app.services.detection_service import AnomalyService
 from app.services.health_service import HealthService
 from app.services.image_service import ImageService
 from app.services.storage_service import StorageService

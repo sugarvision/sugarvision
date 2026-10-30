@@ -23,6 +23,7 @@ interface AnaliseHistorico {
   focosDetectados: number;
   status: "Concluído" | "Em Processamento" | "Atenção";
   image_url?: string;
+  created_at?: string;
 }
 
 export default function HistoricoPage() {
@@ -88,30 +89,27 @@ export default function HistoricoPage() {
   ];
 
   // Função para buscar histórico real do Backend
+  // Função para buscar histórico real do Backend
   const carregarHistorico = async () => {
     setLoading(true);
     setError(null);
 
-    const isHttpsProduction =
-      typeof window !== "undefined" && window.location.protocol === "https:";
-    const isLocalhostBackend =
-      API_URL.includes("localhost") || API_URL.includes("127.0.0.1");
-
-    if (isHttpsProduction && isLocalhostBackend) {
-      setAnalises(WHEAT_HISTORICO_FALLBACK);
-      setLoading(false);
-      return;
-    }
-
     try {
-      const res = await authFetch(`${API_URL}/api/historico`, { timeoutMs: 2500 });
+      // Timeout aumentado para 15 segundos para dar tempo ao Supabase
+      const res = await authFetch(`${API_URL}/api/historico`, { timeoutMs: 15000 });
+      
       if (!res.ok) {
         throw new Error("Falha ao carregar histórico do servidor.");
       }
+      
       const data = await res.json();
-      setAnalises(data && data.length > 0 ? data : WHEAT_HISTORICO_FALLBACK);
+      
+      // Se a API responder, confiamos nos dados (mesmo se vier uma lista vazia [])
+      setAnalises(data || []);
+      
     } catch (err: any) {
       console.warn("Backend indisponível. Carregando histórico sincronizado:", err);
+      // O fallback só entra em ação se a internet ou o backend realmente caírem
       setAnalises(WHEAT_HISTORICO_FALLBACK);
     } finally {
       setLoading(false);
@@ -159,6 +157,21 @@ export default function HistoricoPage() {
   // Métricas calculadas dinamicamente
   const totalAreaM2 = analises.reduce((acc, curr) => acc + (curr.areaAmostraM2 || 0), 0);
   const totalCabecas = analises.reduce((acc, curr) => acc + (curr.focosDetectados || 0), 0);
+
+  // Formatação de Datas sem fuso-horário para o Histórico
+  const formatDate = (isoStr: string | null, type: "data" | "hora") => {
+    if (!isoStr) return type === "data" ? "Hoje" : "--:--";
+    try {
+      const localIso = isoStr.replace("Z", "").split("+")[0];
+      const d = new Date(localIso);
+      if (type === "data") {
+        return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+      }
+      return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    } catch {
+      return "--:--";
+    }
+  };
 
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
@@ -498,10 +511,10 @@ export default function HistoricoPage() {
                             </div>
                             <div>
                               <div style={{ fontWeight: 600, color: "var(--foreground)" }}>
-                                {item.dataCaptura || "Hoje"}
+                                {item.created_at ? formatDate(item.created_at, "data") : (item.dataCaptura || "Hoje")}
                               </div>
                               <div style={{ fontSize: "11.5px", color: "var(--muted)" }}>
-                                às {item.horaCaptura || "--:--"}
+                                às {item.created_at ? formatDate(item.created_at, "hora") : (item.horaCaptura || "--:--")}
                               </div>
                             </div>
                           </div>

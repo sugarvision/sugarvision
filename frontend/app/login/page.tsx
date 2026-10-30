@@ -26,7 +26,7 @@ function LoginForm() {
   // Se o usuário já estiver logado, redireciona direto para o painel de controle
   useEffect(() => {
     if (!authLoading && user) {
-      router.push(redirectTo);
+      window.location.href = redirectTo;
     }
   }, [user, authLoading, router, redirectTo]);
 
@@ -89,7 +89,7 @@ function LoginForm() {
         theme: "dark",
       });
       
-      router.push(redirectTo);
+      window.location.href = redirectTo;
     } catch (err: any) {
       console.error("Erro no login anônimo:", err);
       setErrorMessage("Erro ao iniciar sessão de demonstração. Verifique se o login anônimo está ativado no Supabase.");

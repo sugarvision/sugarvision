@@ -22,20 +22,20 @@ from app.core.config import (
 )
 from app.core.dependencies import (
     get_ai_service,
-    get_anomaly_service,
+    get_detection_service,
     get_history_service,
     get_health_service,
     get_image_service,
     get_storage_service,
 )
 from app.services.ai_service import AIService
-from app.services.anomaly_service import AnomalyService
+from app.services.detection_service import DetectionService
 from app.services.history_service import HistoryService
 from app.services.health_service import HealthService
 from app.services.image_service import ImageService
 from app.services.storage_service import StorageService
 from app.core.security import verify_token
-from database import check_connection, get_all_anomalies, get_all_images, get_all_analyses
+from database import check_connection, get_all_detections, get_all_images, get_all_analyses
 
 BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:8000")
 
@@ -100,10 +100,10 @@ async def read_root() -> dict[str, str]:
 
 @app.get("/health")
 async def health_check(
-    anomaly_service: AnomalyService = Depends(get_anomaly_service),
+    detection_service: DetectionService = Depends(get_detection_service),
 ) -> dict[str, Any]:
     """Verifica o status da API e a conectividade com o banco de dados Supabase."""
-    db_status = await anomaly_service.check_health_async()
+    db_status = await detection_service.check_health_async()
     return {
         "api": "online",
         "database": db_status,
@@ -128,16 +128,28 @@ async def api_health_check(
 PROTECTED = [Depends(verify_token)]
 
 
-@app.get("/api/anomalies", response_model=List[dict[str, Any]], dependencies=PROTECTED)
-async def get_anomalies(
-    anomaly_service: AnomalyService = Depends(get_anomaly_service),
+@app.get("/api/detections", response_model=List[dict[str, Any]], dependencies=PROTECTED)
+async def get_detections(
+    detection_service: DetectionService = Depends(get_detection_service),
 ) -> List[dict[str, Any]]:
-    """Retorna todas as falhas cadastradas no banco de dados para o mapa.
+    """Retorna todas as detecções cadastradas no banco de dados para o mapa.
 
-    Executa consulta assíncrona na tabela de anomalias do banco de dados e retorna
+    Executa consulta assíncrona na tabela de detecções do banco de dados e retorna
     uma lista no formato JSON compatível com o mapa do frontend.
     """
-    return await anomaly_service.get_all_anomalies_async()
+    return await detection_service.get_all_detections_async()
+
+
+@app.get("/api/detections", response_model=List[dict[str, Any]], dependencies=PROTECTED)
+async def get_detections(
+    detection_service: DetectionService = Depends(get_detection_service),
+) -> List[dict[str, Any]]:
+    """Retorna todas as detecções cadastradas no banco de dados para o mapa.
+
+    Executa consulta assíncrona na tabela de detecções do banco de dados e retorna
+    uma lista no formato JSON compatível com o mapa do frontend.
+    """
+    return await detection_service.get_all_detections_async()
 
 
 @app.get("/api/images", response_model=List[dict[str, Any]], dependencies=PROTECTED)
@@ -147,7 +159,7 @@ async def get_images_samples(
 ) -> List[dict[str, Any]]:
     """Retorna todas as amostras de imagens salvas no banco de dados (tabela 'images').
 
-    Executa consulta com JOIN e métricas de anomalias, garantindo retorno estruturado
+    Executa consulta com JOIN e métricas de detecções, garantindo retorno estruturado
     para o painel de Banco de Amostras no frontend.
     """
     return await image_service.get_all_images_async()
@@ -160,7 +172,7 @@ async def delete_image(
     filename: Optional[str] = None,
     image_service: ImageService = Depends(get_image_service),
 ) -> dict[str, Any]:
-    """Exclui permanentemente uma amostra da tabela images e suas anomalias associadas."""
+    """Exclui permanentemente uma amostra da tabela images e suas detecções associadas."""
     success = await image_service.delete_image_async(image_id, filename=filename)
     if not success:
         raise HTTPException(

@@ -65,7 +65,7 @@ export async function authFetch(
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const timeoutMs = init?.timeoutMs ?? 3000;
+  const timeoutMs = init?.timeoutMs ?? 15000;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   const signal = init?.signal || controller.signal;
