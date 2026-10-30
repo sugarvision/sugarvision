@@ -1,17 +1,11 @@
 import { createBrowserClient } from "@supabase/ssr";
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from "../env";
 
 export const TOKEN_STORAGE_KEY = "sugarvision_jwt_token";
 export const COOKIE_TOKEN_NAME = "sb_access_token";
 
 export function createClient() {
-  const supabaseUrl =
-    process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    "https://hbropsjrbebbuiwcjrcu.supabase.co";
-  const supabaseAnonKey =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy_anon_key_for_development";
-
-  return createBrowserClient(supabaseUrl, supabaseAnonKey);
+  return createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 
 /**
@@ -57,6 +51,7 @@ export function getActiveAuthToken(): string | null {
 
 /**
  * Helper fetch que anexa automaticamente o cabeçalho Authorization: Bearer <token>.
+ * Atende ao requisito de repassar o token JWT nas chamadas que exigem autenticação.
  * Inclui timeout padrão de 3s para evitar travamento da UI em backends offline ou inacessíveis.
  */
 export async function authFetch(
@@ -85,4 +80,3 @@ export async function authFetch(
     clearTimeout(timeoutId);
   }
 }
-

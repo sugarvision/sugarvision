@@ -17,7 +17,7 @@ import {
   IconX,
 } from "../components/Sidebar";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+import { API_URL } from "../../lib/env";
 
 // ── Ícone de Lixeira (Exclusão) ──────────────────────────────────────────────
 function IconTrash({ className = "w-4 h-4" }: { className?: string }) {

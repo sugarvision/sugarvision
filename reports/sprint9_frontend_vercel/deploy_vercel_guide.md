@@ -49,9 +49,20 @@ Na seção **Environment Variables**, cadastre as 3 variáveis abaixo para os am
 
 ---
 
-## 4. Testes de Aceitação da Sprint 9
+## 4. Testes de Aceitação da Sprint 9 (Validados e Aprovados)
 
-- [ ] **Acesso Web e Mobile:** Abrir o domínio público gerado pelo navegador do computador e do celular.
-- [ ] **Redirecionamento do Middleware:** Tentar acessar `/dashboard` diretamente sem estar autenticado e certificar-se de que é redirecionado para `/login`.
-- [ ] **Autenticação:** Realizar cadastro de teste em `/register` ou login em `/login` usando a integração do Supabase.
-- [ ] **Painel Principal:** Confirmar que, após a autenticação, o dashboard carrega as métricas de sanidade vegetal e mapas agronômicos.
+- [x] **Acesso Web e Mobile:** Domínio público oficial [https://sugarvision-sikq.vercel.app/](https://sugarvision-sikq.vercel.app/) acessado com sucesso em visualização desktop (1280x850+) e mobile (390x844).
+- [x] **Redirecionamento do Middleware:** Testado via script e navegador; acesso direto a rotas protegidas redireciona com status HTTP `307` para a raiz ou `/login`.
+- [x] **Autenticação:** Login e modo de acesso rápido para avaliação testados com sucesso via Supabase SSR, gerando cookie seguro de sessão (`sugarvision_auth_session`).
+- [x] **Painel Principal:** Confirmada renderização completa dos KPIs de sanidade vegetal, navegação lateral e painel de análise de campo em ambos os formatos (computador e smartphone).
+
+---
+
+## 5. Resumo da Verificação em Produção (Sprint 9)
+
+| Item Verificado | Resultado | Detalhes |
+| :--- | :--- | :--- |
+| **Build Next.js 16 (Turbopack)** | ✅ Aprovado | Compilação limpa, zero erros de tipagem TypeScript e lint |
+| **HTTPS & Domínio Vercel** | ✅ Ativo e Estável | `https://sugarvision-sikq.vercel.app/` |
+| **Variáveis de Ambiente** | ✅ Integradas | Supabase URL, Anon Key e API Backend configurados |
+| **Responsividade Mobile** | ✅ 100% Responsivo | Testado nas dimensões 390x844 (iOS/Android viewport) |

@@ -6,7 +6,8 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import Link from "next/link";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+import { API_URL } from "../../lib/env";
+import { authFetch } from "../../lib/supabase/client";
 
 // Fazenda e Campos Experimentais de Pesquisa Agronômica da Embrapa Trigo
 // Rodovia BR-285, Km 294, Passo Fundo - RS (Área Rural de Pesquisa - 306 ha)
@@ -290,7 +291,7 @@ export default function FieldMap() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 2200);
 
-        const res = await fetch(`${API_URL}/api/historico`, {
+        const res = await authFetch(`${API_URL}/api/historico`, {
           signal: controller.signal,
         }).catch(() => null);
 

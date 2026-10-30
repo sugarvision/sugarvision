@@ -25,8 +25,9 @@ import {
 } from "./utils/geoMath";
 import { extractGpsFromImage } from "./utils/exifReader";
 import type { WeedDetection } from "./ImageDetectionViewer";
+import AgronomicAccuracyCard from "./components/AgronomicAccuracyCard";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+import { API_URL } from "../lib/env";
 
 const ImageDetectionViewer = dynamic(() => import("./ImageDetectionViewer"), {
   ssr: false,
@@ -369,7 +370,7 @@ function HomeContent() {
             (result as any).image_url || `${API_URL}/temp_images/${filename}`;
 
           if (rawPreviewUrl.startsWith("http://localhost:8000")) {
-            rawPreviewUrl = rawPreviewUrl.replace("http://localhost:8000", "http://127.0.0.1:8000");
+            rawPreviewUrl = rawPreviewUrl.replace("http://localhost:8000", API_URL).replace("http://127.0.0.1:8000", API_URL);
           }
 
           const cacheBuster = `cb=${Date.now()}`;
@@ -943,6 +944,9 @@ function HomeContent() {
             gap: "16px",
           }}
         >
+          {/* ── 🌾 CARD RESUMO DE VALIDAÇÃO AGRONÔMICA E ACURÁCIA (SPRINT 11) ── */}
+          <AgronomicAccuracyCard />
+
           {/* ── 📊 4 CARDS COM MÉTRICAS OFICIAIS DE TRIGO ───────────── */}
           {(() => {
             const hasModelData = Boolean(uploadSuccessData);
