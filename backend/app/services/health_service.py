@@ -13,7 +13,7 @@ from typing import Any
 from app.core.config import HEALTH_DB_TIMEOUT_SECONDS, HEALTH_MIN_FREE_RAM_GB
 from app.services.ai_service import AIService, get_inference_queue_status
 from app.services.detection_service import DetectionService
-from app.services.anomaly_service import AnomalyService
+from app.services.detection_service import DetectionService as AnomalyService
 
 try:  # psutil acompanha o ultralytics, mas não é garantido
     import psutil
