@@ -44,7 +44,7 @@ class RenameImageRequest(BaseModel):
     filename: str
 
 # Configuração de logging estruturado
-logging.basicConfig(
+logging.basicConfig(filename="app.log",
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )

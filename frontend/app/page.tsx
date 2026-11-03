@@ -26,6 +26,7 @@ import {
 import { extractGpsFromImage } from "./utils/exifReader";
 import type { WeedDetection } from "./ImageDetectionViewer";
 import AgronomicAccuracyCard from "./components/AgronomicAccuracyCard";
+import TechnicalReportModal from "./components/TechnicalReportModal";
 
 import { API_URL } from "../lib/env";
 
@@ -272,6 +273,7 @@ function HomeContent() {
   const [activeDetections, setActiveDetections] = useState<WeedDetection[] | undefined>(undefined);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewingSavedHistory, setIsViewingSavedHistory] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   const [selectedTalhaoId, setSelectedTalhaoId] = useState<string>("talhao-01-rio-claro");
 
@@ -760,15 +762,43 @@ function HomeContent() {
               </div>
             </div>
 
-            <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+            <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={() => setIsReportModalOpen(true)}
+                style={{
+                  padding: "9px 18px",
+                  borderRadius: "8px",
+                  background: "linear-gradient(135deg, #059669 0%, #10b981 100%)",
+                  border: "1px solid rgba(16, 185, 129, 0.4)",
+                  color: "#fff",
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "7px",
+                  boxShadow: "0 2px 8px rgba(16, 185, 129, 0.3)",
+                }}
+              >
+                <svg style={{ width: "16px", height: "16px" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                  <polyline points="10 9 9 9 8 9" />
+                </svg>
+                Exportar Laudo Técnico (.PDF)
+              </button>
+
               <button
                 onClick={() => setIsModalOpen(false)}
                 style={{
                   padding: "9px 20px",
                   borderRadius: "8px",
-                  background: "var(--accent-green)",
-                  border: "none",
-                  color: "#fff",
+                  background: "var(--surface)",
+                  border: "1px solid var(--card-border)",
+                  color: "var(--foreground)",
                   fontSize: "13px",
                   fontWeight: 600,
                   cursor: "pointer",
@@ -780,6 +810,30 @@ function HomeContent() {
           </div>
         </div>
       )}
+
+      {/* ── Modal de Laudo Técnico (.PDF) ── */}
+      <TechnicalReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        data={{
+          nomeImagem: uploadSuccessData?.backend.original_filename || amostraQuery || "amostra_trigo_embrapa.jpg",
+          imageUrl: uploadSuccessData?.localPreview || (amostraQuery ? `${API_URL}/temp_images/${amostraQuery}` : "/trigo_teste.png"),
+          totalEspigas:
+            uploadSuccessData?.backend.summary?.total_espigas ??
+            (activeDetections ? activeDetections.length : (uploadSuccessData?.backend.detections ? uploadSuccessData.backend.detections.length : 42)),
+          detections: activeDetections || uploadSuccessData?.backend.detections || [],
+          areaAmostraM2: uploadSuccessData?.backend.summary?.area_amostra_m2 ?? 1.0,
+          areaCoberturaPercent: activeDetections
+            ? calculateMarkedAreaPercent(activeDetections)
+            : (uploadSuccessData?.backend.detections ? calculateMarkedAreaPercent(uploadSuccessData.backend.detections) : undefined),
+          tamanhoArquivo: uploadSuccessData?.backend.size_bytes ? formatFileSize(uploadSuccessData.backend.size_bytes) : "2.4 MB",
+          talhaoNome: currentAmostra?.nome || "Talhão Experimental 01 (Embrapa Trigo - Setor Norte)",
+          cidade: "Passo Fundo - RS (Campos Experimentais Embrapa Trigo)",
+          variedade: "BRS Pastoreio",
+          latitude: -28.2234,
+          longitude: -52.4076,
+        }}
+      />
 
       {/* ── Sidebar ── */}
       <Sidebar
@@ -876,7 +930,7 @@ function HomeContent() {
           <button
             id="btn-imprimir-laudo"
             type="button"
-            onClick={() => window.print()}
+            onClick={() => setIsReportModalOpen(true)}
             className="no-print"
             style={{
               display: "flex",
@@ -894,7 +948,13 @@ function HomeContent() {
               whiteSpace: "nowrap",
             }}
           >
-            Imprimir Laudo
+            <svg style={{ width: "15px", height: "15px", color: "var(--accent-green)" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+            </svg>
+            Exportar Laudo Técnico (.PDF)
           </button>
 
           <button
