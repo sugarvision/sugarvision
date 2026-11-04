@@ -10,7 +10,10 @@ import logging
 import os
 from typing import Any, Optional
 
-import jwt
+try:
+    import jwt
+except ImportError:
+    jwt = None
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 

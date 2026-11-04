@@ -749,6 +749,12 @@ def salvar_deteccao_trigo(nome_amostra, data, total_espigas, densidade, lat, lon
             
         return None
 
+
     except Exception as e:
         logger.error("Falha ao guardar o trigo na tabela detections: %s", e)
         return None
+
+
+# Alias para compatibilidade com testes legados
+get_all_anomalies = get_all_detections
+FALLBACK_ANOMALIES = FALLBACK_DETECTIONS

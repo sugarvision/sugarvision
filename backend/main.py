@@ -194,6 +194,7 @@ async def get_history(
     response: Response,
     page: int = Query(1, ge=1, description="Número da página (começa em 1)"),
     page_size: int = Query(50, ge=1, le=200, description="Itens por página (máx. 200)"),
+    user_id: Optional[str] = Query(None, description="ID do usuário da sessão Supabase"),
     history_service: HistoryService = Depends(get_history_service),
 ) -> List[dict[str, Any]]:
     """Retorna o histórico paginado, da análise mais recente para a mais antiga.
