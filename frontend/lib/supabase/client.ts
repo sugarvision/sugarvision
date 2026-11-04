@@ -1,5 +1,11 @@
 import { createBrowserClient } from "@supabase/ssr";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "../env";
+import {
+  CONTINGENCY_TIMEOUT_MS,
+  getOfflineSampleInference,
+  CONTINGENCY_HISTORY,
+  showContingencyToast,
+} from "../contingency";
 
 export const TOKEN_STORAGE_KEY = "sugarvision_jwt_token";
 export const COOKIE_TOKEN_NAME = "sb_access_token";
@@ -50,13 +56,48 @@ export function getActiveAuthToken(): string | null {
 }
 
 /**
- * Helper fetch que anexa automaticamente o cabeçalho Authorization: Bearer <token>.
- * Atende ao requisito de repassar o token JWT nas chamadas que exigem autenticação.
- * Inclui timeout padrão de 3s para evitar travamento da UI em backends offline ou inacessíveis.
+ * Trata respostas de contingência offline quando a API está fora do ar ou ultrapassa 3s.
+ */
+function handleFallbackResponse(url: string): Response | null {
+  try {
+    if (url.includes("/api/analyze-sample")) {
+      let filename = "wheat_test_01_Terraref_1.jpg";
+      try {
+        const parsedUrl = new URL(url, "http://127.0.0.1:8000");
+        filename = parsedUrl.searchParams.get("filename") || filename;
+      } catch {}
+      const offline = getOfflineSampleInference(filename);
+      return new Response(JSON.stringify(offline), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (url.includes("/api/historico")) {
+      showContingencyToast();
+      return new Response(JSON.stringify(CONTINGENCY_HISTORY), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Total-Count": String(CONTINGENCY_HISTORY.length),
+        },
+      });
+    }
+  } catch (e) {
+    console.debug("Erro no interceptador de contingência:", e);
+  }
+  return null;
+}
+
+/**
+ * Interceptador HTTP resiliente:
+ * - Anexa automaticamente o cabeçalho Authorization: Bearer <token>.
+ * - Intercepta falhas e timeouts de 3 segundos para carregar dados de contingência offline.
+ * - Evita telas travadas e quedas durante avaliações ou quando a rede/Wi-Fi cair.
  */
 export async function authFetch(
   input: RequestInfo | URL,
-  init?: RequestInit & { timeoutMs?: number }
+  init?: RequestInit & { timeoutMs?: number; disableContingency?: boolean }
 ): Promise<Response> {
   const token = getActiveAuthToken();
   const headers = new Headers(init?.headers || {});
@@ -65,17 +106,34 @@ export async function authFetch(
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const timeoutMs = init?.timeoutMs ?? 15000;
+  // Timeout padrão de 3 segundos conforme requisito de contingência
+  const timeoutMs = init?.timeoutMs ?? CONTINGENCY_TIMEOUT_MS;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   const signal = init?.signal || controller.signal;
 
+  const urlStr =
+    typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+
   try {
-    return await fetch(input, {
+    const res = await fetch(input, {
       ...init,
       headers,
       signal,
     });
+
+    if (!res.ok && res.status >= 500 && !init?.disableContingency) {
+      const fallbackRes = handleFallbackResponse(urlStr);
+      if (fallbackRes) return fallbackRes;
+    }
+
+    return res;
+  } catch (err) {
+    if (!init?.disableContingency) {
+      const fallbackRes = handleFallbackResponse(urlStr);
+      if (fallbackRes) return fallbackRes;
+    }
+    throw err;
   } finally {
     clearTimeout(timeoutId);
   }

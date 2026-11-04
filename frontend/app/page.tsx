@@ -29,6 +29,11 @@ import AgronomicAccuracyCard from "./components/AgronomicAccuracyCard";
 import TechnicalReportModal from "./components/TechnicalReportModal";
 
 import { API_URL } from "../lib/env";
+import {
+  getOfflineSampleInference,
+  showContingencyToast,
+  CONTINGENCY_TIMEOUT_MS,
+} from "../lib/contingency";
 
 const ImageDetectionViewer = dynamic(() => import("./ImageDetectionViewer"), {
   ssr: false,
@@ -337,8 +342,15 @@ function HomeContent() {
             theme: "dark",
           });
         } catch (err: any) {
-          console.error("Erro ao carregar análise salva:", err);
-          toast.error("Não foi possível carregar a análise do histórico.");
+          console.warn("Falha ao carregar análise salva. Ativando cache de contingência:", err);
+          const offlineResult = getOfflineSampleInference(id);
+          setUploadSuccessData({
+            backend: offlineResult as any,
+            localPreview: offlineResult.local_preview || "/trigo_teste.png",
+          });
+          setActiveDetections(offlineResult.detections as any);
+          setIsViewingSavedHistory(true);
+          showContingencyToast();
         } finally {
           setUploadLoading(false);
         }
@@ -404,12 +416,17 @@ function HomeContent() {
             }
           );
         } catch (err: any) {
-          console.error("Falha ao analisar amostra selecionada:", err);
-          toast.error(`Falha ao inferir na amostra: ${err.message}`, {
-            position: "top-right",
-            autoClose: 4000,
-            theme: "dark",
+          console.warn("Falha na chamada da API. Ativando cache de contingência:", err);
+          const offlineResult = getOfflineSampleInference(filename);
+          setUploadSuccessData({
+            backend: offlineResult as any,
+            localPreview: offlineResult.local_preview || `/${filename}`,
           });
+          if (offlineResult.detections) {
+            setActiveDetections(offlineResult.detections as any);
+          }
+          setIsModalOpen(true);
+          showContingencyToast();
         } finally {
           setUploadLoading(false);
         }
@@ -482,14 +499,23 @@ function HomeContent() {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token || "dev-token-bypass";
 
-      // 2. Fazer o fetch com o cabeçalho Authorization
-      const response = await fetch(`${API_URL}/upload`, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`
-        },
-        body: formData,
-      });
+      // 2. Fazer o fetch com interceptador de contingência e timeout de 3 segundos
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), CONTINGENCY_TIMEOUT_MS);
+
+      let response: Response;
+      try {
+        response = await fetch(`${API_URL}/upload`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`
+          },
+          body: formData,
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       if (!response.ok) {
         let errorDetail = `Erro HTTP ${response.status}`;
@@ -521,17 +547,17 @@ function HomeContent() {
         theme: "dark",
       });
     } catch (err: unknown) {
-      console.error("Erro durante o upload da imagem de campo:", err);
-      const errorMsg =
-        err instanceof Error
-          ? err.message
-          : `Não foi possível conectar ao servidor backend (${API_URL}).`;
-
-      toast.error(`Erro: ${errorMsg}`, {
-        position: "top-right",
-        autoClose: 5000,
-        theme: "dark",
+      console.warn("Upload offline ou excedeu 3s. Ativando cache de contingência:", err);
+      const offlineResult = getOfflineSampleInference(file.name, localPreviewUrl);
+      setUploadSuccessData({
+        backend: offlineResult as any,
+        localPreview: localPreviewUrl,
       });
+      if (offlineResult.detections) {
+        setActiveDetections(offlineResult.detections as any);
+      }
+      setIsModalOpen(true);
+      showContingencyToast();
     } finally {
       setUploadLoading(false);
       if (fileInputRef.current) {

@@ -128,15 +128,19 @@ async def api_health_check(
 PROTECTED = [Depends(verify_token)]
 
 
+@app.get("/api/anomalies", response_model=List[dict[str, Any]], dependencies=PROTECTED)
+async def get_anomalies(
+    detection_service: DetectionService = Depends(get_detection_service),
+) -> List[dict[str, Any]]:
+    """Compatibilidade para rota legada /api/anomalies."""
+    return await detection_service.get_all_anomalies_async()
+
+
 @app.get("/api/detections", response_model=List[dict[str, Any]], dependencies=PROTECTED)
 async def get_detections(
     detection_service: DetectionService = Depends(get_detection_service),
 ) -> List[dict[str, Any]]:
-    """Retorna todas as detecções cadastradas no banco de dados para o mapa.
-
-    Executa consulta assíncrona na tabela de detecções do banco de dados e retorna
-    uma lista no formato JSON compatível com o mapa do frontend.
-    """
+    """Retorna todas as detecções cadastradas no banco de dados para o mapa."""
     return await detection_service.get_all_detections_async()
 
 

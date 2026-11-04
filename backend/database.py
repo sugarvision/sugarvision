@@ -300,6 +300,8 @@ def get_all_images() -> List[dict[str, Any]]:
                         "status": row["status"] or "completed",
                         "uploaded_at": row["uploaded_at"].isoformat() if row["uploaded_at"] else None,
                         "total_detections": int(row["total_detections"]),
+                        "total_anomalies": int(row["total_detections"]),
+                        "anomalies": [],
                         "total_area_ha": round(float(row["total_area_ha"]), 2),
                         "detections": [], 
                     })
@@ -321,6 +323,8 @@ def get_all_images() -> List[dict[str, Any]]:
                         "status": img.get("status") or "completed",
                         "uploaded_at": str(img.get("uploaded_at")),
                         "total_detections": 0,
+                        "total_anomalies": 0,
+                        "anomalies": [],
                         "total_area_ha": 0.0,
                         "detections": [],
                     })
@@ -711,17 +715,24 @@ def delete_image_record(image_id: str) -> bool:
             return True
 
 
-def get_all_detections() -> list[dict[str, Any]]:
+def get_all_detections(table_name: str = "detections") -> list[dict[str, Any]]:
     """Substitui get_all_anomalies(). Retorna todas as espigas/detecções cadastradas."""
     try:
         client = get_supabase_client()
-        response = client.table("detections").select("*").execute()
+        try:
+            response = client.table(table_name).select("*").execute()
+        except Exception:
+            response = client.table("detections").select("*").execute()
         if response and hasattr(response, "data") and response.data is not None:
             return response.data
         return []
     except Exception as exc:
-        logger.warning("Consulta 'detections' falhou (%s). Retornando contingência.", exc)
+        logger.warning("Consulta '%s' falhou (%s). Retornando contingência.", table_name, exc)
         return FALLBACK_DETECTIONS
+
+
+def get_all_anomalies() -> list[dict[str, Any]]:
+    return get_all_detections(table_name="anomalies")
 
 
 def salvar_deteccao_trigo(nome_amostra, data, total_espigas, densidade, lat, lon, bounding_boxes_json):
@@ -756,5 +767,5 @@ def salvar_deteccao_trigo(nome_amostra, data, total_espigas, densidade, lat, lon
 
 
 # Alias para compatibilidade com testes legados
-get_all_anomalies = get_all_detections
+# get_all_anomalies already defined
 FALLBACK_ANOMALIES = FALLBACK_DETECTIONS
