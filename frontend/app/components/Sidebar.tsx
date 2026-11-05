@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "../context/AuthContext";
 import { useState, useEffect } from "react";
-import { API_URL } from "../../lib/env";
+import { API_URL, getActiveApiUrl } from "../../lib/env";
 import SettingsModal from "./SettingsModal";
 
 export function IconLogOut({ className = "" }: { className?: string }) {
@@ -316,9 +316,23 @@ export function Sidebar({
 
     async function checkHealth() {
       try {
+        if (typeof window !== "undefined") {
+          try {
+            const saved = localStorage.getItem("sugarvision_system_settings");
+            if (saved) {
+              const parsed = JSON.parse(saved);
+              if (parsed.forceDemoMode) {
+                if (isMounted) setApiOnline(false);
+                return;
+              }
+            }
+          } catch {}
+        }
+
+        const targetUrl = getActiveApiUrl();
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3500);
-        const res = await fetch(`${API_URL}/health`, {
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const res = await fetch(`${targetUrl}/health`, {
           signal: controller.signal,
         }).catch(() => null);
         clearTimeout(timeoutId);
@@ -335,9 +349,20 @@ export function Sidebar({
 
     checkHealth();
     const interval = setInterval(checkHealth, 25000);
+
+    const onSettingsUpdate = () => {
+      checkHealth();
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("sugarvision_settings_updated", onSettingsUpdate);
+    }
+
     return () => {
       isMounted = false;
       clearInterval(interval);
+      if (typeof window !== "undefined") {
+        window.removeEventListener("sugarvision_settings_updated", onSettingsUpdate);
+      }
     };
   }, []);
 

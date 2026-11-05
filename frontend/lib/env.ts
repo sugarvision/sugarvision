@@ -32,9 +32,27 @@ export function isLocalBackend(): boolean {
 }
 
 /**
+ * Retorna a URL ativa da API (considerando preferências do localStorage se definidas).
+ */
+export function getActiveApiUrl(): string {
+  if (typeof window !== "undefined") {
+    try {
+      const saved = localStorage.getItem("sugarvision_system_settings");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.apiUrl && parsed.apiUrl.trim()) {
+          return parsed.apiUrl.trim().replace(/\/+$/, "");
+        }
+      }
+    } catch {}
+  }
+  return API_URL;
+}
+
+/**
  * Constrói a URL completa para um endpoint da API.
  */
 export function getApiEndpoint(path: string): string {
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
-  return `${API_URL}${cleanPath}`;
+  return `${getActiveApiUrl()}${cleanPath}`;
 }

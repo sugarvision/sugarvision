@@ -63,6 +63,7 @@ export default function SettingsModal({
   const handleSave = () => {
     if (typeof window !== "undefined") {
       localStorage.setItem("sugarvision_system_settings", JSON.stringify(settings));
+      window.dispatchEvent(new CustomEvent("sugarvision_settings_updated"));
     }
     toast.success("Configurações do sistema salvas com sucesso!", {
       theme: "dark",
@@ -75,6 +76,7 @@ export default function SettingsModal({
     setSettings(DEFAULT_SETTINGS);
     if (typeof window !== "undefined") {
       localStorage.removeItem("sugarvision_system_settings");
+      window.dispatchEvent(new CustomEvent("sugarvision_settings_updated"));
     }
     toast.info("Configurações restauradas para os padrões de fábrica.", {
       theme: "dark",
