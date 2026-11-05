@@ -225,11 +225,113 @@ main, .detection-panel, .map-container-wrapper {
   animation: fadeInUp 0.4s ease forwards;
 }
 
-@media print {
-  .sidebar {
-    display: none !important;
-  }
 
+/* ── Premium Focus Rings & Accessible Interactive States ── */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent-green) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px var(--accent-green-glow) !important;
+}
+
+button:active {
+  transform: scale(0.98);
+  transition: transform 0.08s ease;
+}
+
+/* ── Modal Smooth Transitions ── */
+@keyframes modalBackdropIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(8px);
+  }
+}
+
+@keyframes modalZoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-backdrop-animate {
+  animation: modalBackdropIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.modal-content-animate {
+  animation: modalZoomIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ── Blur-Up Progressive Image Placeholder ── */
+.img-blur-wrapper {
+  position: relative;
+  overflow: hidden;
+  background-color: #161b22;
+}
+
+.img-blur-loading {
+  filter: blur(14px);
+  transform: scale(1.04);
+  opacity: 0.7;
+  transition: filter 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.45s ease, opacity 0.45s ease;
+}
+
+.img-blur-loaded {
+  filter: blur(0);
+  transform: scale(1);
+  opacity: 1;
+  transition: filter 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.45s ease, opacity 0.45s ease;
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #1c2128 25%, #2d333b 50%, #1c2128 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s infinite;
+}
+
+/* ── Status Pulse Animations (Sidebar Status Indicator) ── */
+@keyframes pulse-amber {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(1.25);
+  }
+}
+
+.pulse-dot-amber {
+  animation: pulse-amber 2s ease-in-out infinite;
+}
+
+/* ── Tablet (iPad / iPad Pro) Presentation Standards ── */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .dashboard-metrics-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 14px !important;
+  }
+  
+  .detection-panel {
+    min-height: 480px !important;
+  }
+}
+
+@media print {
+  /* Oculta toda a interface do painel (sidebar, toasts, cabeçalhos do app) */
+  .sidebar,
+  header,
   .no-print,
   .Toastify {
     display: none !important;
@@ -237,70 +339,23 @@ main, .detection-panel, .map-container-wrapper {
 
   @page {
     size: A4 portrait;
-    margin: 10mm;
+    margin: 8mm;
   }
 
   html,
   body,
-  .app-shell,
-  .main-content,
-  .report-sheet {
+  .app-main-layout {
     height: auto !important;
     min-height: 0 !important;
+    max-height: none !important;
     overflow: visible !important;
     background: #ffffff !important;
-    color: #111827 !important;
+    color: #0f172a !important;
     margin: 0 !important;
     padding: 0 !important;
-    width: 100% !important;
     display: block !important;
+    position: static !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
-
-  .print-only-header {
-    display: flex !important;
-    justify-content: space-between;
-    align-items: flex-start;
-    border-bottom: 2px solid #2ea043;
-    padding-bottom: 10px;
-    margin-bottom: 14px;
-  }
-
-  .dashboard-metrics-grid {
-    display: grid !important;
-    grid-template-columns: repeat(4, 1fr) !important;
-    gap: 8px !important;
-    margin-bottom: 12px !important;
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
-  }
-
-  .detection-panel {
-    border: 1px solid #d1d5db !important;
-    background: #ffffff !important;
-    min-height: 0 !important;
-    max-height: 155mm !important;
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-    margin: 12px 0 !important;
-  }
-
-  .detection-image {
-    min-height: 0 !important;
-    max-height: 150mm !important;
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-  }
-
-  .detection-image img,
-  .detection-image canvas {
-    max-height: 145mm !important;
-    width: auto !important;
-    max-width: 100% !important;
-    object-fit: contain !important;
-    margin: 0 auto !important;
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
-  }
-}
+}

@@ -32,10 +32,12 @@ export default function ImageDetectionViewer({
 }: ImageDetectionViewerProps) {
   const [detections, setDetections] = useState<WeedDetection[]>(propDetections || []);
   const [displaySrc, setDisplaySrc] = useState<string | undefined>(imageSrc);
+  const [isImgLoaded, setIsImgLoaded] = useState<boolean>(false);
 
   // Sincroniza displaySrc sempre que a prop imageSrc for atualizada
   useEffect(() => {
     setDisplaySrc(imageSrc);
+    setIsImgLoaded(false);
   }, [imageSrc]);
 
   useEffect(() => {
@@ -126,11 +128,25 @@ export default function ImageDetectionViewer({
             lineHeight: 0,
           }}
         >
+          {!isImgLoaded && (
+            <div
+              className="skeleton-shimmer"
+              style={{
+                position: 'absolute',
+                inset: 0,
+                borderRadius: '8px',
+                minHeight: '360px',
+                zIndex: 1,
+              }}
+            />
+          )}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             key={displaySrc}
             src={displaySrc}
             alt="Imagem aérea do campo com detecção de cabeças de trigo"
+            onLoad={() => setIsImgLoaded(true)}
+            className={isImgLoaded ? "img-blur-loaded" : "img-blur-loading"}
             style={{
               maxWidth: '100%',
               maxHeight: '520px',
@@ -138,6 +154,8 @@ export default function ImageDetectionViewer({
               height: 'auto',
               display: 'block',
               borderRadius: '8px',
+              position: 'relative',
+              zIndex: 2,
             }}
             onError={handleImageError}
           />

@@ -4,6 +4,9 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "../context/AuthContext";
+import { useState, useEffect } from "react";
+import { API_URL, getActiveApiUrl } from "../../lib/env";
+import SettingsModal from "./SettingsModal";
 
 export function IconLogOut({ className = "" }: { className?: string }) {
   return (
@@ -305,6 +308,63 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
+  const [apiOnline, setApiOnline] = useState<boolean | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function checkHealth() {
+      try {
+        if (typeof window !== "undefined") {
+          try {
+            const saved = localStorage.getItem("sugarvision_system_settings");
+            if (saved) {
+              const parsed = JSON.parse(saved);
+              if (parsed.forceDemoMode) {
+                if (isMounted) setApiOnline(false);
+                return;
+              }
+            }
+          } catch {}
+        }
+
+        const targetUrl = getActiveApiUrl();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const res = await fetch(`${targetUrl}/health`, {
+          signal: controller.signal,
+        }).catch(() => null);
+        clearTimeout(timeoutId);
+
+        if (isMounted) {
+          setApiOnline(res ? res.ok : false);
+        }
+      } catch {
+        if (isMounted) {
+          setApiOnline(false);
+        }
+      }
+    }
+
+    checkHealth();
+    const interval = setInterval(checkHealth, 25000);
+
+    const onSettingsUpdate = () => {
+      checkHealth();
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("sugarvision_settings_updated", onSettingsUpdate);
+    }
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      if (typeof window !== "undefined") {
+        window.removeEventListener("sugarvision_settings_updated", onSettingsUpdate);
+      }
+    };
+  }, []);
 
   const initials = user?.fullName
     ? user.fullName
@@ -331,6 +391,7 @@ export function Sidebar({
         height: "100vh",
         position: "sticky",
         top: 0,
+        zIndex: 50,
       }}
     >
       {/* Logo area */}
@@ -574,6 +635,7 @@ export function Sidebar({
       >
         <button
           id="nav-configuracoes"
+          onClick={() => setIsSettingsOpen(true)}
           style={{
             display: "flex",
             alignItems: "center",
@@ -600,6 +662,77 @@ export function Sidebar({
             </span>
           )}
         </button>
+
+        {/* ── Status da Conexão com API / Demonstração (Sprint 10) ── */}
+        {!collapsed ? (
+          <div
+            id="sidebar-api-status"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "7px 10px",
+              borderRadius: "6px",
+              background: apiOnline ? "rgba(46, 160, 67, 0.12)" : "rgba(210, 153, 34, 0.14)",
+              border: `1px solid ${apiOnline ? "rgba(46, 160, 67, 0.3)" : "rgba(210, 153, 34, 0.32)"}`,
+              marginBottom: "8px",
+              transition: "all 0.25s ease",
+            }}
+            title={apiOnline ? "Conectado ao servidor FastAPI (Porta 8000)" : "Servidor desconectado — Operando no modo demonstração com dados simulados"}
+          >
+            <span
+              className={apiOnline ? "pulse-dot" : "pulse-dot-amber"}
+              style={{
+                width: "8px",
+                height: "8px",
+                borderRadius: "50%",
+                background: apiOnline ? "#3fb950" : "#d29922",
+                boxShadow: apiOnline ? "0 0 6px rgba(63, 185, 80, 0.6)" : "0 0 6px rgba(210, 153, 34, 0.6)",
+                flexShrink: 0,
+              }}
+            />
+            <span
+              style={{
+                fontSize: "11px",
+                fontWeight: 700,
+                color: apiOnline ? "#3fb950" : "#e3b341",
+                letterSpacing: "0.2px",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {apiOnline === null
+                ? "Verificando API..."
+                : apiOnline
+                ? "API Online / Conectada"
+                : "Modo Demonstração Ativo"}
+            </span>
+          </div>
+        ) : (
+          <div
+            id="sidebar-api-status-collapsed"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "6px 0",
+              marginBottom: "6px",
+            }}
+            title={apiOnline ? "🟢 API Online / Conectada" : "🟡 Modo Demonstração Ativo"}
+          >
+            <span
+              className={apiOnline ? "pulse-dot" : "pulse-dot-amber"}
+              style={{
+                width: "8px",
+                height: "8px",
+                borderRadius: "50%",
+                background: apiOnline ? "#3fb950" : "#d29922",
+                boxShadow: apiOnline ? "0 0 6px rgba(63, 185, 80, 0.6)" : "0 0 6px rgba(210, 153, 34, 0.6)",
+              }}
+            />
+          </div>
+        )}
 
         {/* User profile & Logout */}
         <div
@@ -731,6 +864,13 @@ export function Sidebar({
           </button>
         )}
       </div>
+
+      {/* ── Modal de Configurações do Sistema ── */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        apiOnline={apiOnline}
+      />
     </aside>
   );
 }

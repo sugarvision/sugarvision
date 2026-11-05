@@ -84,10 +84,12 @@ function SampleImage({
 
   const [src, setSrc] = useState<string>(() => getInitialSrc(filename));
   const [errorStage, setErrorStage] = useState(0);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     setSrc(getInitialSrc(filename));
     setErrorStage(0);
+    setIsLoaded(false);
   }, [filename]);
 
   const handleError = () => {
@@ -132,18 +134,42 @@ function SampleImage({
   }
 
   return (
-    <img
-      src={src}
-      alt={alt}
-      onError={handleError}
-      className={className}
+    <div
+      className="img-blur-wrapper"
       style={{
         width: "100%",
         height: "100%",
-        objectFit: "cover",
-        ...style,
+        position: "relative",
+        background: "#0d1117",
       }}
-    />
+    >
+      {!isLoaded && (
+        <div
+          className="skeleton-shimmer"
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 1,
+          }}
+        />
+      )}
+      <img
+        src={src}
+        alt={alt}
+        onLoad={() => setIsLoaded(true)}
+        onError={handleError}
+        className={`${className} ${isLoaded ? "img-blur-loaded" : "img-blur-loading"}`}
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          display: "block",
+          position: "relative",
+          zIndex: 2,
+          ...style,
+        }}
+      />
+    </div>
   );
 }
 
@@ -1614,9 +1640,10 @@ export default function BancoDeAmostrasPage() {
               padding: "20px",
             }}
             onClick={() => !isRenaming && setSampleToRename(null)}
+            className="modal-backdrop-animate"
           >
             <div
-              className="fade-in-up"
+              className="modal-content-animate"
               style={{
                 background: "var(--card-bg)",
                 border: "1px solid rgba(88, 166, 255, 0.35)",
@@ -1740,8 +1767,10 @@ export default function BancoDeAmostrasPage() {
               padding: "20px",
             }}
             onClick={() => setSelectedSample(null)}
+            className="modal-backdrop-animate"
           >
             <div
+              className="modal-content-animate"
               style={{
                 background: "var(--sidebar-bg)",
                 border: "1px solid var(--card-border)",
@@ -2024,9 +2053,10 @@ export default function BancoDeAmostrasPage() {
               padding: "20px",
             }}
             onClick={() => !isDeleting && setSampleToDelete(null)}
+            className="modal-backdrop-animate"
           >
             <div
-              className="fade-in-up"
+              className="modal-content-animate"
               style={{
                 background: "var(--card-bg)",
                 border: "1px solid rgba(248, 81, 73, 0.35)",
