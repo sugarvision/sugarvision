@@ -29,20 +29,20 @@ DEFAULT_AREA_ENQUADRAMENTO_M2 = 1.0
 # Limites de densidade de espigas por m²
 LIMITE_DENSIDADE_BAIXA = 300.0   # abaixo: "Baixa"
 LIMITE_DENSIDADE_MEDIA = 500.0   # abaixo: "Média"; igual ou acima: "Alta densidade"
-# Componentes de rendimento usados na projeção do potencial produtivo
+
+# Parâmetros Agronômicos e Financeiros (Base: CEPEA/CONAB 2026)
 GRAOS_POR_ESPIGA = 35
 PESO_MIL_GRAOS_G = 40.0
+PRECO_SACA_60KG = 85.00     # R$ médio/saca
+CUSTO_HECTARE = 4200.00     # R$ estimado/ha para sementes, insumos e operação
 
 
 def calcular_densidade_estimada(total_espigas: int, area_m2: float) -> float:
-    """Calcula densidade_estimada = total_espigas / area_metros_quadrados (espigas/m²)."""
     if not area_m2 or area_m2 <= 0:
         area_m2 = DEFAULT_AREA_ENQUADRAMENTO_M2
     return round(max(int(total_espigas), 0) / float(area_m2), 2)
 
-
 def classificar_densidade(densidade_estimada: float) -> str:
-    """Classifica a lavoura em "Baixa", "Média" ou "Alta densidade"."""
     if densidade_estimada < LIMITE_DENSIDADE_BAIXA:
         return "Baixa"
     if densidade_estimada < LIMITE_DENSIDADE_MEDIA:
@@ -50,23 +50,36 @@ def classificar_densidade(densidade_estimada: float) -> str:
     return "Alta densidade"
 
 
-def projetar_potencial_lavoura(densidade_estimada: float) -> dict[str, float]:
-    """Projeta o potencial produtivo (kg/ha e sacas/ha de 60 kg) a partir da densidade."""
-    kg_ha = round(densidade_estimada * GRAOS_POR_ESPIGA * PESO_MIL_GRAOS_G / 1000.0 * 10.0, 1)
-    return {"produtividade_estimada_kg_ha": kg_ha, "produtividade_estimada_sacas_ha": round(kg_ha / 60.0, 1)}
-
-
 def diagnostico_agronomico(total_espigas: int, area_m2: float) -> dict[str, Any]:
-    """Consolida o diagnóstico agronômico do trigo para o payload da API."""
+    """Consolida o diagnóstico agronômico e projeção financeira."""
     area = area_m2 if area_m2 and area_m2 > 0 else DEFAULT_AREA_ENQUADRAMENTO_M2
     densidade_estimada = calcular_densidade_estimada(total_espigas, area)
+
+    # Cálculos de Produtividade
+    kg_ha = round((densidade_estimada * GRAOS_POR_ESPIGA * PESO_MIL_GRAOS_G) / 100.0, 1)
+    sacas_ha = round(kg_ha / 60.0, 1)
+
+    # Cálculos Financeiros
+    receita_bruta_ha = round(sacas_ha * PRECO_SACA_60KG, 2)
+    lucro_liquido_ha = round(receita_bruta_ha - CUSTO_HECTARE, 2)
+    margem_lucro_pct = round((lucro_liquido_ha / receita_bruta_ha) * 100, 1) if receita_bruta_ha > 0 else 0.0
+    ponto_equilibrio_sacas = round(CUSTO_HECTARE / PRECO_SACA_60KG, 1) if PRECO_SACA_60KG > 0 else 0.0
+
     return {
         "area_enquadramento_m2": float(area),
         "densidade_estimada": densidade_estimada,
         "classificacao_densidade": classificar_densidade(densidade_estimada),
-        **projetar_potencial_lavoura(densidade_estimada),
-    }
-
+        "produtividade_estimada_kg_ha": kg_ha,
+        "produtividade_estimada_sacas_ha": sacas_ha,
+        "financeiro": {
+            "preco_base_saca": PRECO_SACA_60KG,
+            "custo_estimado_ha": CUSTO_HECTARE,
+            "receita_bruta_ha": receita_bruta_ha,
+            "lucro_liquido_ha": lucro_liquido_ha,
+            "margem_lucro_pct": margem_lucro_pct,
+            "ponto_equilibrio_sacas": ponto_equilibrio_sacas
+        }
+    }   
 
 def carregar_modelo_yolo(model_path: Path = DEFAULT_MODEL_PATH) -> Any:
     """Tenta carregar o modelo YOLO via ultralytics caso a biblioteca esteja instalada.
