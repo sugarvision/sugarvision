@@ -53,7 +53,7 @@ export default function ImageDetectionViewer({
 
     async function fetchDetections() {
       try {
-        const res = await authFetch(`${API_URL}/api/anomalies`).catch(() => null);
+        const res = await authFetch(`${API_URL}/api/detections`).catch(() => null);
         if (res && res.ok) {
           const data = await res.json();
           const list = Array.isArray(data) ? data : data.detections || data.anomalies || [];
@@ -111,7 +111,6 @@ export default function ImageDetectionViewer({
       style={{
         position: 'relative',
         width: '100%',
-        height: '100%',
         minHeight: '420px',
         background: '#0d1117',
         display: 'flex',
@@ -125,9 +124,8 @@ export default function ImageDetectionViewer({
         <div
           style={{
             position: 'relative',
-            maxWidth: '100%',
-            maxHeight: '100%',
             display: 'inline-block',
+            lineHeight: 0,
           }}
         >
           {!isImgLoaded && (
@@ -152,7 +150,8 @@ export default function ImageDetectionViewer({
             style={{
               maxWidth: '100%',
               maxHeight: '520px',
-              objectFit: 'contain',
+              width: 'auto',
+              height: 'auto',
               display: 'block',
               borderRadius: '8px',
               position: 'relative',
@@ -163,10 +162,10 @@ export default function ImageDetectionViewer({
 
           {/* Caixas Delimitadoras (Bounding Boxes) */}
           {detections.map((det) => {
-          const boxX = det.box?.x ?? 0;
-          const boxY = det.box?.y ?? 0;
-          const boxW = det.box?.width ?? 10;
-          const boxH = det.box?.height ?? 10;
+            const boxX = det.box?.x ?? 0;
+            const boxY = det.box?.y ?? 0;
+            const boxW = det.box?.width ?? 10;
+            const boxH = det.box?.height ?? 10;
 
             return (
               <div
@@ -180,6 +179,7 @@ export default function ImageDetectionViewer({
                   border: '2px solid #f85149',
                   backgroundColor: 'transparent',
                   borderRadius: '1px',
+                  boxSizing: 'border-box', // <-- Mantém apenas isto
                   zIndex: 10,
                 }}
               />
