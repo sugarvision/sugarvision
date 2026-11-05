@@ -366,6 +366,7 @@ export function Sidebar({
         height: "100vh",
         position: "sticky",
         top: 0,
+        zIndex: 50,
       }}
     >
       {/* Logo area */}

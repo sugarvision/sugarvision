@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "react-toastify";
 import { API_URL } from "../../lib/env";
 
@@ -37,7 +38,12 @@ export default function SettingsModal({
   onClose,
   apiOnline,
 }: SettingsModalProps) {
+  const [mounted, setMounted] = useState(false);
   const [settings, setSettings] = useState<SystemSettings>(DEFAULT_SETTINGS);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -76,7 +82,9 @@ export default function SettingsModal({
     });
   };
 
-  return (
+  if (!isOpen || !mounted) return null;
+
+  return createPortal(
     <div
       className="modal-backdrop-animate no-print"
       style={{
@@ -410,7 +418,8 @@ export default function SettingsModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
