@@ -44,3 +44,6 @@ def get_history_service() -> HistoryService:
 def get_health_service() -> HealthService:
     """Provedor singleton do healthcheck (modelo, RAM e banco), compartilhando os demais singletons."""
     return HealthService(get_ai_service(), get_detection_service())
+
+
+get_anomaly_service = get_detection_service

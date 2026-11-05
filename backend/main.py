@@ -128,15 +128,19 @@ async def api_health_check(
 PROTECTED = [Depends(verify_token)]
 
 
+@app.get("/api/anomalies", response_model=List[dict[str, Any]], dependencies=PROTECTED)
+async def get_anomalies(
+    detection_service: DetectionService = Depends(get_detection_service),
+) -> List[dict[str, Any]]:
+    """Compatibilidade para rota legada /api/anomalies."""
+    return await detection_service.get_all_anomalies_async()
+
+
 @app.get("/api/detections", response_model=List[dict[str, Any]], dependencies=PROTECTED)
 async def get_detections(
     detection_service: DetectionService = Depends(get_detection_service),
 ) -> List[dict[str, Any]]:
-    """Retorna todas as detecções cadastradas no banco de dados para o mapa.
-
-    Executa consulta assíncrona na tabela de detecções do banco de dados e retorna
-    uma lista no formato JSON compatível com o mapa do frontend.
-    """
+    """Retorna todas as detecções cadastradas no banco de dados para o mapa."""
     return await detection_service.get_all_detections_async()
 
 
@@ -194,6 +198,7 @@ async def get_history(
     response: Response,
     page: int = Query(1, ge=1, description="Número da página (começa em 1)"),
     page_size: int = Query(50, ge=1, le=200, description="Itens por página (máx. 200)"),
+    user_id: Optional[str] = Query(None, description="ID do usuário da sessão Supabase"),
     history_service: HistoryService = Depends(get_history_service),
 ) -> List[dict[str, Any]]:
     """Retorna o histórico paginado, da análise mais recente para a mais antiga.

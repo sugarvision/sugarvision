@@ -20,6 +20,14 @@ class DetectionService:
         """
         return await asyncio.to_thread(get_all_detections)
 
+    async def get_all_anomalies_async(self) -> List[dict[str, Any]]:
+        """Compatibilidade para suítes de teste legadas."""
+        from database import get_all_anomalies
+        return await asyncio.to_thread(get_all_anomalies)
+
     async def check_health_async(self) -> dict[str, Any]:
         """Verifica a conectividade do banco de forma assíncrona."""
         return await asyncio.to_thread(check_connection)
+
+
+AnomalyService = DetectionService
