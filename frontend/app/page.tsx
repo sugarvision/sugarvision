@@ -27,6 +27,7 @@ import { extractGpsFromImage } from "./utils/exifReader";
 import type { WeedDetection } from "./ImageDetectionViewer";
 import AgronomicAccuracyCard from "./components/AgronomicAccuracyCard";
 import TechnicalReportModal from "./components/TechnicalReportModal";
+import FinancialSimulatorModal from "./components/FinancialSimulatorModal";
 
 import { API_URL } from "../lib/env";
 import {
@@ -279,6 +280,9 @@ function HomeContent() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewingSavedHistory, setIsViewingSavedHistory] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  
+  // ESTADO DO SIMULADOR CORRIGIDO E MOVIDO PARA CÁ
+  const [isSimuladorOpen, setIsSimuladorOpen] = useState(false);
 
   const [selectedTalhaoId, setSelectedTalhaoId] = useState<string>("talhao-01-rio-claro");
 
@@ -499,7 +503,7 @@ function HomeContent() {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token || "dev-token-bypass";
 
-      // 2. Fazer o fetch com interceptador de contingência e timeout de 3 segundos
+      // 2. Fazer o fetch com interceptador de contingência
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), CONTINGENCY_TIMEOUT_MS);
 
@@ -547,7 +551,7 @@ function HomeContent() {
         theme: "dark",
       });
     } catch (err: unknown) {
-      console.warn("Upload offline ou excedeu 3s. Ativando cache de contingência:", err);
+      console.warn("Upload offline ou excedeu o limite. Ativando cache de contingência:", err);
       const offlineResult = getOfflineSampleInference(file.name, localPreviewUrl);
       setUploadSuccessData({
         backend: offlineResult as any,
@@ -574,6 +578,15 @@ function HomeContent() {
 
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden", position: "relative" }}>
+      
+      {/* ── Modal do Simulador Financeiro ── */}
+      <FinancialSimulatorModal 
+        isOpen={isSimuladorOpen} 
+        onClose={() => setIsSimuladorOpen(false)} 
+        // Passamos a densidade real calculada pelo backend, se existir
+        densidadeInicial={uploadSuccessData?.backend?.summary?.densidade_estimada || 0} 
+      />
+
       {/* ── Tela de Carregamento (Loading) ── */}
       {uploadLoading && (
         <div
@@ -953,65 +966,94 @@ function HomeContent() {
             </div>
           )}
 
-          <button
-            id="btn-imprimir-laudo"
-            type="button"
-            onClick={() => setIsReportModalOpen(true)}
-            className="no-print"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "9px 16px",
-              borderRadius: "8px",
-              background: "var(--surface)",
-              border: "1px solid var(--card-border)",
-              cursor: "pointer",
-              color: "var(--foreground)",
-              fontSize: "13.5px",
-              fontWeight: 600,
-              transition: "all 0.2s ease",
-              whiteSpace: "nowrap",
-            }}
-          >
-            <svg style={{ width: "15px", height: "15px", color: "var(--accent-green)" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <line x1="16" y1="13" x2="8" y2="13" />
-              <line x1="16" y1="17" x2="8" y2="17" />
-            </svg>
-            Exportar Laudo Técnico (.PDF)
-          </button>
+          <div className="flex gap-3">
+            <button
+              id="btn-imprimir-laudo"
+              type="button"
+              onClick={() => setIsReportModalOpen(true)}
+              className="no-print"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "9px 16px",
+                borderRadius: "8px",
+                background: "var(--surface)",
+                border: "1px solid var(--card-border)",
+                cursor: "pointer",
+                color: "var(--foreground)",
+                fontSize: "13.5px",
+                fontWeight: 600,
+                transition: "all 0.2s ease",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <svg style={{ width: "15px", height: "15px", color: "var(--accent-green)" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+              </svg>
+              Exportar Laudo
+            </button>
 
-          <button
-            id="btn-nova-captura"
-            onClick={handleOpenFileDialog}
-            disabled={uploadLoading}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "9px 18px",
-              borderRadius: "8px",
-              background: uploadLoading
-                ? "rgba(46,160,67,0.5)"
-                : "var(--accent-green)",
-              border: "none",
-              cursor: uploadLoading ? "not-allowed" : "pointer",
-              color: "#fff",
-              fontSize: "13.5px",
-              fontWeight: 600,
-              letterSpacing: "0.01em",
-              boxShadow: uploadLoading
-                ? "none"
-                : "0 0 0 1px rgba(46,160,67,0.4), 0 4px 12px rgba(46,160,67,0.3)",
-              transition: "all 0.2s ease",
-              whiteSpace: "nowrap",
-            }}
-          >
-            <IconPlus className="w-4 h-4" />
-            Nova Análise de Campo
-          </button>
+            {/* NOVO BOTÃO DO SIMULADOR */}
+            <button
+              onClick={() => setIsSimuladorOpen(true)}
+              disabled={!activeDetections || activeDetections.length === 0}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "9px 16px",
+                borderRadius: "8px",
+                background: "transparent",
+                border: "1px solid #58a6ff",
+                cursor: (!activeDetections || activeDetections.length === 0) ? "not-allowed" : "pointer",
+                color: "#58a6ff",
+                fontSize: "13.5px",
+                fontWeight: 600,
+                transition: "all 0.2s ease",
+                whiteSpace: "nowrap",
+                opacity: (!activeDetections || activeDetections.length === 0) ? 0.5 : 1,
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" style={{ width: "15px", height: "15px" }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Simulador de Lucro
+            </button>
+
+            <button
+              id="btn-nova-captura"
+              onClick={handleOpenFileDialog}
+              disabled={uploadLoading}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "9px 18px",
+                borderRadius: "8px",
+                background: uploadLoading
+                  ? "rgba(46,160,67,0.5)"
+                  : "var(--accent-green)",
+                border: "none",
+                cursor: uploadLoading ? "not-allowed" : "pointer",
+                color: "#fff",
+                fontSize: "13.5px",
+                fontWeight: 600,
+                letterSpacing: "0.01em",
+                boxShadow: uploadLoading
+                  ? "none"
+                  : "0 0 0 1px rgba(46,160,67,0.4), 0 4px 12px rgba(46,160,67,0.3)",
+                transition: "all 0.2s ease",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <IconPlus className="w-4 h-4" />
+              Nova Análise
+            </button>
+          </div>
         </header>
 
         {/* Content area */}
