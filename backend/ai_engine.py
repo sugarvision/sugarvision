@@ -111,13 +111,6 @@ def extract_yolo_detections(
     if boxes is None:
         return [], {"total_cabecas_trigo": 0, "confianca_media": 0.0, "status_analise": "concluida", **diagnostico_agronomico(0, area_m2)}
 
-    img_h, img_w = (1000.0, 1000.0)
-    if hasattr(first, "orig_shape") and first.orig_shape is not None and len(first.orig_shape) >= 2:
-        try:
-            img_h, img_w = float(first.orig_shape[0]), float(first.orig_shape[1])
-        except Exception:
-            pass
-
     names = getattr(model, "names", {}) if model else {}
     if not isinstance(names, dict):
         names = {0: "wheat"}
@@ -127,10 +120,20 @@ def extract_yolo_detections(
 
     for idx, box in enumerate(boxes):
         try:
+            # SOLUÇÃO: Usar 'xyxyn' para obter as porcentagens exatas de top-left e bottom-right
+            # Isso elimina a necessidade de fazer as contas com img_w e img_h manualmente.
+            if hasattr(box, "xyxyn") and len(box.xyxyn) > 0:
+                xy_norm = box.xyxyn[0]
+                xy_norm = xy_norm.cpu().numpy() if hasattr(xy_norm, "cpu") else (xy_norm.tolist() if hasattr(xy_norm, "tolist") else xy_norm)
+                xn1, yn1, xn2, yn2 = [float(v) for v in xy_norm]
+            else:
+                xn1, yn1, xn2, yn2 = 0.05, 0.05, 0.15, 0.15 # Fallback
+
+            # Mantemos a extração de xyxy absoluto apenas para o banco de dados (box_pixels)
             if hasattr(box, "xyxy") and len(box.xyxy) > 0:
-                xy = box.xyxy[0]
-                xy = xy.cpu().numpy() if hasattr(xy, "cpu") else (xy.tolist() if hasattr(xy, "tolist") else xy)
-                x1, y1, x2, y2 = [float(v) for v in xy]
+                xy_abs = box.xyxy[0]
+                xy_abs = xy_abs.cpu().numpy() if hasattr(xy_abs, "cpu") else (xy_abs.tolist() if hasattr(xy_abs, "tolist") else xy_abs)
+                x1, y1, x2, y2 = [float(v) for v in xy_abs]
             else:
                 x1, y1, x2, y2 = 50.0, 50.0, 150.0, 150.0
 
@@ -146,6 +149,7 @@ def extract_yolo_detections(
             else:
                 cls_id = 0
         except Exception:
+            xn1, yn1, xn2, yn2 = 0.05, 0.05, 0.15, 0.15
             x1, y1, x2, y2 = 50.0, 50.0, 150.0, 150.0
             conf = 0.90
             cls_id = 0
@@ -163,11 +167,10 @@ def extract_yolo_detections(
         item_id = f"wheat_{idx + 1}"
         label = f"Cabeça de Trigo #{idx + 1}"
 
-        w_px = max(x2 - x1, 1.0)
-        h_px = max(y2 - y1, 1.0)
         confidences.append(conf)
 
-        area_pct = ((w_px * h_px) / max(img_w * img_h, 1.0)) * 100.0
+        # Cálculo da área (percentual) para severidade usando as coordenadas normalizadas
+        area_pct = ((xn2 - xn1) * (yn2 - yn1)) * 100.0
         if area_pct < 3.0:
             severity = "baixa"
         elif area_pct < 10.0:
@@ -175,11 +178,12 @@ def extract_yolo_detections(
         else:
             severity = "alta"
 
+        # Coordenadas diretas para o CSS do React: Multiplica-se a base 1.0 por 100 para virar %
         box_pct = {
-            "x": round((x1 / max(img_w, 1.0)) * 100.0, 2),
-            "y": round((y1 / max(img_h, 1.0)) * 100.0, 2),
-            "width": round((w_px / max(img_w, 1.0)) * 100.0, 2),
-            "height": round((h_px / max(img_h, 1.0)) * 100.0, 2),
+            "x": round(xn1 * 100.0, 2),
+            "y": round(yn1 * 100.0, 2),
+            "width": round((xn2 - xn1) * 100.0, 2),
+            "height": round((yn2 - yn1) * 100.0, 2),
         }
 
         detections.append({
@@ -192,7 +196,7 @@ def extract_yolo_detections(
             "box_pixels": {
                 "x1": round(x1, 2), "y1": round(y1, 2),
                 "x2": round(x2, 2), "y2": round(y2, 2),
-                "width": round(w_px, 2), "height": round(h_px, 2),
+                "width": round(x2 - x1, 2), "height": round(y2 - y1, 2),
             },
         })
 
@@ -200,7 +204,6 @@ def extract_yolo_detections(
     confianca_media = round(sum(confidences) / total_detections, 4) if total_detections > 0 else 0.0
 
     summary = {
-        # Escopo do T01. Densidade/produtividade/zonas chegam via T02-T04.
         "total_cabecas_trigo": total_detections,
         "confianca_media": confianca_media,
         "status_analise": "concluida",
