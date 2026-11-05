@@ -1,7 +1,7 @@
 import contingencyJson from "./contingencyData.json";
 import { toast } from "react-toastify";
 
-export const CONTINGENCY_TIMEOUT_MS = 3000;
+export const CONTINGENCY_TIMEOUT_MS = 15000;
 
 export interface PrecomputedDetection {
   id: string;
