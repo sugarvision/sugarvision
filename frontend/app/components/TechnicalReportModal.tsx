@@ -3,6 +3,7 @@
 import React, { useRef, useState } from "react";
 import type { WeedDetection } from "../ImageDetectionViewer";
 import { formatNumberBR } from "../utils/geoMath";
+import { toast } from "react-toastify";
 
 export interface TechnicalReportData {
   id?: string;
@@ -103,48 +104,272 @@ export default function TechnicalReportModal({
   const protocoloId = `SV-EMBRAPA-${new Date().getFullYear()}-${protocoloHash}`;
 
   const handlePrint = () => {
-    window.print();
+    // Garante que o scroll do modal esteja no topo absoluto antes de imprimir
+    const modalContent = document.querySelector(".report-modal-content");
+    if (modalContent) {
+      modalContent.scrollTop = 0;
+    }
+    const reportElem = document.getElementById("sugarvision-technical-report");
+    if (reportElem) {
+      reportElem.scrollIntoView({ behavior: "instant", block: "start" });
+    }
+    setTimeout(() => {
+      window.print();
+    }, 60);
+  };
+
+  const handleDownloadHtml = async () => {
+    const reportElem = document.getElementById("sugarvision-technical-report");
+    if (!reportElem) return;
+
+    // Clona o relatório para manipular o DOM sem afetar a tela ativa
+    const clone = reportElem.cloneNode(true) as HTMLElement;
+    const originalImg = reportElem.querySelector("#report-analisada-img") as HTMLImageElement | null
+      || reportElem.querySelector("img") as HTMLImageElement | null;
+    const cloneImg = clone.querySelector("#report-analisada-img") as HTMLImageElement | null
+      || clone.querySelector("img") as HTMLImageElement | null;
+
+    if (originalImg && cloneImg) {
+      try {
+        let base64Src = "";
+        if (originalImg.src.startsWith("data:")) {
+          base64Src = originalImg.src;
+        } else {
+          // Extrai os pixels diretamente da imagem já renderizada no navegador
+          const canvas = document.createElement("canvas");
+          canvas.width = originalImg.naturalWidth || originalImg.width || 800;
+          canvas.height = originalImg.naturalHeight || originalImg.height || 600;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(originalImg, 0, 0, canvas.width, canvas.height);
+            base64Src = canvas.toDataURL("image/jpeg", 0.92);
+          }
+        }
+
+        if (!base64Src) {
+          // Fallback via fetch blob caso o canvas esteja vazio
+          const response = await fetch(originalImg.src);
+          const blob = await response.blob();
+          base64Src = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = () => resolve(originalImg.src);
+            reader.readAsDataURL(blob);
+          });
+        }
+
+        if (base64Src) {
+          cloneImg.src = base64Src;
+        }
+      } catch (err) {
+        console.warn("Conversão para base64 fallback:", err);
+      }
+    }
+
+    const htmlContent = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Laudo Técnico Agronômico - ${nomeFoto}</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #f1f5f9;
+      color: #0f172a;
+      display: flex;
+      justify-content: center;
+    }
+    #sugarvision-technical-report {
+      background: #ffffff !important;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+      border-radius: 10px;
+      max-width: 860px;
+      width: 100%;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    @media print {
+      body {
+        padding: 0;
+        background: #ffffff;
+      }
+      #sugarvision-technical-report {
+        box-shadow: none;
+        border-radius: 0;
+        max-width: 100%;
+        padding: 4mm 6mm !important;
+      }
+      .report-photo-container,
+      .report-photo-img {
+        max-height: 220px !important;
+      }
+      .report-stats-grid {
+        grid-template-columns: repeat(4, 1fr) !important;
+      }
+      @page {
+        size: A4 portrait;
+        margin: 6mm 8mm;
+      }
+    }
+  </style>
+</head>
+<body>
+  ${clone.outerHTML}
+</body>
+</html>`;
+
+    const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `laudo_tecnico_${nomeFoto.replace(/\.[^/.]+$/, "")}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success("Laudo autônomo (.HTML) exportado com imagem integrada!", { theme: "dark" });
   };
 
   return (
     <>
-      {/* ── ESTILOS DE IMPRESSÃO @media print ── */}
+      {/* ── ESTILOS DE IMPRESSÃO @media print (CORRIGIDO PARA FOLHA A4 COMPLETA) ── */}
       <style>{`
         @media print {
-          /* Oculta tudo que não for o laudo técnico */
-          body * {
-            visibility: hidden !important;
+          /* 1. Oculta tudo da interface da aplicação */
+          .sidebar,
+          main,
+          header,
+          nav,
+          aside,
+          .no-print,
+          .Toastify {
+            display: none !important;
           }
-          #sugarvision-technical-report,
-          #sugarvision-technical-report * {
-            visibility: visible !important;
-          }
-          #sugarvision-technical-report {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            max-width: 100% !important;
+
+          html,
+          body,
+          .app-main-layout {
+            height: auto !important;
+            min-height: 0 !important;
+            max-height: none !important;
+            overflow: visible !important;
+            background: #ffffff !important;
+            color: #0f172a !important;
             margin: 0 !important;
             padding: 0 !important;
+            display: block !important;
+            position: static !important;
+          }
+
+          /* 2. Reseta o modal para o fluxo normal de documento no papel A4 */
+          .report-modal-backdrop {
+            position: static !important;
+            inset: auto !important;
+            display: block !important;
+            background: transparent !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: visible !important;
+            height: auto !important;
+            max-height: none !important;
+            box-shadow: none !important;
+            backdrop-filter: none !important;
+          }
+
+          .report-modal-content {
+            position: static !important;
+            display: block !important;
+            background: #ffffff !important;
+            color: #0f172a !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: visible !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            height: auto !important;
+            max-height: none !important;
+            box-shadow: none !important;
+            border: none !important;
+            border-radius: 0 !important;
+          }
+
+          #sugarvision-technical-report {
+            position: static !important;
+            display: block !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 auto !important;
+            padding: 4mm 6mm !important;
+            overflow: visible !important;
+            height: auto !important;
             background: #ffffff !important;
             color: #0f172a !important;
             box-shadow: none !important;
             border: none !important;
           }
-          .no-print {
-            display: none !important;
+
+          .report-header-section {
+            padding-bottom: 8px !important;
+            margin-bottom: 6px !important;
           }
+
+          .report-ident-grid {
+            padding: 8px 12px !important;
+            margin-bottom: 6px !important;
+            gap: 8px !important;
+          }
+
+          .report-photo-container {
+            max-height: 220px !important;
+            height: 220px !important;
+          }
+
+          .report-photo-img {
+            max-height: 220px !important;
+          }
+
+          .report-stats-grid {
+            display: grid !important;
+            grid-template-columns: repeat(4, 1fr) !important;
+            gap: 8px !important;
+            margin-bottom: 8px !important;
+          }
+
+          .report-stat-card {
+            padding: 8px 10px !important;
+          }
+
+          .report-stat-val {
+            font-size: 20px !important;
+            margin-top: 2px !important;
+          }
+
+          .report-parecer-box {
+            padding: 8px 12px !important;
+            margin-top: 6px !important;
+          }
+
+          .report-footer-section {
+            margin-top: 8px !important;
+            padding-top: 8px !important;
+          }
+
+          .print-avoid-break {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+
           @page {
             size: A4 portrait;
-            margin: 12mm 15mm;
+            margin: 6mm 8mm;
           }
-          .print-border {
-            border: 1px solid #cbd5e1 !important;
-          }
-          .print-bg-light {
-            background-color: #f8fafc !important;
-          }
+
           * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
@@ -154,6 +379,7 @@ export default function TechnicalReportModal({
 
       {/* ── MODAL CONTAINER ── */}
       <div
+        className="report-modal-backdrop"
         style={{
           position: "fixed",
           inset: 0,
@@ -169,7 +395,7 @@ export default function TechnicalReportModal({
         onClick={onClose}
       >
         <div
-          className="fade-in-up"
+          className="report-modal-content modal-content-animate"
           style={{
             background: "#ffffff",
             color: "#0f172a",
@@ -237,6 +463,33 @@ export default function TechnicalReportModal({
                 }}
               >
                 {showBoxes ? "✓ Bounding Boxes (YOLOv8x)" : "○ Ocultar Bounding Boxes"}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDownloadHtml}
+                style={{
+                  background: "rgba(255, 255, 255, 0.12)",
+                  color: "#ffffff",
+                  border: "1px solid rgba(255, 255, 255, 0.25)",
+                  borderRadius: "6px",
+                  padding: "7px 12px",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  transition: "all 0.2s ease",
+                }}
+                title="Baixar arquivo HTML autônomo com o laudo completo"
+              >
+                <svg style={{ width: "15px", height: "15px" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                Exportar .HTML
               </button>
 
               <button
@@ -388,6 +641,7 @@ export default function TechnicalReportModal({
 
             {/* 2. IDENTIFICAÇÃO DA AMOSTRA E TALHÃO */}
             <div
+              className="report-ident-grid"
               style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
@@ -461,6 +715,7 @@ export default function TechnicalReportModal({
               </div>
 
               <div
+                className="report-photo-container"
                 style={{
                   position: "relative",
                   width: "100%",
@@ -477,6 +732,9 @@ export default function TechnicalReportModal({
                 <div style={{ position: "relative", display: "inline-block", maxWidth: "100%", maxHeight: "100%" }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
+                    id="report-analisada-img"
+                    className="report-photo-img"
+                    crossOrigin="anonymous"
                     src={data.imageUrl}
                     alt={nomeFoto}
                     style={{
@@ -557,6 +815,7 @@ export default function TechnicalReportModal({
               </h3>
 
               <div
+                className="report-stats-grid"
                 style={{
                   display: "grid",
                   gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
@@ -566,6 +825,7 @@ export default function TechnicalReportModal({
               >
                 {/* Total de Espigas */}
                 <div
+                  className="report-stat-card"
                   style={{
                     border: "1px solid #cbd5e1",
                     borderRadius: "8px",
@@ -576,7 +836,7 @@ export default function TechnicalReportModal({
                   <div style={{ fontSize: "11px", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
                     Total de Espigas Contadas
                   </div>
-                  <div style={{ fontSize: "24px", fontWeight: 900, color: "#065f46", marginTop: "4px" }}>
+                  <div className="report-stat-val" style={{ fontSize: "24px", fontWeight: 900, color: "#065f46", marginTop: "4px" }}>
                     {totalEspigas} <span style={{ fontSize: "13px", fontWeight: 600, color: "#64748b" }}>espigas</span>
                   </div>
                   <div style={{ fontSize: "11px", color: "#64748b", marginTop: "2px" }}>
@@ -586,6 +846,7 @@ export default function TechnicalReportModal({
 
                 {/* Densidade por m² */}
                 <div
+                  className="report-stat-card"
                   style={{
                     border: "1px solid #cbd5e1",
                     borderRadius: "8px",
@@ -596,7 +857,7 @@ export default function TechnicalReportModal({
                   <div style={{ fontSize: "11px", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
                     Densidade Estimada
                   </div>
-                  <div style={{ fontSize: "24px", fontWeight: 900, color: "#0284c7", marginTop: "4px" }}>
+                  <div className="report-stat-val" style={{ fontSize: "24px", fontWeight: 900, color: "#0284c7", marginTop: "4px" }}>
                     {formatNumberBR(densidadeM2, 1)}{" "}
                     <span style={{ fontSize: "13px", fontWeight: 600, color: "#64748b" }}>espigas/m²</span>
                   </div>
@@ -607,6 +868,7 @@ export default function TechnicalReportModal({
 
                 {/* Confiança Média IA */}
                 <div
+                  className="report-stat-card"
                   style={{
                     border: "1px solid #cbd5e1",
                     borderRadius: "8px",
@@ -617,7 +879,7 @@ export default function TechnicalReportModal({
                   <div style={{ fontSize: "11px", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
                     Acurácia Média IA
                   </div>
-                  <div style={{ fontSize: "24px", fontWeight: 900, color: "#7c3aed", marginTop: "4px" }}>
+                  <div className="report-stat-val" style={{ fontSize: "24px", fontWeight: 900, color: "#7c3aed", marginTop: "4px" }}>
                     {formatNumberBR(mediaConfianca, 1)}%
                   </div>
                   <div style={{ fontSize: "11px", color: "#64748b", marginTop: "2px" }}>
@@ -627,6 +889,7 @@ export default function TechnicalReportModal({
 
                 {/* Classificação do Estande */}
                 <div
+                  className="report-stat-card"
                   style={{
                     border: `1px solid ${estandeCor}`,
                     borderRadius: "8px",
@@ -637,7 +900,7 @@ export default function TechnicalReportModal({
                   <div style={{ fontSize: "11px", fontWeight: 700, color: estandeCor, textTransform: "uppercase" }}>
                     Status do Estande
                   </div>
-                  <div style={{ fontSize: "15px", fontWeight: 800, color: estandeCor, marginTop: "6px" }}>
+                  <div className="report-stat-val" style={{ fontSize: "15px", fontWeight: 800, color: estandeCor, marginTop: "6px" }}>
                     {estandeClassificacao}
                   </div>
                   <div style={{ fontSize: "11px", color: "#475569", marginTop: "2px" }}>
@@ -648,6 +911,7 @@ export default function TechnicalReportModal({
 
               {/* Parecer Técnico */}
               <div
+                className="report-parecer-box"
                 style={{
                   background: "#f8fafc",
                   borderLeft: `4px solid ${estandeCor}`,
@@ -669,6 +933,7 @@ export default function TechnicalReportModal({
 
             {/* 5. RODAPÉ INSTITUCIONAL & ASSINATURA */}
             <div
+              className="report-footer-section"
               style={{
                 marginTop: "10px",
                 borderTop: "1px solid #cbd5e1",

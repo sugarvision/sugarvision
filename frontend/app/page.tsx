@@ -573,7 +573,7 @@ function HomeContent() {
   };
 
   return (
-    <div style={{ display: "flex", height: "100vh", overflow: "hidden", position: "relative" }}>
+    <div className="app-main-layout" style={{ display: "flex", height: "100vh", overflow: "hidden", position: "relative" }}>
       {/* ── Tela de Carregamento (Loading) ── */}
       {uploadLoading && (
         <div

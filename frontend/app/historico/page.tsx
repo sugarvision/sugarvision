@@ -412,7 +412,7 @@ export default function HistoricoPage() {
   };
 
   return (
-    <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
+    <div className="app-main-layout" style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
       {/* ── Sidebar ─────────────────────────────────────── */}
       <Sidebar
         collapsed={sidebarCollapsed}

@@ -279,6 +279,13 @@ export default function FieldMap() {
   const [densidadeFilter, setDensidadeFilter] = useState<"todas" | "alta" | "media" | "baixa">("todas");
   const [buscaNome, setBuscaNome] = useState<string>("");
   const [apenasMaisRecente, setApenasMaisRecente] = useState<boolean>(false);
+  const [panelCollapsed, setPanelCollapsed] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth <= 768) {
+      setPanelCollapsed(true);
+    }
+  }, []);
 
   // Ponto central padrão: Fazenda e Campos Experimentais da Embrapa Trigo (Passo Fundo - RS)
   const defaultCenter: [number, number] = [-28.2234, -52.4076];
@@ -428,39 +435,73 @@ export default function FieldMap() {
 
   return (
     <div style={{ width: "100%", height: "100%", position: "relative" }}>
-      {/* ── Painel Flutuante de Filtros e Legenda Geoespacial ── */}
+      {/* ── Painel Flutuante de Filtros e Legenda Geoespacial (Retrátil no Mobile) ── */}
       <div
+        id="map-floating-panel"
         style={{
           position: "absolute",
           top: "16px",
           left: "16px",
           zIndex: 1000,
-          background: "rgba(22, 27, 34, 0.94)",
-          backdropFilter: "blur(12px)",
+          background: "rgba(22, 27, 34, 0.95)",
+          backdropFilter: "blur(14px)",
           border: "1px solid var(--card-border)",
           borderRadius: "10px",
-          padding: "14px 16px",
+          padding: panelCollapsed ? "10px 14px" : "14px 16px",
           boxShadow: "0 8px 24px rgba(0,0,0,0.55)",
           display: "flex",
           flexDirection: "column",
-          gap: "10px",
-          minWidth: "270px",
-          maxWidth: "320px",
+          gap: panelCollapsed ? "0px" : "10px",
+          minWidth: panelCollapsed ? "auto" : "270px",
+          maxWidth: panelCollapsed ? "auto" : "320px",
+          transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div>
-            <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block" }}>
-              Embrapa Trigo
-            </span>
-            <span style={{ fontSize: "10px", color: "var(--muted)" }}>
-              Fazenda Experimental (BR-285)
-            </span>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span style={{ fontSize: "14px" }}>🌾</span>
+            <div>
+              <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block" }}>
+                Embrapa Trigo
+              </span>
+              {!panelCollapsed && (
+                <span style={{ fontSize: "10px", color: "var(--muted)" }}>
+                  Fazenda Experimental (BR-285)
+                </span>
+              )}
+            </div>
           </div>
-          <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--accent-green)", background: "rgba(46,160,67,0.15)", padding: "2px 8px", borderRadius: "10px" }}>
-            {displaySamples.length} {displaySamples.length === 1 ? "ponto" : "pontos"}
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--accent-green)", background: "rgba(46,160,67,0.15)", padding: "2px 8px", borderRadius: "10px" }}>
+              {displaySamples.length} {displaySamples.length === 1 ? "ponto" : "pontos"}
+            </span>
+            <button
+              id="btn-toggle-map-filters"
+              type="button"
+              onClick={() => setPanelCollapsed(!panelCollapsed)}
+              style={{
+                background: "rgba(255, 255, 255, 0.08)",
+                border: "1px solid rgba(255, 255, 255, 0.12)",
+                color: "var(--foreground)",
+                borderRadius: "6px",
+                padding: "3px 8px",
+                fontSize: "11px",
+                fontWeight: 600,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                transition: "all 0.2s ease",
+              }}
+              title={panelCollapsed ? "Expandir painel de filtros" : "Recolher painel para visualizar livremente o mapa"}
+            >
+              {panelCollapsed ? "▼ Filtros" : "▲ Recolher"}
+            </button>
+          </div>
         </div>
+
+        {!panelCollapsed && (
+          <>
 
         {/* Exibir / Ocultar Polígonos de Talhões */}
         <label
@@ -624,6 +665,8 @@ export default function FieldMap() {
           />
           <span>Apenas última inspeção por local</span>
         </label>
+          </>
+        )}
       </div>
 
       {/* ── Container do Mapa Leaflet ── */}
