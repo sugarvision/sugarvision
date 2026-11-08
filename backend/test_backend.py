@@ -21,7 +21,14 @@ import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import UploadFile
 
+import sys
 from fastapi.testclient import TestClient
+
+_BACKEND_DIR = Path(__file__).resolve().parent
+_REPO_ROOT = _BACKEND_DIR.parent
+for _p in (str(_BACKEND_DIR), str(_REPO_ROOT)):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 
 import main
 from main import app, TEMP_IMAGES_DIR, MODEL_PATH
@@ -29,7 +36,7 @@ from ai_engine import carregar_modelo_yolo, processar_imagem_ia, DEFAULT_MODEL_P
 from database import get_all_anomalies, FALLBACK_ANOMALIES
 from app.core.dependencies import get_ai_service, get_anomaly_service, get_storage_service
 from app.services.ai_service import AIService
-from backend.app.services.detection_service import AnomalyService
+from app.services.detection_service import AnomalyService
 from app.services.storage_service import StorageService
 
 
@@ -916,7 +923,6 @@ class TestHealthEndpoint(unittest.TestCase):
         print(f"  [PASS] 55 - /api/health real respondeu {data_response.status_code} ({data['status']})")
 
 
-
 class TestInferenceQueueConcurrency(unittest.IsolatedAsyncioTestCase):
     """Bateria de testes da Sprint 9: Proteção contra Sobrecarga no Motor de Inferência (Controle de Fila)."""
 
@@ -974,14 +980,7 @@ class TestInferenceQueueConcurrency(unittest.IsolatedAsyncioTestCase):
                 test_img.unlink()
 
     async def test_58_disparo_tres_requisicoes_simultaneas_com_protecao_429(self):
-        """Checklist Sprint 9: Dispara 3 requisições simultâneas de fotos de trigo.
-
-        Comprova que o servidor não sofre crash por falta de memória:
-        - Requisição 1: processa imediatamente no semáforo.
-        - Requisição 2: enfileira na fila segura (limite = 1).
-        - Requisição 3: excede o limite seguro da fila e recebe HTTP 429 com mensagem amigável:
-          'Processador ocupado, tente em alguns segundos'.
-        """
+        """Checklist Sprint 9: Dispara 3 requisições simultâneas de fotos de trigo."""
         from app.services.ai_service import AIService, InferenceOverloadException
         service = AIService()
 
@@ -1060,7 +1059,6 @@ class TestInferenceQueueConcurrency(unittest.IsolatedAsyncioTestCase):
 
     def test_61_inference_time_ms_in_analyze_sample(self):
         """Checklist Sprint 10: Valida se /api/analyze-sample retorna inference_time_ms."""
-        # Cria imagem temporária para testar análise
         test_img = TEMP_IMAGES_DIR / "amostra_sprint10_timing.jpg"
         test_img.touch()
         try:
@@ -1088,6 +1086,9 @@ class TestInferenceQueueConcurrency(unittest.IsolatedAsyncioTestCase):
             response = self.client.post("/upload", files=file_payload)
         self.assertEqual(response.status_code, 201)
         data = response.json()
+        saved = Path(data.get("saved_path", ""))
+        if saved.exists():
+            saved.unlink()
         self.assertIn("inference_time_ms", data)
         self.assertIsInstance(data["inference_time_ms"], (int, float))
         self.assertIn("inference_time_ms", data.get("summary", {}))
@@ -1114,6 +1115,189 @@ class TestInferenceQueueConcurrency(unittest.IsolatedAsyncioTestCase):
         finally:
             if test_img.exists():
                 test_img.unlink()
+
+
+class TestGeospatialMetadataAndTalhoesSprint12(unittest.TestCase):
+    """Bateria de testes da Sprint 12: Metadados Geoespaciais Estruturados e Agregações por Talhão."""
+
+    def setUp(self):
+        self.client = TestClient(app)
+
+    def test_64_parse_coordinate_safe_conversao_formatos_e_nulos(self):
+        """Sprint 12 - Valida tratamento de campos nulos, strings vazias, vírgulas e limites de GPS."""
+        from database import parse_coordinate_safe, parse_float_safe, normalize_talhao_codigo, resolve_cultivar
+
+        # Nulos e strings inválidas
+        self.assertIsNone(parse_coordinate_safe(None, "lat"))
+        self.assertIsNone(parse_coordinate_safe("", "lat"))
+        self.assertIsNone(parse_coordinate_safe("null", "lon"))
+        self.assertIsNone(parse_coordinate_safe("NaN", "lon"))
+        self.assertIsNone(parse_coordinate_safe("sem_gps", "lat"))
+
+        # Conversão de vírgula decimal e espaços
+        self.assertAlmostEqual(parse_coordinate_safe("-28,2234", "lat"), -28.2234, places=4)
+        self.assertAlmostEqual(parse_coordinate_safe(" -52,4079 ", "lon"), -52.4079, places=4)
+
+        # Fora dos limites geográficos
+        self.assertIsNone(parse_coordinate_safe(95.0, "lat"))
+        self.assertIsNone(parse_coordinate_safe(-190.0, "lon"))
+
+        # Float seguro
+        self.assertEqual(parse_float_safe("42,5"), 42.5)
+        self.assertEqual(parse_float_safe(None, default=0.0), 0.0)
+
+        # Normalização de código de talhão e cultivar
+        self.assertEqual(normalize_talhao_codigo("exp-02"), "EXP-02")
+        self.assertEqual(normalize_talhao_codigo(None), "EXP-01")
+        self.assertEqual(resolve_cultivar(None, "EXP-02"), "TBIO Sintonia")
+        self.assertEqual(resolve_cultivar(None, "EXP-03"), "BRS Belamar")
+        print("  [PASS] 64 - Conversões seguras de coordenadas, nulos, vírgulas e metadados de talhão/cultivar")
+
+    def test_65_insert_analysis_sem_gps_preserva_integridade_nulos(self):
+        """Sprint 12 - Garante integridade quando a foto não possui coordenadas GPS (latitude/longitude None)."""
+        from database import delete_analysis, insert_analysis
+
+        record = insert_analysis(
+            nome_imagem="trigo_sem_exif_gps_sprint12.jpg",
+            total_cabecas_trigo=84,
+            classificacao_densidade="Normal",
+            densidade_estimada=84.0,
+            talhao_codigo="EXP-03",
+            cultivar="BRS Belamar",
+            latitude=None,
+            longitude="",
+            inference_time_ms="38,4",
+            use_gps_fallback=False,
+        )
+        try:
+            self.assertIsNotNone(record)
+            self.assertEqual(record["talhao_codigo"], "EXP-03")
+            self.assertEqual(record["cultivar"], "BRS Belamar")
+            self.assertIsNone(record["latitude"])
+            self.assertIsNone(record["longitude"])
+            self.assertAlmostEqual(record["inference_time_ms"], 38.4, places=1)
+            self.assertAlmostEqual(record["densidade_estimada"], 84.0, places=1)
+            print("  [PASS] 65 - insert_analysis sem GPS preserva latitude/longitude como None com integridade")
+        finally:
+            if record and record.get("id"):
+                delete_analysis(record["id"])
+
+    def test_66_upload_persiste_metadados_completos_e_trata_virgula_ou_vazio(self):
+        """Sprint 12 - Valida POST /upload enviando cultivar, talhao_codigo, latitude com vírgula e sem GPS."""
+        from database import delete_analysis
+
+        png_bytes = (
+            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+            b"\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00"
+            b"\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82"
+        )
+        fake_ai_res = {
+            "status": "completed",
+            "detections": [],
+            "inference_time_ms": 42.8,
+            "summary": {
+                "total_cabecas_trigo": 48,
+                "total_espigas": 48,
+                "densidade_estimada": 48.0,
+                "classificacao_densidade": "Baixa",
+                "inference_time_ms": 42.8,
+            },
+        }
+        created_paths = []
+        created_analysis_ids = []
+        try:
+            with patch.dict(os.environ, {"AUTH_ENABLED": "False"}), \
+                 patch.object(AIService, "detect_image_async", new=AsyncMock(return_value=fake_ai_res)), \
+                 patch("main.processar_imagem_ia", return_value=fake_ai_res):
+                # 1) Upload com metadados completos e coordenada em formato string com vírgula
+                resp_gps = self.client.post(
+                    "/upload",
+                    files={"file": ("drone_exp02_sprint12.png", io.BytesIO(png_bytes), "image/png")},
+                    data={
+                        "talhao_codigo": "EXP-02",
+                        "talhao_nome": "Talhão Experimental 02 — Passo Fundo/RS",
+                        "cultivar": "TBIO Sintonia",
+                        "latitude": "-28,2238",
+                        "longitude": "-52,4080",
+                    },
+                )
+                self.assertEqual(resp_gps.status_code, 201)
+                payload_gps = resp_gps.json()
+                created_paths.append(Path(payload_gps.get("saved_path", "")))
+                if isinstance(payload_gps.get("history_record"), dict) and payload_gps["history_record"].get("id"):
+                    created_analysis_ids.append(payload_gps["history_record"]["id"])
+                self.assertEqual(payload_gps["talhao_codigo"], "EXP-02")
+                self.assertEqual(payload_gps["cultivar"], "TBIO Sintonia")
+                self.assertAlmostEqual(payload_gps["latitude"], -28.2238, places=4)
+                self.assertAlmostEqual(payload_gps["longitude"], -52.4080, places=4)
+                self.assertIsInstance(payload_gps["inference_time_ms"], (int, float))
+
+                # 2) Upload com foto sem GPS (strings vazias / "null" no FormData)
+                resp_no_gps = self.client.post(
+                    "/upload",
+                    files={"file": ("drone_sem_gps_sprint12.png", io.BytesIO(png_bytes), "image/png")},
+                    data={
+                        "talhao_codigo": "EXP-01",
+                        "cultivar": "BRS Pastoreio",
+                        "latitude": "",
+                        "longitude": "null",
+                    },
+                )
+                self.assertEqual(resp_no_gps.status_code, 201)
+                payload_no_gps = resp_no_gps.json()
+                created_paths.append(Path(payload_no_gps.get("saved_path", "")))
+                if isinstance(payload_no_gps.get("history_record"), dict) and payload_no_gps["history_record"].get("id"):
+                    created_analysis_ids.append(payload_no_gps["history_record"]["id"])
+                self.assertEqual(payload_no_gps["talhao_codigo"], "EXP-01")
+                self.assertEqual(payload_no_gps["cultivar"], "BRS Pastoreio")
+                self.assertIsNone(payload_no_gps["latitude"])
+                self.assertIsNone(payload_no_gps["longitude"])
+            print("  [PASS] 66 - POST /upload grava cultivar, talhao_codigo, latitude/longitude e aceita foto sem GPS")
+        finally:
+            for aid in created_analysis_ids:
+                delete_analysis(aid)
+            for p in created_paths:
+                if p and p.exists():
+                    p.unlink()
+
+    def test_67_endpoint_talhoes_estatisticas_consolidadas(self):
+        """Sprint 12 - Valida GET /api/talhoes/estatisticas com médias consolidadas por talhão (EXP-01 vs EXP-02)."""
+        with patch.dict(os.environ, {"AUTH_ENABLED": "False"}):
+            response = self.client.get("/api/talhoes/estatisticas")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data.get("status"), "sucesso")
+        self.assertIn("talhoes", data)
+        self.assertIn("por_talhao", data)
+        self.assertIn("comparativo", data)
+
+        por_talhao = data["por_talhao"]
+        self.assertIn("EXP-01", por_talhao)
+        self.assertIn("EXP-02", por_talhao)
+
+        exp01 = por_talhao["EXP-01"]
+        exp02 = por_talhao["EXP-02"]
+        for chave in (
+            "talhao_codigo",
+            "cultivar",
+            "total_analises",
+            "densidade_media",
+            "media_espigas",
+            "tempo_inferencia_medio_ms",
+            "analises_com_gps",
+            "analises_sem_gps",
+        ):
+            self.assertIn(chave, exp01)
+            self.assertIn(chave, exp02)
+
+        comp = data["comparativo"]
+        self.assertIn("exp_01_densidade_media", comp)
+        self.assertIn("exp_02_densidade_media", comp)
+        self.assertIn("diferenca_exp01_vs_exp02", comp)
+        print(
+            f"  [PASS] 67 - GET /api/talhoes/estatisticas consolidou EXP-01 ({exp01['densidade_media']} esp/m²) "
+            f"vs EXP-02 ({exp02['densidade_media']} esp/m²)"
+        )
 
 
 if __name__ == "__main__":

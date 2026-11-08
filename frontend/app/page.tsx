@@ -260,12 +260,31 @@ interface BackendUploadResponse {
   size_bytes: number;
   saved_path: string;
   ai_status?: string;
+  inference_time_ms?: number;
+  talhao_codigo?: string;
+  cultivar?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   detections?: WeedDetection[];
   summary?: {
     total_espigas?: number;
+    total_cabecas_trigo?: number;
     densidade_estimada?: number;
     area_amostra_m2?: number;
     taxa_infestacao_percent?: number;
+    inference_time_ms?: number;
+    talhao_codigo?: string;
+    cultivar?: string;
+    latitude?: number | null;
+    longitude?: number | null;
+  };
+  history_record?: {
+    id?: string;
+    talhao_codigo?: string;
+    cultivar?: string;
+    latitude?: number | null;
+    longitude?: number | null;
+    inference_time_ms?: number;
   };
 }
 
@@ -280,26 +299,28 @@ function HomeContent() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewingSavedHistory, setIsViewingSavedHistory] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-  
-  // ESTADO DO SIMULADOR CORRIGIDO E MOVIDO PARA CÁ
   const [isSimuladorOpen, setIsSimuladorOpen] = useState(false);
 
-  const [selectedTalhaoId, setSelectedTalhaoId] = useState<string>("talhao-01-rio-claro");
+  const [selectedTalhaoId, setSelectedTalhaoId] = useState<string>("EXP-01");
 
   const searchParams = useSearchParams();
   const talhaoQuery = searchParams.get("talhao");
   const amostraQuery = searchParams.get("amostra");
-  const analiseIdQuery = searchParams.get("analise_id"); // ID da análise já salva
+  const analiseIdQuery = searchParams.get("analise_id");
   const timestampQuery = searchParams.get("t");
 
-  // Trava para evitar que o React Strict Mode faça chamadas duplas
   const processedParamRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (talhaoQuery && TALHOES_MOCK_DATA.some((t) => t.id === talhaoQuery)) {
-      setSelectedTalhaoId(talhaoQuery);
+    if (talhaoQuery && TALHOES_MOCK_DATA.some((t) => t.id === talhaoQuery || t.talhaoCodigo === talhaoQuery)) {
+      const found = TALHOES_MOCK_DATA.find((t) => t.id === talhaoQuery || t.talhaoCodigo === talhaoQuery);
+      if (found) setSelectedTalhaoId(found.id);
     }
   }, [talhaoQuery]);
+
+  const currentAmostra =
+    TALHOES_MOCK_DATA.find((t) => t.id === selectedTalhaoId) || TALHOES_MOCK_DATA[0];
+  const metrics = computeFieldMetrics(currentAmostra);
 
   // EFEITO: Trata tanto a visualização do histórico quanto a nova inferência de amostra
   useEffect(() => {
@@ -328,10 +349,20 @@ function HomeContent() {
               content_type: "image/jpeg",
               size_bytes: 0,
               saved_path: "",
+              inference_time_ms: data.inference_time_ms ?? data.summary?.inference_time_ms,
+              talhao_codigo: data.talhao_codigo || data.talhaoCodigo || "EXP-01",
+              cultivar: data.cultivar || data.variedade || "BRS Pastoreio",
+              latitude: data.latitude ?? data.summary?.latitude ?? null,
+              longitude: data.longitude ?? data.summary?.longitude ?? null,
               detections: detections,
               summary: {
                 total_espigas: wheatCount,
                 densidade_estimada: data.densidade_estimada || 0,
+                inference_time_ms: data.inference_time_ms ?? data.summary?.inference_time_ms,
+                talhao_codigo: data.talhao_codigo || "EXP-01",
+                cultivar: data.cultivar || data.variedade || "BRS Pastoreio",
+                latitude: data.latitude ?? null,
+                longitude: data.longitude ?? null,
               },
             },
             localPreview: imgUrl,
@@ -374,8 +405,14 @@ function HomeContent() {
         setUploadLoading(true);
         setIsViewingSavedHistory(false);
         try {
+          const params = new URLSearchParams({
+            filename,
+            talhao_codigo: currentAmostra.talhaoCodigo,
+            talhao_nome: currentAmostra.nome,
+            cultivar: currentAmostra.cultivar,
+          });
           const response = await authFetch(
-            `${API_URL}/api/analyze-sample?filename=${encodeURIComponent(filename)}`
+            `${API_URL}/api/analyze-sample?${params.toString()}`
           );
 
           if (!response.ok) {
@@ -409,10 +446,11 @@ function HomeContent() {
 
           const wheatCount =
             result.summary?.total_espigas ??
+            result.summary?.total_cabecas_trigo ??
             (result.detections ? result.detections.length : 0);
 
           toast.success(
-            `Amostra '${filename}' analisada: ${wheatCount} espigas de trigo identificadas!`,
+            `Amostra '${filename}' analisada (${currentAmostra.talhaoCodigo} · ${currentAmostra.cultivar}): ${wheatCount} espigas!`,
             {
               position: "top-right",
               autoClose: 4500,
@@ -438,13 +476,9 @@ function HomeContent() {
 
       loadAndInferSample(amostraQuery);
     }
-  }, [amostraQuery, analiseIdQuery, timestampQuery]);
+  }, [amostraQuery, analiseIdQuery, timestampQuery, currentAmostra]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const currentAmostra =
-    TALHOES_MOCK_DATA.find((t) => t.id === selectedTalhaoId) || TALHOES_MOCK_DATA[0];
-  const metrics = computeFieldMetrics(currentAmostra);
 
   const handleOpenFileDialog = () => {
     if (fileInputRef.current) {
@@ -481,6 +515,9 @@ function HomeContent() {
     const localPreviewUrl = URL.createObjectURL(file);
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("talhao_codigo", currentAmostra.talhaoCodigo);
+    formData.append("talhao_nome", currentAmostra.nome);
+    formData.append("cultivar", currentAmostra.cultivar);
 
     // Tentativa de leitura de coordenadas GPS nativas (EXIF do drone ou celular)
     try {
@@ -543,13 +580,17 @@ function HomeContent() {
 
       const wheatCount =
         result.summary?.total_espigas ??
+        result.summary?.total_cabecas_trigo ??
         (result.detections ? result.detections.length : 0);
 
-      toast.success(`Análise concluída: ${wheatCount} espigas identificadas!`, {
-        position: "top-right",
-        autoClose: 4000,
-        theme: "dark",
-      });
+      toast.success(
+        `Análise concluída (${result.talhao_codigo || currentAmostra.talhaoCodigo} · ${result.cultivar || currentAmostra.cultivar}): ${wheatCount} espigas identificadas!`,
+        {
+          position: "top-right",
+          autoClose: 4000,
+          theme: "dark",
+        }
+      );
     } catch (err: unknown) {
       console.warn("Upload offline ou excedeu o limite. Ativando cache de contingência:", err);
       const offlineResult = getOfflineSampleInference(file.name, localPreviewUrl);
@@ -576,6 +617,30 @@ function HomeContent() {
     return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
   };
 
+  const activeTalhaoCodigo =
+    uploadSuccessData?.backend.talhao_codigo ||
+    uploadSuccessData?.backend.summary?.talhao_codigo ||
+    currentAmostra.talhaoCodigo;
+
+  const activeCultivar =
+    uploadSuccessData?.backend.cultivar ||
+    uploadSuccessData?.backend.summary?.cultivar ||
+    currentAmostra.cultivar;
+
+  const activeLat =
+    uploadSuccessData?.backend.latitude ??
+    uploadSuccessData?.backend.summary?.latitude ??
+    currentAmostra.latitude;
+
+  const activeLon =
+    uploadSuccessData?.backend.longitude ??
+    uploadSuccessData?.backend.summary?.longitude ??
+    currentAmostra.longitude;
+
+  const activeInferenceMs =
+    uploadSuccessData?.backend.inference_time_ms ??
+    uploadSuccessData?.backend.summary?.inference_time_ms;
+
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden", position: "relative" }}>
       
@@ -583,7 +648,6 @@ function HomeContent() {
       <FinancialSimulatorModal 
         isOpen={isSimuladorOpen} 
         onClose={() => setIsSimuladorOpen(false)} 
-        // Passamos a densidade real calculada pelo backend, se existir
         densidadeInicial={uploadSuccessData?.backend?.summary?.densidade_estimada || 0} 
       />
 
@@ -772,6 +836,28 @@ function HomeContent() {
                 </span>
                 <span style={{ fontWeight: 600, color: "var(--foreground)" }}>{uploadSuccessData.backend.original_filename}</span>
               </div>
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--sidebar-border)", paddingBottom: "8px" }}>
+                <span style={{ color: "var(--muted)" }}>Talhão / Cultivar:</span>
+                <span style={{ fontWeight: 600, color: "var(--foreground)" }}>
+                  {activeTalhaoCodigo} · {activeCultivar}
+                </span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--sidebar-border)", paddingBottom: "8px" }}>
+                <span style={{ color: "var(--muted)" }}>Coordenadas GPS:</span>
+                <span style={{ fontWeight: 600, color: "#58a6ff" }}>
+                  {activeLat != null && activeLon != null
+                    ? `${Number(activeLat).toFixed(5)}, ${Number(activeLon).toFixed(5)}`
+                    : "Sem GPS na foto"}
+                </span>
+              </div>
+              {activeInferenceMs !== undefined && (
+                <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--sidebar-border)", paddingBottom: "8px" }}>
+                  <span style={{ color: "var(--muted)" }}>Tempo de Inferência:</span>
+                  <span style={{ fontWeight: 600, color: "var(--foreground)" }}>
+                    {formatNumberBR(Number(activeInferenceMs), 1)} ms
+                  </span>
+                </div>
+              )}
               {uploadSuccessData.backend.size_bytes > 0 && (
                 <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--sidebar-border)", paddingBottom: "8px" }}>
                   <span style={{ color: "var(--muted)" }}>Tamanho do Arquivo:</span>
@@ -781,7 +867,7 @@ function HomeContent() {
               <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid var(--sidebar-border)", paddingBottom: "8px" }}>
                 <span style={{ color: "var(--muted)" }}>Total de Espigas:</span>
                 <span style={{ fontWeight: 700, color: "#ffa657" }}>
-                  {uploadSuccessData.backend.summary?.total_espigas ?? (uploadSuccessData.backend.detections ? uploadSuccessData.backend.detections.length : 0)} identificadas
+                  {uploadSuccessData.backend.summary?.total_espigas ?? uploadSuccessData.backend.summary?.total_cabecas_trigo ?? (uploadSuccessData.backend.detections ? uploadSuccessData.backend.detections.length : 0)} identificadas
                 </span>
               </div>
               {uploadSuccessData.backend.detections !== undefined && (
@@ -859,6 +945,7 @@ function HomeContent() {
           imageUrl: uploadSuccessData?.localPreview || (amostraQuery ? `${API_URL}/temp_images/${amostraQuery}` : "/trigo_teste.png"),
           totalEspigas:
             uploadSuccessData?.backend.summary?.total_espigas ??
+            uploadSuccessData?.backend.summary?.total_cabecas_trigo ??
             (activeDetections ? activeDetections.length : (uploadSuccessData?.backend.detections ? uploadSuccessData.backend.detections.length : 42)),
           detections: activeDetections || uploadSuccessData?.backend.detections || [],
           areaAmostraM2: uploadSuccessData?.backend.summary?.area_amostra_m2 ?? 1.0,
@@ -866,11 +953,13 @@ function HomeContent() {
             ? calculateMarkedAreaPercent(activeDetections)
             : (uploadSuccessData?.backend.detections ? calculateMarkedAreaPercent(uploadSuccessData.backend.detections) : undefined),
           tamanhoArquivo: uploadSuccessData?.backend.size_bytes ? formatFileSize(uploadSuccessData.backend.size_bytes) : "2.4 MB",
+          talhaoId: activeTalhaoCodigo,
           talhaoNome: currentAmostra?.nome || "Talhão Experimental 01 (Embrapa Trigo - Setor Norte)",
-          cidade: "Passo Fundo - RS (Campos Experimentais Embrapa Trigo)",
-          variedade: "BRS Pastoreio",
-          latitude: -28.2234,
-          longitude: -52.4076,
+          cidade: currentAmostra?.cidade || "Passo Fundo - RS (Campos Experimentais Embrapa Trigo)",
+          variedade: activeCultivar,
+          latitude: activeLat ?? -28.2234,
+          longitude: activeLon ?? -52.4076,
+          tempoInferenciaMs: activeInferenceMs,
         }}
       />
 
@@ -966,7 +1055,32 @@ function HomeContent() {
             </div>
           )}
 
-          <div className="flex gap-3">
+          <div className="flex gap-3" style={{ alignItems: "center" }}>
+            {/* Seletor de Talhão e Cultivar para Metadados do Drone */}
+            <select
+              id="select-talhao-drone"
+              value={selectedTalhaoId}
+              onChange={(e) => setSelectedTalhaoId(e.target.value)}
+              aria-label="Selecionar Talhão e Cultivar de Trigo"
+              style={{
+                padding: "8px 12px",
+                borderRadius: "8px",
+                background: "var(--surface)",
+                border: "1px solid var(--card-border)",
+                color: "var(--foreground)",
+                fontSize: "12.5px",
+                fontWeight: 600,
+                cursor: "pointer",
+                outline: "none",
+              }}
+            >
+              {TALHOES_MOCK_DATA.map((talhao) => (
+                <option key={talhao.id} value={talhao.id}>
+                  🌾 {talhao.talhaoCodigo} · {talhao.cultivar}
+                </option>
+              ))}
+            </select>
+
             <button
               id="btn-imprimir-laudo"
               type="button"
@@ -997,7 +1111,6 @@ function HomeContent() {
               Exportar Laudo
             </button>
 
-            {/* NOVO BOTÃO DO SIMULADOR */}
             <button
               onClick={() => setIsSimuladorOpen(true)}
               disabled={!activeDetections || activeDetections.length === 0}
@@ -1076,14 +1189,17 @@ function HomeContent() {
             const modelSummary = uploadSuccessData?.backend?.summary;
             const modelDetections = uploadSuccessData?.backend?.detections ?? activeDetections;
             
-            // Lendo dados diretamente (sem filtros do modelo antigo da cana)
             const headDetections = modelDetections;
-            const totalEspigas = modelSummary?.total_espigas ?? headDetections?.length ?? 0;
+            const totalEspigas =
+              modelSummary?.total_espigas ??
+              modelSummary?.total_cabecas_trigo ??
+              headDetections?.length ??
+              0;
             const meanConfidence = headDetections ? calculateMeanConfidence(headDetections) : null;
 
-            // Densidade estimada de espigas com base na contagem e área aproximada
+            const areaM2 = currentAmostra.areaAmostraM2 || 1.0;
             const densidadeEstimada = totalEspigas > 0
-              ? `${(totalEspigas / (currentAmostra.areaAmostraM2 || 2.5)).toFixed(1)} espigas/m²`
+              ? `${(totalEspigas / areaM2).toFixed(1)} espigas/m²`
               : "—";
 
             const densidadeClassificacao = totalEspigas === 0
@@ -1121,7 +1237,7 @@ function HomeContent() {
                 {/* 2. Densidade Estimada */}
                 <StatCard
                   label="Densidade Estimada"
-                  value={totalEspigas > 0 ? (totalEspigas / (currentAmostra.areaAmostraM2 || 2.5)).toFixed(1) : "—"}
+                  value={totalEspigas > 0 ? (totalEspigas / areaM2).toFixed(1) : "—"}
                   unit={totalEspigas > 0 ? "esp/m²" : ""}
                   subtitle={totalEspigas > 0 ? densidadeEstimada : "Calculada por enquadramento de campo"}
                   badge={densidadeClassificacao}
@@ -1148,7 +1264,13 @@ function HomeContent() {
                   label="Status do Pipeline"
                   value={statusAnalise}
                   unit=""
-                  subtitle={hasModelData ? "IA processada e registrada" : "Pronto para nova captura"}
+                  subtitle={
+                    hasModelData && activeInferenceMs !== undefined
+                      ? `Inferência: ${formatNumberBR(Number(activeInferenceMs), 0)} ms (${activeTalhaoCodigo})`
+                      : hasModelData
+                      ? "IA processada e registrada"
+                      : "Pronto para nova captura"
+                  }
                   badge={hasModelData ? "Online / Ativo" : "Em espera"}
                   badgeType={hasModelData ? "success" : "neutral"}
                   color={hasModelData ? "#2ea043" : "var(--muted)"}
@@ -1188,6 +1310,8 @@ function HomeContent() {
               <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "6px", fontSize: "11px", color: "var(--muted)" }}>
                 <div>• Classe: <strong>0 (wheat)</strong></div>
                 <div>• Modelo: <strong>YOLOv8x</strong></div>
+                <div>• Talhão: <strong>{activeTalhaoCodigo}</strong></div>
+                <div>• Cultivar: <strong>{activeCultivar}</strong></div>
               </div>
               <p className="ai-disclaimer">
                 A IA pode cometer erros. Revise as detecções antes de tomar decisões agronômicas.
@@ -1195,7 +1319,7 @@ function HomeContent() {
             </aside>
           </div>
 
-          {/* ── Faixa de Informações Agronômicas da Amostra ───────────── */}
+          {/* ── Faixa de Informações Agronômicas e Geoespaciais da Amostra ───────────── */}
           <div
             className="fade-in-up"
             style={{
@@ -1209,18 +1333,21 @@ function HomeContent() {
             {[
               {
                 icon: "📷",
-                title: "Captura de Campo",
-                desc: `${currentAmostra.dataCaptura} às 07:14`,
+                title: `Talhão ${activeTalhaoCodigo}`,
+                desc: `${currentAmostra.nome}`,
               },
               {
                 icon: "📍",
-                title: "Localização",
-                desc: currentAmostra.cidade,
+                title: "Georreferenciamento (GPS)",
+                desc:
+                  activeLat != null && activeLon != null
+                    ? `${Number(activeLat).toFixed(5)}, ${Number(activeLon).toFixed(5)} · ${currentAmostra.cidade}`
+                    : currentAmostra.cidade,
               },
               {
                 icon: "🌾",
-                title: "Cultura Alvo",
-                desc: "Trigo (Triticum aestivum)",
+                title: "Cultivar de Trigo",
+                desc: `${activeCultivar} (Triticum aestivum)`,
               },
             ].map((item) => (
               <div

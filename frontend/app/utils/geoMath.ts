@@ -1,22 +1,26 @@
-// ── Estruturas de Dados para Detecção de Ervas Daninhas em Fotos Aproximadas ──
+// ── Estruturas de Dados Agronômicos e Geoespaciais de Talhões (Embrapa Trigo) ──
 
 export interface WeedDetectionItem {
   id: string | number;
   name: string;
-  species: string; // Ex: Braquiária, Capim-Colonião, Corda-de-Viola
+  species: string;
   severity: "alta" | "media" | "baixa";
   confidence: number; // 0.0 a 1.0
-  areaFoliarM2: number; // Área em m² ocupada pela erva na foto (ex: 0.15 m²)
+  areaFoliarM2: number;
 }
 
 export interface AmostraData {
   id: string;
+  talhaoCodigo: string;
   nome: string;
   cultura: string;
   variedade: string;
+  cultivar: string;
   cidade: string;
   dataCaptura: string;
-  areaAmostraM2: number; // Ex: 2.5 m² (enquadramento aproximado da foto)
+  areaAmostraM2: number;
+  latitude: number;
+  longitude: number;
   daninhas: WeedDetectionItem[];
 }
 
@@ -27,46 +31,49 @@ export function formatNumberBR(value: number, decimals: number = 1): string {
   });
 }
 
-// ── Mock de Amostras de Campo (Fotos de Perto) ────────────────────────────────
+// ── Catálogo de Talhões Experimentais (Embrapa Trigo - Passo Fundo / RS) ─────
 export const TALHOES_MOCK_DATA: AmostraData[] = [
   {
-    id: "talhao-01-rio-claro",
-    nome: "Amostra 01 — Fazenda Boa Vista",
-    cultura: "Cana-de-açúcar",
-    variedade: "CTC-9001 (Plena Safra)",
-    cidade: "Rio Claro - SP",
-    dataCaptura: "04/09/2026",
-    areaAmostraM2: 2.5, // 2,5 m² na foto
-    daninhas: [
-      { id: "w-1", name: "Braquiária", species: "Brachiaria decumbens", severity: "alta", confidence: 0.94, areaFoliarM2: 0.28 },
-      { id: "w-2", name: "Capim-Colonião", species: "Panicum maximum", severity: "media", confidence: 0.88, areaFoliarM2: 0.12 },
-      { id: "w-3", name: "Corda-de-Viola", species: "Ipomoea purpurea", severity: "alta", confidence: 0.91, areaFoliarM2: 0.06 },
-    ],
+    id: "EXP-01",
+    talhaoCodigo: "EXP-01",
+    nome: "Talhão Experimental 01 (Embrapa Trigo - Setor Norte)",
+    cultura: "Trigo (Triticum aestivum)",
+    variedade: "BRS Pastoreio",
+    cultivar: "BRS Pastoreio",
+    cidade: "Passo Fundo - RS (Embrapa Trigo)",
+    dataCaptura: "08/11/2026",
+    areaAmostraM2: 1.0,
+    latitude: -28.2178,
+    longitude: -52.4075,
+    daninhas: [],
   },
   {
-    id: "talhao-02-piracicaba",
-    nome: "Amostra 02 — Polo Piracicaba",
-    cultura: "Cana-de-açúcar",
-    variedade: "RB867515 (Cana Soca)",
-    cidade: "Piracicaba - SP",
-    dataCaptura: "03/09/2026",
-    areaAmostraM2: 2.0,
-    daninhas: [
-      { id: "w-4", name: "Braquiária", species: "Brachiaria decumbens", severity: "alta", confidence: 0.93, areaFoliarM2: 0.22 },
-      { id: "w-5", name: "Caruru", species: "Amaranthus hybridus", severity: "baixa", confidence: 0.85, areaFoliarM2: 0.08 },
-    ],
+    id: "EXP-02",
+    talhaoCodigo: "EXP-02",
+    nome: "Talhão Experimental 02 (Embrapa Trigo - Setor Sul)",
+    cultura: "Trigo (Triticum aestivum)",
+    variedade: "TBIO Sintonia",
+    cultivar: "TBIO Sintonia",
+    cidade: "Passo Fundo - RS (Embrapa Trigo)",
+    dataCaptura: "08/11/2026",
+    areaAmostraM2: 1.0,
+    latitude: -28.2238,
+    longitude: -52.4080,
+    daninhas: [],
   },
   {
-    id: "talhao-03-araras",
-    nome: "Amostra 03 — Fazenda São Martinho",
-    cultura: "Cana-de-açúcar",
-    variedade: "IACSP95-5000",
-    cidade: "Araras - SP",
-    dataCaptura: "01/09/2026",
-    areaAmostraM2: 3.0,
-    daninhas: [
-      { id: "w-6", name: "Corda-de-Viola", species: "Ipomoea purpurea", severity: "media", confidence: 0.89, areaFoliarM2: 0.18 },
-    ],
+    id: "EXP-03",
+    talhaoCodigo: "EXP-03",
+    nome: "Talhão Experimental 03 (Ensaio Irrigado Embrapa Leste)",
+    cultura: "Trigo (Triticum aestivum)",
+    variedade: "BRS Belamar",
+    cultivar: "BRS Belamar",
+    cidade: "Passo Fundo - RS (Embrapa Trigo)",
+    dataCaptura: "08/11/2026",
+    areaAmostraM2: 1.0,
+    latitude: -28.2205,
+    longitude: -52.4008,
+    daninhas: [],
   },
 ];
 
@@ -90,7 +97,6 @@ export function computeFieldMetrics(amostra: AmostraData) {
     percentualSaudavel,
     totalFocos: amostra.daninhas.length,
     mediaConfianca,
-    // Alias para manter compatibilidade
     totalFieldHa: totalFotoM2,
     totalFieldM2: totalFotoM2,
     failureHa: infestacaoM2,

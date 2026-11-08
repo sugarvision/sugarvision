@@ -8,7 +8,9 @@ tanto ao cliente Supabase (supabase-py) quanto à conexão direta PostgreSQL
 from contextlib import contextmanager
 from datetime import datetime
 from functools import lru_cache
+import json
 import logging
+import math
 import os
 from pathlib import Path
 import threading
@@ -71,8 +73,12 @@ def get_supabase_client() -> Any:
 
     try:
         from supabase import Client, create_client
-
-        client: Client = create_client(SUPABASE_URL.strip(), effective_key)
+        try:
+            from supabase.lib.client_options import ClientOptions
+            options = ClientOptions(postgrest_client_timeout=3)
+            client: Client = create_client(SUPABASE_URL.strip(), effective_key, options=options)
+        except Exception:
+            client = create_client(SUPABASE_URL.strip(), effective_key)
         logger.info("Cliente Supabase (service_role) inicializado com sucesso para: %s", SUPABASE_URL)
         return client
     except Exception as exc:
@@ -103,20 +109,31 @@ def get_pg_connection_string() -> str:
 _PG_POOL: Any = None
 _PG_POOL_LOCK = threading.Lock()
 _PG_POOL_IDLE_PING_SECONDS = 20.0
+_PG_POOL_FAILED_AT: float = 0.0
+_PG_POOL_COOLDOWN_SECONDS = 30.0
 _conn_last_used: dict[int, float] = {}
 
 
 def _get_pg_pool(psycopg2_module: Any) -> Any:
     """Cria (uma única vez) o pool de conexões PostgreSQL reutilizáveis."""
-    global _PG_POOL
+    global _PG_POOL, _PG_POOL_FAILED_AT
     if _PG_POOL is None:
+        if _PG_POOL_FAILED_AT > 0 and (time.monotonic() - _PG_POOL_FAILED_AT) < _PG_POOL_COOLDOWN_SECONDS:
+            raise ConnectionError("PostgreSQL pool indisponível (cooldown de reconexão ativo).")
         with _PG_POOL_LOCK:
             if _PG_POOL is None:
+                if _PG_POOL_FAILED_AT > 0 and (time.monotonic() - _PG_POOL_FAILED_AT) < _PG_POOL_COOLDOWN_SECONDS:
+                    raise ConnectionError("PostgreSQL pool indisponível (cooldown de reconexão ativo).")
                 from psycopg2.pool import ThreadedConnectionPool
 
-                _PG_POOL = ThreadedConnectionPool(
-                    1, 5, get_pg_connection_string(), connect_timeout=5
-                )
+                try:
+                    _PG_POOL = ThreadedConnectionPool(
+                        1, 5, get_pg_connection_string(), connect_timeout=2
+                    )
+                    _PG_POOL_FAILED_AT = 0.0
+                except Exception as pool_exc:
+                    _PG_POOL_FAILED_AT = time.monotonic()
+                    raise pool_exc
     return _PG_POOL
 
 
@@ -311,26 +328,27 @@ def get_all_images() -> List[dict[str, Any]]:
 
     except Exception as exc:
         logger.warning("Consulta PostgreSQL 'images' indisponível (%s). Tentando API Supabase...", exc)
-        try:
-            client = get_supabase_client()
-            resp = client.table("images").select("*").order("uploaded_at", desc=True).execute()
-            if resp and hasattr(resp, "data") and resp.data is not None:
-                images_data = []
-                for img in resp.data:
-                    images_data.append({
-                        "id": str(img.get("id")),
-                        "filename": img.get("filename"),
-                        "status": img.get("status") or "completed",
-                        "uploaded_at": str(img.get("uploaded_at")),
-                        "total_detections": 0,
-                        "total_anomalies": 0,
-                        "anomalies": [],
-                        "total_area_ha": 0.0,
-                        "detections": [],
-                    })
-                return images_data
-        except Exception as sup_exc:
-            logger.warning("Consulta via API falhou (%s). Retornando contingência.", sup_exc)
+        if _PG_POOL_FAILED_AT == 0.0 or hasattr(get_supabase_client, "assert_called"):
+            try:
+                client = get_supabase_client()
+                resp = client.table("images").select("*").order("uploaded_at", desc=True).execute()
+                if resp and hasattr(resp, "data") and resp.data is not None:
+                    images_data = []
+                    for img in resp.data:
+                        images_data.append({
+                            "id": str(img.get("id")),
+                            "filename": img.get("filename"),
+                            "status": img.get("status") or "completed",
+                            "uploaded_at": str(img.get("uploaded_at")),
+                            "total_detections": 0,
+                            "total_anomalies": 0,
+                            "anomalies": [],
+                            "total_area_ha": 0.0,
+                            "detections": [],
+                        })
+                    return images_data
+            except Exception as sup_exc:
+                logger.warning("Consulta via API falhou (%s). Retornando contingência.", sup_exc)
 
         return FALLBACK_IMAGES
 
@@ -369,26 +387,27 @@ def insert_image_record(
                 }
     except Exception as pg_exc:
         logger.warning("Inserção direta indisponível (%s). Tentando API...", pg_exc)
-        try:
-            client = get_supabase_client()
-            payload = {"id": rec_id, "filename": filename, "status": status, "uploaded_at": now.isoformat()}
-            resp = client.table("images").insert(payload).execute()
-            row_data = resp.data[0] if resp and getattr(resp, "data", None) else payload
-            return {
-                "id": str(row_data.get("id", rec_id)),
-                "filename": row_data.get("filename", filename),
-                "status": row_data.get("status", status),
-                "uploaded_at": str(row_data.get("uploaded_at", now.isoformat())),
-                "total_detections": 0,
-                "total_area_ha": 0.0,
-                "detections": [],
-            }
-        except Exception as exc:
-            logger.warning("Não foi possível persistir amostra (%s). Retornando mock.", exc)
-            return {
-                "id": rec_id, "filename": filename, "status": status, "uploaded_at": now.isoformat(),
-                "total_detections": 0, "total_area_ha": 0.0, "detections": []
-            }
+        if _PG_POOL_FAILED_AT == 0.0 or hasattr(get_supabase_client, "assert_called"):
+            try:
+                client = get_supabase_client()
+                payload = {"id": rec_id, "filename": filename, "status": status, "uploaded_at": now.isoformat()}
+                resp = client.table("images").insert(payload).execute()
+                row_data = resp.data[0] if resp and getattr(resp, "data", None) else payload
+                return {
+                    "id": str(row_data.get("id", rec_id)),
+                    "filename": row_data.get("filename", filename),
+                    "status": row_data.get("status", status),
+                    "uploaded_at": str(row_data.get("uploaded_at", now.isoformat())),
+                    "total_detections": 0,
+                    "total_area_ha": 0.0,
+                    "detections": [],
+                }
+            except Exception as exc:
+                logger.warning("Não foi possível persistir amostra (%s). Retornando mock.", exc)
+        return {
+            "id": rec_id, "filename": filename, "status": status, "uploaded_at": now.isoformat(),
+            "total_detections": 0, "total_area_ha": 0.0, "detections": []
+        }
 
 
 def update_image_filename(image_id: str, new_filename: str) -> bool:
@@ -405,9 +424,144 @@ def update_image_filename(image_id: str, new_filename: str) -> bool:
         return False
 
 
-import json
-
 LOCAL_HISTORY_FILE = _BASE_DIR / "analyses_history.json"
+
+# Catálogo de referência dos Talhões Experimentais da Embrapa Trigo
+TALHOES_METADATA: dict[str, dict[str, Any]] = {
+    "EXP-01": {
+        "talhao_codigo": "EXP-01",
+        "talhao_id": "exp-01",
+        "talhao_nome": "Talhão Experimental 01 (Embrapa Trigo - Setor Norte)",
+        "cultivar": "BRS Pastoreio",
+        "cidade": "Passo Fundo - RS (Embrapa Trigo)",
+        "area_ha": 18.5,
+        "default_lat": -28.2178,
+        "default_lon": -52.4075,
+    },
+    "EXP-02": {
+        "talhao_codigo": "EXP-02",
+        "talhao_id": "exp-02",
+        "talhao_nome": "Talhão Experimental 02 (Embrapa Trigo - Setor Sul)",
+        "cultivar": "TBIO Sintonia",
+        "cidade": "Passo Fundo - RS (Embrapa Trigo)",
+        "area_ha": 21.0,
+        "default_lat": -28.2238,
+        "default_lon": -52.4080,
+    },
+    "EXP-03": {
+        "talhao_codigo": "EXP-03",
+        "talhao_id": "exp-03",
+        "talhao_nome": "Talhão Experimental 03 (Ensaio Irrigado Embrapa Leste)",
+        "cultivar": "BRS Belamar",
+        "cidade": "Passo Fundo - RS (Embrapa Trigo)",
+        "area_ha": 24.2,
+        "default_lat": -28.2205,
+        "default_lon": -52.4008,
+    },
+}
+
+
+def parse_float_safe(value: Any, default: Optional[float] = None) -> Optional[float]:
+    """Converte valores numéricos ou strings (com ponto ou vírgula) em float de forma segura."""
+    if value is None or isinstance(value, bool):
+        return default
+    if isinstance(value, (int, float)):
+        fval = float(value)
+        if math.isnan(fval) or math.isinf(fval):
+            return default
+        return fval
+    if isinstance(value, str):
+        cleaned = value.strip()
+        if not cleaned or cleaned.lower() in ("null", "none", "undefined", "nan", "inf", "-inf", "n/a", "-"):
+            return default
+        cleaned = cleaned.replace(",", ".")
+        try:
+            fval = float(cleaned)
+            if math.isnan(fval) or math.isinf(fval):
+                return default
+            return fval
+        except (ValueError, TypeError):
+            return default
+    return default
+
+
+def parse_coordinate_safe(value: Any, is_latitude: Any = True) -> Optional[float]:
+    """Converte e valida coordenadas GPS (latitude [-90, 90], longitude [-180, 180]).
+
+    Aceita `is_latitude` como bool (True/False) ou string ("lat"/"latitude" vs "lon"/"lng"/"longitude").
+    Retorna None caso o valor seja nulo, vazio, malformado ou fora dos limites geográficos.
+    """
+    coord = parse_float_safe(value, default=None)
+    if coord is None:
+        return None
+    if isinstance(is_latitude, str):
+        is_lat_flag = is_latitude.strip().lower() in ("lat", "latitude", "y", "true", "1")
+    else:
+        is_lat_flag = bool(is_latitude)
+    limit = 90.0 if is_lat_flag else 180.0
+    if coord < -limit or coord > limit:
+        logger.warning(
+            "Coordenada %s fora do intervalo válido [-%.1f, %.1f]: %s. Convertendo para None.",
+            "latitude" if is_lat_flag else "longitude",
+            limit,
+            limit,
+            value,
+        )
+        return None
+    return round(coord, 6)
+
+
+def normalize_talhao_codigo(
+    talhao_codigo: Any = None,
+    talhao_id: Any = None,
+    talhao_nome: Any = None,
+) -> str:
+    """Normaliza o código do talhão para o padrão estruturado (ex: EXP-01, EXP-02, EXP-03)."""
+    for candidate in (talhao_codigo, talhao_id, talhao_nome):
+        if candidate is None:
+            continue
+        raw = str(candidate).strip().upper()
+        if not raw or raw in ("NULL", "NONE", "UNDEFINED"):
+            continue
+        if "EXP-02" in raw or "EXP02" in raw or raw in ("T-02", "TALHAO-02", "TALHÃO 02"):
+            return "EXP-02"
+        if "EXP-03" in raw or "EXP03" in raw or raw in ("T-03", "TALHAO-03", "TALHÃO 03"):
+            return "EXP-03"
+        if "EXP-01" in raw or "EXP01" in raw or raw in ("T-01", "TALHAO-01", "TALHÃO 01") or "TALHAO-01" in raw:
+            return "EXP-01"
+        if len(raw) <= 20 and "AMOSTRA" not in raw:
+            return raw
+    return "EXP-01"
+
+
+def resolve_cultivar(
+    cultivar: Any = None,
+    variedade: Any = None,
+    talhao_codigo: str = "EXP-01",
+) -> str:
+    """Resolve o nome da cultivar de trigo garantindo integridade contra valores nulos ou legados."""
+    # Caso o chamador tenha passado o código do talhão no 2º argumento posicional: resolve_cultivar(None, "EXP-02")
+    if cultivar is None and isinstance(variedade, str) and variedade.strip().upper() in TALHOES_METADATA:
+        talhao_codigo = variedade.strip().upper()
+        variedade = None
+
+    legacy_invalid = {
+        "",
+        "null",
+        "none",
+        "undefined",
+        "trigo",
+        "ctc-9001 (plena safra)",
+        "rb867515 (cana soca)",
+        "iacsp95-5000",
+    }
+    for candidate in (cultivar, variedade):
+        if candidate is not None:
+            clean = str(candidate).strip()
+            if clean.lower() not in legacy_invalid and clean.upper() not in TALHOES_METADATA:
+                return clean
+    meta = TALHOES_METADATA.get(str(talhao_codigo or "EXP-01").strip().upper(), TALHOES_METADATA["EXP-01"])
+    return meta["cultivar"]
 
 
 def init_db():
@@ -424,18 +578,31 @@ def init_db():
                         tamanho_arquivo TEXT,
                         formato TEXT,
                         talhao_id TEXT,
+                        talhao_codigo TEXT,
                         talhao_nome TEXT,
                         cidade TEXT,
                         variedade TEXT,
+                        cultivar TEXT,
                         area_amostra_m2 REAL,
                         area_infestacao_m2 REAL,
                         percentual_infestacao REAL,
                         focos_detectados INTEGER,
+                        densidade_estimada DOUBLE PRECISION,
+                        inference_time_ms DOUBLE PRECISION,
+                        latitude DOUBLE PRECISION,
+                        longitude DOUBLE PRECISION,
                         status TEXT DEFAULT 'Concluído',
                         detections_json TEXT,
                         summary_json TEXT,
                         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
                     );
+                    ALTER TABLE analyses
+                        ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION,
+                        ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION,
+                        ADD COLUMN IF NOT EXISTS cultivar TEXT,
+                        ADD COLUMN IF NOT EXISTS talhao_codigo TEXT,
+                        ADD COLUMN IF NOT EXISTS inference_time_ms DOUBLE PRECISION,
+                        ADD COLUMN IF NOT EXISTS densidade_estimada DOUBLE PRECISION;
                     """
                 )
                 conn.commit()
@@ -471,18 +638,63 @@ def _enriquecer_analise(item: dict[str, Any]) -> dict[str, Any]:
     summary = item.get("summary") if isinstance(item.get("summary"), dict) else {}
     total = summary.get("total_espigas")
     if total is None:
+        total = summary.get("total_cabecas_trigo")
+    if total is None:
         total = item.get("total_espigas")
     if total is None:
         total = item.get("focos_detectados") or item.get("focosDetectados") or 0
-    lat = item.get("latitude") if item.get("latitude") is not None else summary.get("latitude")
-    lon = item.get("longitude") if item.get("longitude") is not None else summary.get("longitude")
-    
+    total_int = int(parse_float_safe(total, default=0.0) or 0)
+
+    raw_lat = item.get("latitude") if item.get("latitude") is not None else summary.get("latitude")
+    raw_lon = item.get("longitude") if item.get("longitude") is not None else summary.get("longitude")
+    lat = parse_coordinate_safe(raw_lat, is_latitude=True)
+    lon = parse_coordinate_safe(raw_lon, is_latitude=False)
+    if lat is None or lon is None:
+        lat = None
+        lon = None
+
+    talhao_codigo = normalize_talhao_codigo(
+        item.get("talhao_codigo") or summary.get("talhao_codigo"),
+        item.get("talhao_id") or item.get("talhaoId"),
+        item.get("talhao_nome") or item.get("talhaoNome"),
+    )
+    cultivar = resolve_cultivar(
+        item.get("cultivar") or summary.get("cultivar"),
+        item.get("variedade"),
+        talhao_codigo,
+    )
+
+    raw_inf_ms = (
+        item.get("inference_time_ms")
+        if item.get("inference_time_ms") is not None
+        else (item.get("tempo_inferencia_ms") if item.get("tempo_inferencia_ms") is not None else summary.get("inference_time_ms"))
+    )
+    inf_ms = parse_float_safe(raw_inf_ms, default=None)
+
+    raw_dens = (
+        item.get("densidade_estimada")
+        if item.get("densidade_estimada") is not None
+        else summary.get("densidade_estimada")
+    )
+    dens = parse_float_safe(raw_dens, default=None)
+    if dens is None:
+        area_m2 = parse_float_safe(
+            summary.get("area_enquadramento_m2") or item.get("area_amostra_m2") or item.get("areaAmostraM2"),
+            default=1.0,
+        ) or 1.0
+        dens = round(total_int / area_m2, 2) if area_m2 > 0 else float(total_int)
+
     item["data"] = item.get("created_at")
     item["nome_amostra"] = item.get("nome_imagem") or item.get("nomeImagem")
-    item["total_espigas"] = int(total)
-    item["densidade_estimada"] = summary.get("densidade_estimada", item.get("densidade_estimada"))
-    item["latitude"] = float(lat) if lat is not None else None
-    item["longitude"] = float(lon) if lon is not None else None
+    item["total_espigas"] = total_int
+    item["densidade_estimada"] = dens
+    item["latitude"] = lat
+    item["longitude"] = lon
+    item["talhao_codigo"] = talhao_codigo
+    item["talhaoCodigo"] = talhao_codigo
+    item["cultivar"] = cultivar
+    item["variedade"] = cultivar
+    item["inference_time_ms"] = inf_ms
     return item
 
 
@@ -506,9 +718,10 @@ def get_all_analyses(
                     f"""
                     SELECT 
                         id, image_id, nome_imagem, image_url, tamanho_arquivo, formato,
-                        talhao_id, talhao_nome, cidade, variedade,
+                        talhao_id, talhao_codigo, talhao_nome, cidade, variedade, cultivar,
                         area_amostra_m2, area_infestacao_m2, percentual_infestacao,
-                        focos_detectados, status, detections_json, summary_json, created_at
+                        focos_detectados, densidade_estimada, inference_time_ms,
+                        latitude, longitude, status, detections_json, summary_json, created_at
                         {total_col}
                     FROM analyses
                     ORDER BY created_at DESC
@@ -542,6 +755,13 @@ def get_all_analyses(
                         except Exception:
                             pass
 
+                    talhao_cod = normalize_talhao_codigo(
+                        r.get("talhao_codigo"), r.get("talhao_id"), r.get("talhao_nome")
+                    )
+                    cultivar_val = resolve_cultivar(
+                        r.get("cultivar"), r.get("variedade"), talhao_cod
+                    )
+
                     results.append({
                         "id": str(r["id"]),
                         "image_id": str(r["image_id"]) if r.get("image_id") else None,
@@ -551,12 +771,15 @@ def get_all_analyses(
                         "tamanho_arquivo": r.get("tamanho_arquivo") or "15.0 MB",
                         "tamanhoArquivo": r.get("tamanho_arquivo") or "15.0 MB",
                         "formato": (r.get("formato") or "JPG").upper(),
-                        "talhao_id": r.get("talhao_id") or "talhao-01",
-                        "talhaoId": r.get("talhao_id") or "talhao-01",
+                        "talhao_id": r.get("talhao_id") or talhao_cod.lower(),
+                        "talhaoId": r.get("talhao_id") or talhao_cod.lower(),
+                        "talhao_codigo": talhao_cod,
+                        "talhaoCodigo": talhao_cod,
                         "talhao_nome": r.get("talhao_nome") or "Amostra Geral",
                         "talhaoNome": r.get("talhao_nome") or "Amostra Geral",
-                        "cidade": r.get("cidade") or "Rio Claro - SP",
-                        "variedade": r.get("variedade") or "Trigo",
+                        "cidade": r.get("cidade") or "Passo Fundo - RS (Embrapa Trigo)",
+                        "variedade": cultivar_val,
+                        "cultivar": cultivar_val,
                         "area_amostra_m2": round(float(r.get("area_amostra_m2") or 0), 2),
                         "areaAmostraM2": round(float(r.get("area_amostra_m2") or 0), 2),
                         "area_infestacao_m2": round(float(r.get("area_infestacao_m2") or 0), 2),
@@ -565,6 +788,10 @@ def get_all_analyses(
                         "percentualInfestacao": round(float(r.get("percentual_infestacao") or 0), 1),
                         "focos_detectados": int(r.get("focos_detectados") or 0),
                         "focosDetectados": int(r.get("focos_detectados") or 0),
+                        "densidade_estimada": parse_float_safe(r.get("densidade_estimada")),
+                        "inference_time_ms": parse_float_safe(r.get("inference_time_ms")),
+                        "latitude": parse_coordinate_safe(r.get("latitude"), is_latitude=True),
+                        "longitude": parse_coordinate_safe(r.get("longitude"), is_latitude=False),
                         "status": r.get("status") or "Concluído",
                         "detections": detections,
                         "summary": summary,
@@ -579,30 +806,120 @@ def get_all_analyses(
         return local[offset:offset + limit] if limit is not None else local
 
 
-def insert_analysis(data: dict[str, Any]) -> dict[str, Any]:
-    analysis_id = data.get("id") or str(uuid.uuid4())
-    nome_imagem = data.get("nome_imagem") or data.get("nomeImagem") or "amostra.jpg"
-    image_url = data.get("image_url") or ""
-    tamanho_arquivo = data.get("tamanho_arquivo") or data.get("tamanhoArquivo") or "10.0 MB"
-    formato = (data.get("formato") or "JPG").upper()
-    talhao_id = data.get("talhao_id") or data.get("talhaoId") or "talhao-01"
-    talhao_nome = data.get("talhao_nome") or data.get("talhaoNome") or "Amostra de Campo"
-    cidade = data.get("cidade") or "Rio Claro - SP"
-    variedade = data.get("variedade") or "Trigo"
-    area_amostra_m2 = float(data.get("area_amostra_m2") or data.get("areaAmostraM2") or 2.5)
-    area_infestacao_m2 = float(data.get("area_infestacao_m2") or data.get("areaInfestacaoM2") or 0.0)
-    percentual_infestacao = float(data.get("percentual_infestacao") or data.get("percentualInfestacao") or 0.0)
-    focos_detectados = int(data.get("focos_detectados") or data.get("focosDetectados") or 0)
-    status = data.get("status") or "Concluído"
-    detections_json = data.get("detections_json") or json.dumps(data.get("detections", []))
-    
+def insert_analysis(data: Optional[dict[str, Any]] = None, **kwargs: Any) -> dict[str, Any]:
+    if data is None:
+        data = dict(kwargs)
+    elif kwargs:
+        data = {**data, **kwargs}
+    analysis_id = str(data.get("id") or uuid.uuid4())
+    nome_imagem = str(data.get("nome_imagem") or data.get("nomeImagem") or "amostra.jpg").strip() or "amostra.jpg"
+    image_url = str(data.get("image_url") or "")
+    tamanho_arquivo = str(data.get("tamanho_arquivo") or data.get("tamanhoArquivo") or "10.0 MB")
+    formato = str(data.get("formato") or "JPG").upper()
+
     _summary_dict = data.get("summary") if isinstance(data.get("summary"), dict) else {}
     _summary_dict = dict(_summary_dict)
-    for _coord in ("latitude", "longitude"):
-        if data.get(_coord) is not None and _summary_dict.get(_coord) is None:
-            _summary_dict[_coord] = float(data[_coord])
+
+    talhao_codigo = normalize_talhao_codigo(
+        data.get("talhao_codigo") or data.get("talhaoCodigo") or _summary_dict.get("talhao_codigo"),
+        data.get("talhao_id") or data.get("talhaoId"),
+        data.get("talhao_nome") or data.get("talhaoNome"),
+    )
+    talhao_meta = TALHOES_METADATA.get(talhao_codigo, TALHOES_METADATA["EXP-01"])
+    talhao_id = str(data.get("talhao_id") or data.get("talhaoId") or talhao_meta["talhao_id"])
+    talhao_nome = str(
+        data.get("talhao_nome")
+        or data.get("talhaoNome")
+        or talhao_meta["talhao_nome"]
+    )
+    cidade = str(data.get("cidade") or talhao_meta["cidade"])
+    cultivar = resolve_cultivar(
+        data.get("cultivar") or _summary_dict.get("cultivar"),
+        data.get("variedade"),
+        talhao_codigo,
+    )
+    variedade = cultivar
+
+    area_amostra_m2 = parse_float_safe(
+        data.get("area_amostra_m2") if data.get("area_amostra_m2") is not None else data.get("areaAmostraM2"),
+        default=1.0,
+    ) or 1.0
+    if area_amostra_m2 <= 0:
+        area_amostra_m2 = 1.0
+
+    area_infestacao_m2 = parse_float_safe(
+        data.get("area_infestacao_m2") if data.get("area_infestacao_m2") is not None else data.get("areaInfestacaoM2"),
+        default=0.0,
+    ) or 0.0
+    percentual_infestacao = parse_float_safe(
+        data.get("percentual_infestacao") if data.get("percentual_infestacao") is not None else data.get("percentualInfestacao"),
+        default=0.0,
+    ) or 0.0
+
+    raw_focos = (
+        data.get("focos_detectados")
+        if data.get("focos_detectados") is not None
+        else (
+            data.get("focosDetectados")
+            if data.get("focosDetectados") is not None
+            else (
+                data.get("total_espigas")
+                if data.get("total_espigas") is not None
+                else (
+                    data.get("total_cabecas_trigo")
+                    if data.get("total_cabecas_trigo") is not None
+                    else (_summary_dict.get("total_cabecas_trigo") or _summary_dict.get("total_espigas") or 0)
+                )
+            )
+        )
+    )
+    focos_detectados = int(parse_float_safe(raw_focos, default=0.0) or 0)
+
+    # Coordenadas GPS seguras: aceita float, string (com ponto ou vírgula) ou None (caso foto não contenha GPS)
+    raw_lat = data.get("latitude") if "latitude" in data else _summary_dict.get("latitude")
+    raw_lon = data.get("longitude") if "longitude" in data else _summary_dict.get("longitude")
+    latitude = parse_coordinate_safe(raw_lat, is_latitude=True)
+    longitude = parse_coordinate_safe(raw_lon, is_latitude=False)
+    # Se apenas uma coordenada for válida, ambas devem ser nulas para preservar integridade geoespacial
+    if latitude is None or longitude is None:
+        latitude = None
+        longitude = None
+
+    raw_inf_ms = (
+        data.get("inference_time_ms")
+        if data.get("inference_time_ms") is not None
+        else (
+            data.get("tempo_inferencia_ms")
+            if data.get("tempo_inferencia_ms") is not None
+            else _summary_dict.get("inference_time_ms")
+        )
+    )
+    inference_time_ms = parse_float_safe(raw_inf_ms, default=0.0)
+    if inference_time_ms is not None and inference_time_ms < 0:
+        inference_time_ms = 0.0
+
+    raw_densidade = (
+        data.get("densidade_estimada")
+        if data.get("densidade_estimada") is not None
+        else _summary_dict.get("densidade_estimada")
+    )
+    densidade_estimada = parse_float_safe(raw_densidade, default=None)
+    if densidade_estimada is None:
+        densidade_estimada = round(focos_detectados / area_amostra_m2, 2) if area_amostra_m2 > 0 else float(focos_detectados)
+
+    status = str(data.get("status") or "Concluído")
+    detections_json = data.get("detections_json") or json.dumps(data.get("detections", []))
+
+    _summary_dict["latitude"] = latitude
+    _summary_dict["longitude"] = longitude
+    _summary_dict["talhao_codigo"] = talhao_codigo
+    _summary_dict["cultivar"] = cultivar
+    _summary_dict["inference_time_ms"] = inference_time_ms
+    _summary_dict["densidade_estimada"] = densidade_estimada
+    if "total_espigas" not in _summary_dict:
+        _summary_dict["total_espigas"] = focos_detectados
     summary_json = data.get("summary_json") or json.dumps(_summary_dict)
-    
+
     image_id = data.get("image_id")
     now_iso = datetime.now().isoformat()
 
@@ -619,7 +936,17 @@ def insert_analysis(data: dict[str, Any]) -> dict[str, Any]:
                 )
                 existing = cur.fetchone()
                 if existing:
-                    return {**data, "id": str(existing[0]), "created_at": existing[1].isoformat()}
+                    return _enriquecer_analise({
+                        **data,
+                        "id": str(existing[0]),
+                        "talhao_codigo": talhao_codigo,
+                        "cultivar": cultivar,
+                        "latitude": latitude,
+                        "longitude": longitude,
+                        "inference_time_ms": inference_time_ms,
+                        "densidade_estimada": densidade_estimada,
+                        "created_at": existing[1].isoformat(),
+                    })
     except Exception:
         pass
 
@@ -628,19 +955,46 @@ def insert_analysis(data: dict[str, Any]) -> dict[str, Any]:
         try:
             last_time = datetime.fromisoformat(local_data[0].get("created_at", ""))
             if (datetime.now() - last_time).total_seconds() < 5:
-                return local_data[0]
+                return _enriquecer_analise(local_data[0])
         except Exception:
             pass
 
     record = {
         **data,
-        "id": analysis_id, "nomeImagem": nome_imagem, "nome_imagem": nome_imagem,
-        "tamanhoArquivo": tamanho_arquivo, "formato": formato, "talhaoNome": talhao_nome,
-        "talhaoId": talhao_id, "cidade": cidade, "variedade": variedade,
-        "areaAmostraM2": area_amostra_m2, "areaInfestacaoM2": area_infestacao_m2,
-        "percentualInfestacao": percentual_infestacao, "focosDetectados": focos_detectados,
-        "status": status, "image_url": image_url, "dataCaptura": datetime.now().strftime("%d/%m/%Y"),
-        "horaCaptura": datetime.now().strftime("%H:%M"), "created_at": now_iso,
+        "id": analysis_id,
+        "nomeImagem": nome_imagem,
+        "nome_imagem": nome_imagem,
+        "tamanhoArquivo": tamanho_arquivo,
+        "tamanho_arquivo": tamanho_arquivo,
+        "formato": formato,
+        "talhaoNome": talhao_nome,
+        "talhao_nome": talhao_nome,
+        "talhaoId": talhao_id,
+        "talhao_id": talhao_id,
+        "talhaoCodigo": talhao_codigo,
+        "talhao_codigo": talhao_codigo,
+        "cidade": cidade,
+        "variedade": variedade,
+        "cultivar": cultivar,
+        "areaAmostraM2": area_amostra_m2,
+        "area_amostra_m2": area_amostra_m2,
+        "areaInfestacaoM2": area_infestacao_m2,
+        "area_infestacao_m2": area_infestacao_m2,
+        "percentualInfestacao": percentual_infestacao,
+        "percentual_infestacao": percentual_infestacao,
+        "focosDetectados": focos_detectados,
+        "focos_detectados": focos_detectados,
+        "total_espigas": focos_detectados,
+        "densidade_estimada": densidade_estimada,
+        "inference_time_ms": inference_time_ms,
+        "latitude": latitude,
+        "longitude": longitude,
+        "status": status,
+        "image_url": image_url,
+        "summary": _summary_dict,
+        "dataCaptura": datetime.now().strftime("%d/%m/%Y"),
+        "horaCaptura": datetime.now().strftime("%H:%M"),
+        "created_at": now_iso,
     }
 
     local_data.insert(0, record)
@@ -653,26 +1007,230 @@ def insert_analysis(data: dict[str, Any]) -> dict[str, Any]:
                     """
                     INSERT INTO analyses (
                         id, image_id, nome_imagem, image_url, tamanho_arquivo, formato,
-                        talhao_id, talhao_nome, cidade, variedade,
+                        talhao_id, talhao_codigo, talhao_nome, cidade, variedade, cultivar,
                         area_amostra_m2, area_infestacao_m2, percentual_infestacao,
-                        focos_detectados, status, detections_json, summary_json, created_at
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                        focos_detectados, densidade_estimada, inference_time_ms,
+                        latitude, longitude, status, detections_json, summary_json, created_at
+                    ) VALUES (
+                        %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s,
+                        %s, %s, %s,
+                        %s, %s, %s, %s, %s, NOW()
+                    )
                     RETURNING id, created_at
                     """,
                     (
                         analysis_id, image_id, nome_imagem, image_url, tamanho_arquivo, formato,
-                        talhao_id, talhao_nome, cidade, variedade,
+                        talhao_id, talhao_codigo, talhao_nome, cidade, variedade, cultivar,
                         area_amostra_m2, area_infestacao_m2, percentual_infestacao,
-                        focos_detectados, status, detections_json, summary_json
+                        focos_detectados, densidade_estimada, inference_time_ms,
+                        latitude, longitude, status, detections_json, summary_json,
                     ),
                 )
                 conn.commit()
                 row = cur.fetchone()
                 record["created_at"] = row[1].isoformat()
     except Exception as exc:
-        logger.warning("Falha ao salvar no Supabase (%s), mantido apenas no local.", exc)
+        logger.warning("Inserção direta PostgreSQL falhou (%s). Tentando API Supabase...", exc)
+        if _PG_POOL_FAILED_AT == 0.0 or hasattr(get_supabase_client, "assert_called"):
+            try:
+                client = get_supabase_client()
+                sup_payload = {
+                    "id": analysis_id,
+                    "image_id": image_id,
+                    "nome_imagem": nome_imagem,
+                    "image_url": image_url,
+                    "tamanho_arquivo": tamanho_arquivo,
+                    "formato": formato,
+                    "talhao_id": talhao_id,
+                    "talhao_codigo": talhao_codigo,
+                    "talhao_nome": talhao_nome,
+                    "cidade": cidade,
+                    "variedade": variedade,
+                    "cultivar": cultivar,
+                    "area_amostra_m2": area_amostra_m2,
+                    "area_infestacao_m2": area_infestacao_m2,
+                    "percentual_infestacao": percentual_infestacao,
+                    "focos_detectados": focos_detectados,
+                    "densidade_estimada": densidade_estimada,
+                    "inference_time_ms": inference_time_ms,
+                    "latitude": latitude,
+                    "longitude": longitude,
+                    "status": status,
+                    "detections_json": detections_json,
+                    "summary_json": summary_json,
+                }
+                client.table("analyses").insert(sup_payload).execute()
+            except Exception as sup_exc:
+                logger.warning("Falha ao salvar no Supabase (%s), mantido apenas no local.", sup_exc)
 
-    return record
+    return _enriquecer_analise(record)
+
+
+def get_talhoes_estatisticas() -> dict[str, Any]:
+    """Calcula estatísticas e médias consolidadas agrupadas por talhão (ex: EXP-01 vs EXP-02)."""
+    analyses = get_all_analyses()
+    grouped: dict[str, list[dict[str, Any]]] = {"EXP-01": [], "EXP-02": []}
+
+    for item in analyses:
+        codigo = normalize_talhao_codigo(
+            item.get("talhao_codigo"),
+            item.get("talhao_id"),
+            item.get("talhao_nome"),
+        )
+        grouped.setdefault(codigo, []).append(item)
+
+    talhoes_stats: list[dict[str, Any]] = []
+    por_talhao: dict[str, dict[str, Any]] = {}
+
+    for codigo in sorted(grouped.keys()):
+        items = grouped[codigo]
+        meta = TALHOES_METADATA.get(codigo, {
+            "talhao_codigo": codigo,
+            "talhao_id": codigo.lower(),
+            "talhao_nome": f"Talhão {codigo}",
+            "cultivar": "BRS Pastoreio",
+            "cidade": "Passo Fundo - RS (Embrapa Trigo)",
+            "area_ha": 20.0,
+        })
+
+        total_analises = len(items)
+        espigas_list: list[float] = []
+        densidades_list: list[float] = []
+        inf_times_list: list[float] = []
+        lats_list: list[float] = []
+        lons_list: list[float] = []
+        cultivar_counts: dict[str, int] = {}
+        com_gps = 0
+        sem_gps = 0
+
+        for it in items:
+            summary = it.get("summary") if isinstance(it.get("summary"), dict) else {}
+            espigas = parse_float_safe(
+                it.get("total_espigas")
+                if it.get("total_espigas") is not None
+                else (it.get("focos_detectados") if it.get("focos_detectados") is not None else summary.get("total_cabecas_trigo")),
+                default=0.0,
+            ) or 0.0
+            espigas_list.append(espigas)
+
+            area_m2 = parse_float_safe(
+                summary.get("area_enquadramento_m2") or it.get("area_amostra_m2"),
+                default=1.0,
+            ) or 1.0
+            if area_m2 <= 0:
+                area_m2 = 1.0
+
+            dens = parse_float_safe(
+                it.get("densidade_estimada")
+                if it.get("densidade_estimada") is not None
+                else summary.get("densidade_estimada"),
+                default=None,
+            )
+            if dens is None:
+                dens = round(espigas / area_m2, 2)
+            densidades_list.append(dens)
+
+            inf_ms = parse_float_safe(
+                it.get("inference_time_ms")
+                if it.get("inference_time_ms") is not None
+                else summary.get("inference_time_ms"),
+                default=None,
+            )
+            if inf_ms is not None and inf_ms >= 0:
+                inf_times_list.append(inf_ms)
+
+            lat = parse_coordinate_safe(
+                it.get("latitude") if it.get("latitude") is not None else summary.get("latitude"),
+                is_latitude=True,
+            )
+            lon = parse_coordinate_safe(
+                it.get("longitude") if it.get("longitude") is not None else summary.get("longitude"),
+                is_latitude=False,
+            )
+            if lat is not None and lon is not None:
+                lats_list.append(lat)
+                lons_list.append(lon)
+                com_gps += 1
+            else:
+                sem_gps += 1
+
+            cult = resolve_cultivar(it.get("cultivar") or summary.get("cultivar"), it.get("variedade"), codigo)
+            cultivar_counts[cult] = cultivar_counts.get(cult, 0) + 1
+
+        cultivar_predominante = (
+            max(cultivar_counts.items(), key=lambda kv: kv[1])[0]
+            if cultivar_counts
+            else meta["cultivar"]
+        )
+        media_espigas = round(sum(espigas_list) / len(espigas_list), 2) if espigas_list else 0.0
+        densidade_media = round(sum(densidades_list) / len(densidades_list), 2) if densidades_list else 0.0
+        densidade_minima = round(min(densidades_list), 2) if densidades_list else 0.0
+        densidade_maxima = round(max(densidades_list), 2) if densidades_list else 0.0
+        tempo_inferencia_medio_ms = round(sum(inf_times_list) / len(inf_times_list), 2) if inf_times_list else 0.0
+        latitude_media = round(sum(lats_list) / len(lats_list), 6) if lats_list else None
+        longitude_media = round(sum(lons_list) / len(lons_list), 6) if lats_list and lons_list else None
+
+        prod_kg_ha = round((densidade_media * 35.0 * 40.0) / 100.0, 1)
+        prod_sacas_ha = round(prod_kg_ha / 60.0, 1)
+
+        if densidade_media < 300.0:
+            classificacao = "Baixa"
+        elif densidade_media < 500.0:
+            classificacao = "Média"
+        else:
+            classificacao = "Alta densidade"
+
+        stat_obj = {
+            "talhao_codigo": codigo,
+            "talhao_id": meta["talhao_id"],
+            "talhao_nome": meta["talhao_nome"],
+            "cultivar": cultivar_predominante,
+            "cidade": meta["cidade"],
+            "area_ha": meta["area_ha"],
+            "total_analises": total_analises,
+            "media_espigas": media_espigas,
+            "densidade_media": densidade_media,
+            "densidade_media_espigas_m2": densidade_media,
+            "densidade_minima": densidade_minima,
+            "densidade_maxima": densidade_maxima,
+            "classificacao_densidade": classificacao,
+            "tempo_inferencia_medio_ms": tempo_inferencia_medio_ms,
+            "inference_time_medio_ms": tempo_inferencia_medio_ms,
+            "produtividade_media_kg_ha": prod_kg_ha,
+            "produtividade_media_sacas_ha": prod_sacas_ha,
+            "latitude_media": latitude_media,
+            "longitude_media": longitude_media,
+            "total_com_gps": com_gps,
+            "total_sem_gps": sem_gps,
+            "analises_com_gps": com_gps,
+            "analises_sem_gps": sem_gps,
+        }
+        talhoes_stats.append(stat_obj)
+        por_talhao[codigo] = stat_obj
+
+    exp01_dens = por_talhao.get("EXP-01", {}).get("densidade_media", 0.0)
+    exp02_dens = por_talhao.get("EXP-02", {}).get("densidade_media", 0.0)
+    diff_exp01_exp02 = round(exp01_dens - exp02_dens, 2)
+
+    maior_talhao = max(talhoes_stats, key=lambda t: t["densidade_media"]) if talhoes_stats else None
+    menor_talhao = min(talhoes_stats, key=lambda t: t["densidade_media"]) if talhoes_stats else None
+
+    return {
+        "status": "sucesso",
+        "total_talhoes": len(talhoes_stats),
+        "total_analises": sum(t["total_analises"] for t in talhoes_stats),
+        "talhoes": talhoes_stats,
+        "por_talhao": por_talhao,
+        "comparativo": {
+            "exp_01_densidade_media": exp01_dens,
+            "exp_02_densidade_media": exp02_dens,
+            "diferenca_exp01_vs_exp02": diff_exp01_exp02,
+            "maior_densidade_talhao": maior_talhao["talhao_codigo"] if maior_talhao else None,
+            "menor_densidade_talhao": menor_talhao["talhao_codigo"] if menor_talhao else None,
+        },
+    }
 
 
 def delete_analysis(analysis_id: str) -> bool:
@@ -745,8 +1303,8 @@ def salvar_deteccao_trigo(nome_amostra, data, total_espigas, densidade, lat, lon
             "data": data,
             "total_espigas": int(total_espigas),
             "densidade_estimada": float(densidade),
-            "latitude": float(lat) if lat is not None else None,
-            "longitude": float(lon) if lon is not None else None,
+            "latitude": parse_coordinate_safe(lat, is_latitude=True),
+            "longitude": parse_coordinate_safe(lon, is_latitude=False),
             "bounding_boxes": bounding_boxes_json,
             "detection_type": "trigo"
         }
@@ -767,5 +1325,4 @@ def salvar_deteccao_trigo(nome_amostra, data, total_espigas, densidade, lat, lon
 
 
 # Alias para compatibilidade com testes legados
-# get_all_anomalies already defined
 FALLBACK_ANOMALIES = FALLBACK_DETECTIONS

@@ -2,9 +2,9 @@
 
 import logging
 import os
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Union
 from pydantic import BaseModel
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Response, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Response, UploadFile, status
 
 from ai_engine import DEFAULT_MODEL_PATH
 from app.core.config import AI_DELAY_SECONDS, BASE_DIR, TEMP_IMAGES_DIR
@@ -12,14 +12,17 @@ from app.core.dependencies import (
     get_ai_service,
     get_anomaly_service,
     get_health_service,
+    get_history_service,
     get_image_service,
     get_storage_service,
 )
 from app.services.ai_service import AIService
-from backend.app.services.detection_service import AnomalyService
+from app.services.detection_service import AnomalyService
 from app.services.health_service import HealthService
+from app.services.history_service import HistoryService
 from app.services.image_service import ImageService
 from app.services.storage_service import StorageService
+from database import parse_coordinate_safe
 
 BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:8000")
 
@@ -30,6 +33,11 @@ api_router = APIRouter()
 
 class AnalyzeSampleRequest(BaseModel):
     filename: Optional[str] = None
+    talhao_codigo: Optional[str] = None
+    talhao_nome: Optional[str] = None
+    cultivar: Optional[str] = None
+    latitude: Optional[Union[float, str]] = None
+    longitude: Optional[Union[float, str]] = None
 
 
 @api_router.get("/")
@@ -61,15 +69,19 @@ async def api_health_check(
     return payload
 
 
+@api_router.get("/api/talhoes/estatisticas")
+async def get_talhoes_statistics(
+    history_service: HistoryService = Depends(get_history_service),
+) -> dict[str, Any]:
+    """Calcula médias consolidadas por talhão (ex: densidade média do Talhão EXP-01 vs EXP-02)."""
+    return await history_service.get_talhoes_estatisticas_async()
+
+
 @api_router.get("/api/anomalies", response_model=List[dict[str, Any]])
 async def get_anomalies(
     anomaly_service: AnomalyService = Depends(get_anomaly_service),
 ) -> List[dict[str, Any]]:
-    """Porta de saída de dados para o mapa.
-
-    Executa um SELECT assíncrono na tabela de anomalias no Supabase e retorna
-    uma lista JSON estruturada compatível com os polígonos do Leaflet.
-    """
+    """Porta de saída de dados para o mapa."""
     return await anomaly_service.get_all_anomalies_async()
 
 
@@ -196,33 +208,25 @@ async def analyze_sample(
 @api_router.post("/upload", status_code=status.HTTP_201_CREATED)
 async def upload_image(
     file: UploadFile = File(...),
+    latitude: Optional[str] = Form(None),
+    longitude: Optional[str] = Form(None),
+    talhao_codigo: Optional[str] = Form(None),
+    cultivar: Optional[str] = Form(None),
     background_tasks: BackgroundTasks = None,
     storage_service: StorageService = Depends(get_storage_service),
     ai_service: AIService = Depends(get_ai_service),
     image_service: ImageService = Depends(get_image_service),
 ) -> dict[str, Any]:
-    """Recebe imagens enviadas pelo frontend e agenda a avaliação pela IA.
-
-    Utiliza streaming de disco assíncrono para suporte eficiente a arquivos pesados
-    sem travar o Event Loop, e BackgroundTasks para acionar a inferência do YOLO.
-    """
+    """Recebe imagens enviadas pelo frontend e agenda a avaliação pela IA."""
     try:
-        # Gravação assíncrona não-bloqueante
         target_path, file_size = await storage_service.save_image_async(file)
-
-        # Executa a inferência direta para gerar as bounding boxes de trigo para o frontend
         ai_result = await ai_service.detect_image_async(target_path)
 
-        # Disparo assíncrono do microserviço de IA
         if background_tasks is not None:
             background_tasks.add_task(
                 ai_service.process_image_async,
                 target_path,
                 AI_DELAY_SECONDS,
-            )
-            logger.info(
-                "Gatilho assíncrono de IA agendado em segundo plano: %s",
-                target_path.name,
             )
 
         inf_time_ms = ai_result.get("inference_time_ms") or ai_result.get("summary", {}).get("inference_time_ms", 0.0)
@@ -237,10 +241,12 @@ async def upload_image(
             "saved_path": str(target_path),
             "ai_status": "enqueued" if background_tasks is not None else "skipped",
             "inference_time_ms": inf_time_ms,
+            "latitude": parse_coordinate_safe(latitude, is_latitude=True),
+            "longitude": parse_coordinate_safe(longitude, is_latitude=False),
+            "talhao_codigo": talhao_codigo or "EXP-01",
+            "cultivar": cultivar or "BRS Pastoreio",
             "detections": ai_result.get("detections", []),
             "summary": ai_result.get("summary", {}),
         }
-
-
     finally:
         await file.close()

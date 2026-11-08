@@ -7,11 +7,12 @@ Arquitetura orientada a serviços (Service-Oriented Architecture), com injeção
 import logging
 import os
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Union
 
 from pydantic import BaseModel
 from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, Query, Response, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from ai_engine import DEFAULT_MODEL_PATH, processar_imagem_ia
 from app.core.config import (
@@ -35,7 +36,16 @@ from app.services.health_service import HealthService
 from app.services.image_service import ImageService
 from app.services.storage_service import StorageService
 from app.core.security import verify_token
-from database import check_connection, get_all_detections, get_all_images, get_all_analyses
+from database import (
+    check_connection,
+    get_all_analyses,
+    get_all_detections,
+    get_all_images,
+    get_talhoes_estatisticas,
+    normalize_talhao_codigo,
+    parse_coordinate_safe,
+    resolve_cultivar,
+)
 
 BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:8000")
 
@@ -43,8 +53,10 @@ BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:8000")
 class RenameImageRequest(BaseModel):
     filename: str
 
+
 # Configuração de logging estruturado
-logging.basicConfig(filename="app.log",
+logging.basicConfig(
+    filename="app.log",
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
@@ -70,9 +82,6 @@ app.add_middleware(
     expose_headers=["X-Total-Count", "X-Page", "X-Page-Size"],
 )
 
-
-from fastapi.staticfiles import StaticFiles
-
 # Montar diretório de imagens temporárias para acesso estático pelo frontend
 app.mount("/temp_images", StaticFiles(directory=TEMP_IMAGES_DIR), name="temp_images")
 
@@ -93,7 +102,6 @@ async def startup_cleanup_routine() -> None:
 
 @app.get("/")
 async def read_root() -> dict[str, str]:
-
     """Endpoint raiz para verificar disponibilidade da API."""
     return {"status": "servidor online"}
 
@@ -144,28 +152,12 @@ async def get_detections(
     return await detection_service.get_all_detections_async()
 
 
-@app.get("/api/detections", response_model=List[dict[str, Any]], dependencies=PROTECTED)
-async def get_detections(
-    detection_service: DetectionService = Depends(get_detection_service),
-) -> List[dict[str, Any]]:
-    """Retorna todas as detecções cadastradas no banco de dados para o mapa.
-
-    Executa consulta assíncrona na tabela de detecções do banco de dados e retorna
-    uma lista no formato JSON compatível com o mapa do frontend.
-    """
-    return await detection_service.get_all_detections_async()
-
-
 @app.get("/api/images", response_model=List[dict[str, Any]], dependencies=PROTECTED)
 @app.get("/api/amostras", response_model=List[dict[str, Any]], dependencies=PROTECTED)
 async def get_images_samples(
     image_service: ImageService = Depends(get_image_service),
 ) -> List[dict[str, Any]]:
-    """Retorna todas as amostras de imagens salvas no banco de dados (tabela 'images').
-
-    Executa consulta com JOIN e métricas de detecções, garantindo retorno estruturado
-    para o painel de Banco de Amostras no frontend.
-    """
+    """Retorna todas as amostras de imagens salvas no banco de dados (tabela 'images')."""
     return await image_service.get_all_images_async()
 
 
@@ -189,6 +181,19 @@ async def delete_image(
         "id": image_id,
     }
 
+
+# -------------------------------------------------------------
+# ROTAS DE ESTATÍSTICAS CONSOLIDADAS POR TALHÃO (SPRINT 12)
+# -------------------------------------------------------------
+
+@app.get("/api/talhoes/estatisticas", dependencies=PROTECTED)
+async def get_talhoes_statistics(
+    history_service: HistoryService = Depends(get_history_service),
+) -> dict[str, Any]:
+    """Calcula médias consolidadas por talhão (ex: densidade média do Talhão EXP-01 vs EXP-02)."""
+    return await history_service.get_talhoes_estatisticas_async()
+
+
 # -------------------------------------------------------------
 # ROTAS DO HISTÓRICO DE ANÁLISES
 # -------------------------------------------------------------
@@ -201,16 +206,13 @@ async def get_history(
     user_id: Optional[str] = Query(None, description="ID do usuário da sessão Supabase"),
     history_service: HistoryService = Depends(get_history_service),
 ) -> List[dict[str, Any]]:
-    """Retorna o histórico paginado, da análise mais recente para a mais antiga.
-
-    Cada item traz data, nome da amostra, total de espigas e coordenadas. O total geral
-    de registros vai no cabeçalho X-Total-Count.
-    """
+    """Retorna o histórico paginado, da análise mais recente para a mais antiga."""
     items, total = await history_service.get_analyses_page_async(page, page_size)
     response.headers["X-Total-Count"] = str(total)
     response.headers["X-Page"] = str(page)
     response.headers["X-Page-Size"] = str(page_size)
     return items
+
 
 @app.get("/api/historico/{analysis_id}", dependencies=PROTECTED)
 async def get_single_history(analysis_id: str) -> dict[str, Any]:
@@ -220,6 +222,7 @@ async def get_single_history(analysis_id: str) -> dict[str, Any]:
         if str(item.get("id")) == str(analysis_id):
             return item
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Análise não encontrada.")
+
 
 @app.post("/api/historico", status_code=status.HTTP_201_CREATED, dependencies=PROTECTED)
 async def create_history_record(
@@ -279,25 +282,48 @@ async def rename_image(
         "filename": payload.filename.strip(),
     }
 
+
 class AnalyzeSampleRequest(BaseModel):
     filename: Optional[str] = None
+    talhao_codigo: Optional[str] = None
+    talhao_nome: Optional[str] = None
+    cultivar: Optional[str] = None
+    latitude: Optional[Union[float, str]] = None
+    longitude: Optional[Union[float, str]] = None
 
 
 @app.post("/api/analyze-sample", dependencies=PROTECTED)
 @app.get("/api/analyze-sample", dependencies=PROTECTED)
 async def analyze_sample(
     filename: Optional[str] = None,
+    talhao_codigo: Optional[str] = None,
+    talhao_nome: Optional[str] = None,
+    cultivar: Optional[str] = None,
+    latitude: Optional[str] = None,
+    longitude: Optional[str] = None,
     payload: Optional[AnalyzeSampleRequest] = None,
     ai_service: AIService = Depends(get_ai_service),
     history_service: HistoryService = Depends(get_history_service),
 ) -> dict[str, Any]:
-    """Executa a inferência YOLO na amostra e grava no Histórico."""
+    """Executa a inferência YOLO na amostra e grava no Histórico com metadados geoespaciais."""
     target_filename = filename or (payload.filename if payload else None)
     if not target_filename:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Nome da amostra não fornecido para inferência.",
         )
+
+    eff_talhao_codigo = talhao_codigo or (payload.talhao_codigo if payload else None)
+    eff_talhao_nome = talhao_nome or (payload.talhao_nome if payload else None)
+    eff_cultivar = cultivar or (payload.cultivar if payload else None)
+    eff_lat = parse_coordinate_safe(
+        latitude if latitude is not None else (payload.latitude if payload else None),
+        is_latitude=True,
+    )
+    eff_lon = parse_coordinate_safe(
+        longitude if longitude is not None else (payload.longitude if payload else None),
+        is_latitude=False,
+    )
 
     candidate_paths = [
         TEMP_IMAGES_DIR / target_filename,
@@ -343,7 +369,7 @@ async def analyze_sample(
     image_url = f"{BASE_URL}/temp_images/{chosen_path.name}"
     inf_time_ms = ai_result.get("inference_time_ms") or ai_result.get("summary", {}).get("inference_time_ms", 0.0)
 
-    # Salva automaticamente no Histórico
+    # Salva automaticamente no Histórico com metadados estruturados
     history_record = None
     try:
         history_record = await history_service.record_inference_async(
@@ -352,9 +378,26 @@ async def analyze_sample(
             summary=ai_result.get("summary", {}),
             image_url=image_url,
             file_size_bytes=file_size,
+            talhao_nome=eff_talhao_nome,
+            talhao_codigo=eff_talhao_codigo,
+            cultivar=eff_cultivar,
+            latitude=eff_lat,
+            longitude=eff_lon,
+            inference_time_ms=inf_time_ms,
         )
     except Exception as hist_err:
         logger.warning("Aviso não-crítico ao salvar análise no histórico: %s", hist_err)
+
+    resolved_talhao = (
+        history_record.get("talhao_codigo")
+        if isinstance(history_record, dict) and history_record.get("talhao_codigo")
+        else normalize_talhao_codigo(eff_talhao_codigo, None, eff_talhao_nome)
+    )
+    resolved_cultivar = (
+        history_record.get("cultivar")
+        if isinstance(history_record, dict) and history_record.get("cultivar")
+        else resolve_cultivar(eff_cultivar, None, resolved_talhao)
+    )
 
     return {
         "status": "success",
@@ -365,6 +408,10 @@ async def analyze_sample(
         "saved_path": str(chosen_path),
         "size_bytes": file_size,
         "inference_time_ms": inf_time_ms,
+        "talhao_codigo": resolved_talhao,
+        "cultivar": resolved_cultivar,
+        "latitude": history_record.get("latitude") if isinstance(history_record, dict) else eff_lat,
+        "longitude": history_record.get("longitude") if isinstance(history_record, dict) else eff_lon,
         "detections": ai_result.get("detections", []),
         "summary": ai_result.get("summary", {}),
         "history_record": history_record,
@@ -375,15 +422,18 @@ async def analyze_sample(
 async def upload_image(
     file: UploadFile = File(...),
     custom_name: Optional[str] = Form(None),
-    latitude: Optional[float] = Form(None),
-    longitude: Optional[float] = Form(None),
+    latitude: Optional[str] = Form(None),
+    longitude: Optional[str] = Form(None),
+    talhao_codigo: Optional[str] = Form(None),
+    talhao_nome: Optional[str] = Form(None),
+    cultivar: Optional[str] = Form(None),
     background_tasks: BackgroundTasks = None,
     storage_service: StorageService = Depends(get_storage_service),
     ai_service: AIService = Depends(get_ai_service),
     image_service: ImageService = Depends(get_image_service),
     history_service: HistoryService = Depends(get_history_service),
 ) -> dict[str, Any]:
-    """Recebe imagem, preserva o nome original/customizado, detecta IA e salva nas amostras e histórico com GPS."""
+    """Recebe imagem, preserva o nome original/customizado, detecta IA e salva nas amostras e histórico com GPS e metadados."""
     if not file.filename:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -391,6 +441,9 @@ async def upload_image(
         )
 
     storage_service.validate_extension(file.filename)
+
+    parsed_lat = parse_coordinate_safe(latitude, is_latitude=True)
+    parsed_lon = parse_coordinate_safe(longitude, is_latitude=False)
 
     try:
         target_path, file_size = await storage_service.save_image_async(file, custom_name=custom_name)
@@ -414,9 +467,11 @@ async def upload_image(
         except Exception as db_err:
             logger.warning("Aviso não-crítico ao salvar imagem na tabela 'images': %s", db_err)
 
-        # 2. Salva no Histórico (tabela analyses) com georreferenciamento
+        # 2. Salva no Histórico (tabela analyses) com georreferenciamento, talhão, cultivar e tempo de inferência
         image_id = db_image_record.get("id") if db_image_record else None
         image_url = f"{BASE_URL}/temp_images/{target_path.name}"
+        inf_time_ms = ai_result.get("inference_time_ms") or ai_result.get("summary", {}).get("inference_time_ms", 0.0)
+
         history_record = None
         try:
             history_record = await history_service.record_inference_async(
@@ -426,13 +481,26 @@ async def upload_image(
                 image_id=image_id,
                 image_url=image_url,
                 file_size_bytes=file_size,
-                latitude=latitude,
-                longitude=longitude,
+                talhao_nome=talhao_nome,
+                talhao_codigo=talhao_codigo,
+                cultivar=cultivar,
+                latitude=parsed_lat,
+                longitude=parsed_lon,
+                inference_time_ms=inf_time_ms,
             )
         except Exception as hist_err:
             logger.warning("Aviso não-crítico ao salvar histórico: %s", hist_err)
 
-        inf_time_ms = ai_result.get("inference_time_ms") or ai_result.get("summary", {}).get("inference_time_ms", 0.0)
+        resolved_talhao = (
+            history_record.get("talhao_codigo")
+            if isinstance(history_record, dict) and history_record.get("talhao_codigo")
+            else normalize_talhao_codigo(talhao_codigo, None, talhao_nome)
+        )
+        resolved_cultivar = (
+            history_record.get("cultivar")
+            if isinstance(history_record, dict) and history_record.get("cultivar")
+            else resolve_cultivar(cultivar, None, resolved_talhao)
+        )
 
         return {
             "status": "success",
@@ -444,6 +512,10 @@ async def upload_image(
             "size_bytes": file_size,
             "saved_path": str(target_path),
             "inference_time_ms": inf_time_ms,
+            "talhao_codigo": resolved_talhao,
+            "cultivar": resolved_cultivar,
+            "latitude": history_record.get("latitude") if isinstance(history_record, dict) else parsed_lat,
+            "longitude": history_record.get("longitude") if isinstance(history_record, dict) else parsed_lon,
             "detections": ai_result.get("detections", []),
             "summary": ai_result.get("summary", {}),
             "database_record": db_image_record,
@@ -468,7 +540,6 @@ async def cleanup_storage_endpoint(
 
 
 if __name__ == "__main__":
-
     import uvicorn
 
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
