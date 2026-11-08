@@ -19,6 +19,26 @@ PROTECTED_TEMP_FILES: Set[str] = {
     "cana_teste.jpg",
     "amostra_erva_daninha.jpg",
     "trigo_teste.png",
+    "wheat_test_01_Terraref_1.jpg",
+    "wheat_test_02_Terraref_2.jpg",
+    "wheat_test_03_CIMMYT_1.jpg",
+    "wheat_test_04_CIMMYT_2.jpg",
+    "wheat_test_05_Terraref_2.jpg",
+    "wheat_test_06_UQ_11.jpg",
+    "wheat_test_07_UQ_10.jpg",
+    "wheat_test_08_UQ_8.jpg",
+    "wheat_test_09_UQ_8.jpg",
+    "wheat_test_10_UQ_10.jpg",
+    "wheat_test_11_Ukyoto_1.jpg",
+    "wheat_test_12_ARC_1.jpg",
+    "wheat_test_13_Ukyoto_1.jpg",
+    "wheat_test_14_Ukyoto_1.jpg",
+    "wheat_test_15_Ukyoto_1.jpg",
+    "wheat_test_16_NAU_2.jpg",
+    "wheat_test_17_KSU_3.jpg",
+    "wheat_test_18_NAU_3.jpg",
+    "wheat_test_19_NAU_3.jpg",
+    "wheat_test_20_NAU_3.jpg",
 }
 
 
@@ -245,4 +265,3 @@ class StorageService:
     ) -> Dict[str, Any]:
         """Versão síncrona/utilitária para chamadas diretas via CLI ou scripts standalone."""
         return asyncio.run(self.cleanup_temp_images(days=days, protected_files=protected_files))
-

@@ -39,6 +39,54 @@ from app.services.ai_service import AIService
 from app.services.detection_service import AnomalyService
 from app.services.storage_service import StorageService
 
+_HISTORY_SNAPSHOT: bytes | None = None
+_TEST_POLLUTION_FILENAMES = (
+    "trigo_lavoura.png",
+    "lavoura_teste.jpg",
+    "drone_alta_resolucao.png",
+    "trigo_bg_test.jpg",
+    "trigo_bg_test.png",
+    "drone_teste_bg.jpg",
+    "mock_di_saved.png",
+    "jwt_teste.png",
+    "trigo_timing_test.png",
+    "trigo_timing_test (1).png",
+    "amostra_sprint10_timing.jpg",
+    "drone_exp02_sprint12.png",
+    "drone_sem_gps_sprint12.png",
+    "trigo_sem_exif_gps_sprint12.jpg",
+)
+
+
+def setUpModule():
+    """Preserva snapshot do histórico oficial antes de rodar a bateria de testes."""
+    global _HISTORY_SNAPSHOT
+    from database import LOCAL_HISTORY_FILE
+    if LOCAL_HISTORY_FILE.exists():
+        _HISTORY_SNAPSHOT = LOCAL_HISTORY_FILE.read_bytes()
+
+
+def tearDownModule():
+    """Restaura histórico oficial e remove resíduos de teste eventualmente gravados."""
+    from database import LOCAL_HISTORY_FILE, get_db_connection
+    if _HISTORY_SNAPSHOT is not None:
+        LOCAL_HISTORY_FILE.write_bytes(_HISTORY_SNAPSHOT)
+    for fname in _TEST_POLLUTION_FILENAMES:
+        p = TEMP_IMAGES_DIR / fname
+        if p.exists():
+            try:
+                p.unlink()
+            except Exception:
+                pass
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM analyses WHERE nome_imagem = ANY(%s)", (list(_TEST_POLLUTION_FILENAMES),))
+                cur.execute("DELETE FROM images WHERE filename = ANY(%s)", (list(_TEST_POLLUTION_FILENAMES),))
+            conn.commit()
+    except Exception:
+        pass
+
 
 class TestSugarVisionBackend(unittest.TestCase):
     """Testes unitários e de integração do backend FastAPI."""
